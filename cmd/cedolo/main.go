@@ -26,10 +26,13 @@ Usage:
   cedolo inspect [-reader pdfium|poppler|both] FILE...
       Report whether each PDF has a readable text layer. Prints counts only,
       never names, amounts or file names, so the output is safe to share.
+  cedolo extract [-json] [-reader pdfium|poppler] FILE...
+      Read payslips and print their data, item by item, with the outcome of
+      the cross-checks. The output contains your payslip data: keep it local.
   cedolo layout [-reader pdfium|poppler] [-redact] FILE
       Print the positioned text of a PDF as JSON. Without -redact the output
       contains personal data: keep it on your machine.
-  cedolo synth [-o FILE]
+  cedolo synth [-style classic|signed|grid] [-o FILE]
       Write a synthetic payslip PDF with invented data (default: synthetic.pdf).
   cedolo version
       Print the version.
@@ -44,6 +47,8 @@ func main() {
 	switch cmd, args := os.Args[1], os.Args[2:]; cmd {
 	case "inspect":
 		err = runInspect(args, os.Stdout)
+	case "extract":
+		err = runExtract(args, os.Stdout)
 	case "layout":
 		err = runLayout(args, os.Stdout, os.Stderr)
 	case "synth":
@@ -185,14 +190,19 @@ func runLayout(args []string, out, warn io.Writer) error {
 func runSynth(args []string) error {
 	fs := flag.NewFlagSet("synth", flag.ContinueOnError)
 	outPath := fs.String("o", "synthetic.pdf", "output file")
+	styleName := fs.String("style", "classic", "layout style: classic, signed, or grid")
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	style, err := synth.ParseStyle(*styleName)
+	if err != nil {
 		return err
 	}
 	f, err := os.Create(*outPath)
 	if err != nil {
 		return err
 	}
-	if err := synth.WritePDF(f, synth.Example()); err != nil {
+	if err := synth.WritePDF(f, synth.ExampleFor(style), style); err != nil {
 		f.Close()
 		return err
 	}

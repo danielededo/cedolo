@@ -21,7 +21,7 @@ var amountPattern = regexp.MustCompile(`^(-)?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,
 // Parse converts an Italian-formatted amount such as "1.234,56", "-12,3" or
 // "12,30-" into cents.
 func Parse(s string) (int64, error) {
-	s = strings.TrimSpace(s)
+	s = trimCurrency(s)
 	m := amountPattern.FindStringSubmatch(s)
 	if m == nil || (m[1] != "" && m[4] != "") {
 		return 0, ErrInvalid
@@ -49,8 +49,18 @@ func Parse(s string) (int64, error) {
 // payslips print money. Plain integers are excluded because they are usually
 // codes, hours or days.
 func IsAmount(s string) bool {
-	m := amountPattern.FindStringSubmatch(strings.TrimSpace(s))
+	m := amountPattern.FindStringSubmatch(trimCurrency(s))
 	return m != nil && m[3] != "" && !(m[1] != "" && m[4] != "")
+}
+
+// trimCurrency removes spaces and a euro sign or "EUR" printed before or
+// after the number.
+func trimCurrency(s string) string {
+	s = strings.TrimSpace(s)
+	for _, sym := range []string{"€", "EUR", "Eur"} {
+		s = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(s, sym), sym))
+	}
+	return s
 }
 
 // Format renders cents in Italian notation with thousands separators and two
