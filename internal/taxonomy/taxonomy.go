@@ -32,11 +32,17 @@ type Entry struct {
 // before anything that would match "irpef" alone.
 var Entries = []Entry{
 	{Key: "rounding", LabelEN: "Rounding", LabelIT: "Arrotondamento",
-		Keywords: []string{"arrotondamento", "arrot", "arr to"}},
+		Keywords: []string{"arrotondamento", "arrotond", "arrot", "arr to"}},
+	{Key: "meal_vouchers", LabelEN: "Meal vouchers (taxable part)", LabelIT: "Buoni pasto (parte imponibile)",
+		Keywords: []string{"buoni pasto", "buono pasto", "ticket restaurant", "assoggettamento pasti", "pasti"}},
+	{Key: "earnings.reimbursement", LabelEN: "Expense reimbursement", LabelIT: "Rimborso spese",
+		Side: payslip.Earning, Keywords: []string{"nota spese", "rimborso spese", "rimborsi spese", "rimborso", "rimborsi", "rimb spese"}},
+	{Key: "earnings.contribution_relief", LabelEN: "Social security contribution relief", LabelIT: "Esonero contributivo",
+		Side: payslip.Earning, Keywords: []string{"esonero contributivo", "eson contr", "esonero ctr", "esonero contr", "esonero"}},
 	{Key: "tax.surcharge.regional", LabelEN: "Regional income tax surcharge", LabelIT: "Addizionale regionale",
-		Side: payslip.Deduction, Keywords: []string{"addizionale regionale", "add le regionale", "add reg", "add le reg", "addiz reg"}},
+		Side: payslip.Deduction, Keywords: []string{"addizionale regionale", "add le regionale", "add regionale", "add reg", "add le reg", "addiz reg", "add region"}},
 	{Key: "tax.surcharge.municipal", LabelEN: "Municipal income tax surcharge", LabelIT: "Addizionale comunale",
-		Side: payslip.Deduction, Keywords: []string{"addizionale comunale", "add le comunale", "add com", "add le com", "addiz com", "acconto addizionale comunale"}},
+		Side: payslip.Deduction, Keywords: []string{"addizionale comunale", "add le comunale", "add comunale", "add com", "add comun", "add le com", "addiz com", "acconto addizionale comunale"}},
 	{Key: "tax.credit", LabelEN: "Tax credit paid in the payslip", LabelIT: "Trattamento integrativo e bonus fiscali",
 		Side: payslip.Earning, Keywords: []string{"trattamento integrativo", "tratt integrativo", "ulteriore detrazione", "cuneo fiscale", "bonus irpef", "somma integrativa"}},
 	{Key: "tax.irpef", LabelEN: "Income tax (IRPEF)", LabelIT: "IRPEF",
@@ -70,7 +76,8 @@ var Entries = []Entry{
 	{Key: "earnings.sick_pay", LabelEN: "Sick pay", LabelIT: "Malattia",
 		Side: payslip.Earning, Keywords: []string{"malattia", "infortunio", "carenza"}},
 	{Key: "earnings.base_salary", LabelEN: "Base salary", LabelIT: "Retribuzione base",
-		Side: payslip.Earning, Keywords: []string{"retribuzione", "paga base", "minimo", "stipendio", "minimo contrattuale", "paga", "retrib"}},
+		Side: payslip.Earning, Keywords: []string{"retribuzione", "paga base", "minimo", "stipendio", "minimo contrattuale", "paga", "retrib",
+			"lavoro ordinario", "lavoro ordin", "ore ordinarie", "ordinaria", "ordinario"}},
 }
 
 // Other keys for items that match no entry, by side.

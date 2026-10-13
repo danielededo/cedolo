@@ -112,7 +112,8 @@ rimborso rimborsi spese km chilometrico arrotondamento corrente precedente succe
 mensile giornaliera giornaliero orario oraria unitario totale complessivo complessiva quota quote
 lavoratore datore impiegato impiegata operaio operaia quadro dirigente apprendista tempo pieno
 parziale determinato indeterminato part full time ctr c dip az prec corr tot imp rit comp tratt
-liv cod descr qta dt
+liv cod descr qta dt riposi conto giustificativi legenda calendario presenze statistici dati neutre
+neutra figurative elaborazione lavorate tot res mat god
 a ad al alla alle ai agli all che con da dal dalla dei del della delle dello di e ed i il in la le
 lo nel nella negli per su sul sulla tra fra un una uno o
 `

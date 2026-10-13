@@ -45,7 +45,7 @@ func page(rows ...[]string) layout.Page {
 
 // TestForeignLayout covers traits none of the synthetic styles has: headers
 // centered over wide columns, euro signs, labels ending with colons, a
-// numeric period, no item codes, an unrecognized item, a pension fund
+// numeric period, no item codes, meal vouchers, a pension fund
 // deduction, and totals printed on the left of their values with a large gap.
 func TestForeignLayout(t *testing.T) {
 	pg := page(
@@ -77,7 +77,7 @@ func TestForeignLayout(t *testing.T) {
 	if p.Level != "5S" || p.CCNL != "METALMECCANICO INDUSTRIA" {
 		t.Errorf("level %q CCNL %q", p.Level, p.CCNL)
 	}
-	wantKeys := []string{"earnings.base_salary", "earnings.superminimum", "earnings.other",
+	wantKeys := []string{"earnings.base_salary", "earnings.superminimum", "meal_vouchers",
 		"deductions.inps", "deductions.pension_fund", "tax.irpef"}
 	if len(p.Items) != len(wantKeys) {
 		t.Fatalf("got %d items: %+v", len(p.Items), p.Items)
@@ -184,5 +184,190 @@ func TestAmbiguousLeaveUnit(t *testing.T) {
 	p := Document(layout.Document{Pages: []layout.Page{pg}})[0]
 	if len(p.Leave) != 1 || p.Leave[0].Unit != "" {
 		t.Errorf("leave = %+v", p.Leave)
+	}
+}
+
+// find returns the first item with the given key.
+func find(t *testing.T, items []payslip.Item, key string) payslip.Item {
+	t.Helper()
+	for _, it := range items {
+		if it.Key == key {
+			return it
+		}
+	}
+	t.Fatalf("no item %s in %+v", key, items)
+	return payslip.Item{}
+}
+
+func wantStatus(t *testing.T, name string, a payslip.Amount, cents int64, status payslip.Status) {
+	t.Helper()
+	if a.Cents != cents || a.Status != status {
+		t.Errorf("%s = %d (%s), want %d (%s)", name, a.Cents, a.Status, cents, status)
+	}
+}
+
+// TestSummaryBoxesWithCalendar covers, with invented values, a layout with
+// contributions and taxes printed in summary boxes below the item table
+// rather than as items; a "totale trattenute" that is only the item table
+// total; a column of neutral items that are not pay; a presence calendar
+// printed beside the table, whose day codes and hours sit next to the
+// totals; roundings carried from the previous month and made this month;
+// and leave balances in stacked blocks.
+func TestSummaryBoxesWithCalendar(t *testing.T) {
+	pg := page(
+		[]string{"40:PERIODO DI RETRIBUZIONE", "460:MARZO 2026"},
+		[]string{"25:LIVELLO 6"},
+		[]string{},
+		[]string{"29:VOCE", "108:DESCRIZIONE", "211:ORE/GG./NUM.", "251:VAL.UNIT./NEUTRA", "303:COMPETENZE",
+			"352:TRATTENUTE", "396:Gio", "419:OL"},
+		[]string{"26:0001", "50:RETRIBUZIONE ORDINARIA", "240>168,00", "290>13,09524", "345>2.200,00", "391:01Ma", "440>8,00"},
+		[]string{"26:0120", "50:BUONI PASTO ELETTRONICI", "240>20,00", "290>1,00000", "345>20,00", "391:02Me", "440>8,00"},
+		[]string{"26:0121", "50:REC. BUONI PASTO", "240>20,00", "290>1,00000", "395>20,00", "391:03Gi", "440>8,00"},
+		[]string{"50:--------- VOCI NEUTRE ----------", "391:04Ve", "440>8,00"},
+		[]string{"26:0900", "50:Contr. FPC dipendente", "200>1,00%", "290>22,00", "391:05Sa"},
+		[]string{"391:06Do"},
+		[]string{"34:IMP.LE F.P.L.D. 2.220,00", "341:TOTALE COMPETENZE", "391:07Lu", "440>8,00"},
+		[]string{"34:CTR. F.P.L.D. 204,02", "352:2.220,00", "391:08Ma", "440>8,00"},
+		[]string{"34:CTR. FONDO PENS. 22,00", "341:TOTALE TRATTENUTE", "391:09Me", "440>8,00"},
+		[]string{"32:IMPONIBILE IRPEF 1.993,98", "357:20,00", "391:10Gi"},
+		[]string{"340:TOTALE TRATT.SOCIALI"},
+		[]string{"352:226,02"},
+		[]string{"338:TOTALE TRATT.FISCALE"},
+		[]string{"357:300,00"},
+		[]string{"343:ARROTOND. PRECED."},
+		[]string{"367:0,40"},
+		[]string{"342:ARROTOND. ATTUALE"},
+		[]string{"367:0,62"},
+		[]string{"354:NETTO"},
+		[]string{"352:1.674,20"},
+	)
+	p := Document(layout.Document{Pages: []layout.Page{pg}})[0]
+	if p.Month != 3 || p.Year != 2026 {
+		t.Errorf("period %d/%d", p.Month, p.Year)
+	}
+	if len(p.Items) != 3 {
+		t.Fatalf("items = %+v", p.Items)
+	}
+	if it := find(t, p.Items, "earnings.base_salary"); it.Cents != 220000 || it.Description != "RETRIBUZIONE ORDINARIA" || it.Quantity != "168,00" {
+		t.Errorf("base salary = %+v", it)
+	}
+	if p.Items[2].Key != "meal_vouchers" || p.Items[2].Side != payslip.Deduction {
+		t.Errorf("voucher recovery = %+v", p.Items[2])
+	}
+	wantStatus(t, "gross", p.Gross, 222000, payslip.Verified)
+	wantStatus(t, "deductions", p.Deductions, 54602, payslip.Verified)
+	wantStatus(t, "net", p.Net, 167420, payslip.Verified)
+	wantStatus(t, "social contributions", p.SocialContributions, 22602, payslip.Verified)
+	wantStatus(t, "taxes", p.Taxes, 30000, payslip.Verified)
+	wantStatus(t, "previous rounding", p.RoundingPrevious, 40, payslip.Verified)
+	wantStatus(t, "current rounding", p.RoundingCurrent, 62, payslip.Verified)
+	wantStatus(t, "INPS base", p.INPSBase, 222000, payslip.Verified)
+	for _, c := range p.Checks {
+		if !c.OK && !c.Advisory {
+			t.Errorf("check %s failed: %s", c.Name, c.Detail)
+		}
+	}
+}
+
+// TestGrandTotalAndTaxableGross covers, with invented values, a layout with
+// a statistical data column beside the pay columns; a printed gross that
+// leaves out expense reimbursements and contribution relief; a "totale
+// trattenute" that is everything withheld, including the previous rounding;
+// labels such as "totale trattenute irpef t.s." that must not be read as
+// "totale trattenute"; a current rounding label printed on two stacked
+// lines; and leave balances in a row of "kind measure" cells.
+func TestGrandTotalAndTaxableGross(t *testing.T) {
+	pg := page(
+		[]string{"27:MESE RETRIBUITO", "380:LIVELLO"},
+		[]string{"25:GIUGNO 2026", "380:C3"},
+		[]string{},
+		[]string{"27:CODICE", "57:DESCRIZIONE VOCE", "219:ORE/GIORNI", "272:BASE", "344:COMPETENZE", "423:TRATTENUTE", "502:DATI STATISTICI"},
+		[]string{"25:0100", "55:LAVORO ORDIN.(mens.)", "260>21,00", "320>2.300,00", "410>2.300,00"},
+		[]string{"25:0200", "55:RATA ADD.REG. A.P.", "490>25,00"},
+		[]string{"25:0300", "55:NOTA SPESE OTTOBRE", "410>45,00"},
+		[]string{"25:0400", "55:ESON.CONTR.IVS L.234/21", "410>40,00"},
+		[]string{"25:0500", "55:CONTRIBUZIONE TFR", "570>170,00"},
+		[]string{},
+		[]string{"27:TOTALE LORDO", "111:IMPON. CONTR. SOC.", "488:TOTALE CONTRIBUTI SOCIALI"},
+		[]string{"100>2.300,00", "180>2.300,00", "570>211,37"},
+		[]string{"139:IRPEF", "488:TOTALE TRATTENUTE IRPEF T.S."},
+		[]string{},
+		[]string{"272:IMPONIBILE IRPEF", "356:IRPEF LORDA", "488:TOTALE TRATTENUTE IRPEF"},
+		[]string{"340>2.088,63", "570>350,00"},
+		[]string{"362:ARROTOND. PRECED.", "422:TRATTENUTE CORPO", "488:TOTALE TRATTENUTE"},
+		[]string{"410>0,30", "480>25,00", "570>586,67"},
+		[]string{"428:ARROTONDAMENTO", "488:NETTO BUSTA"},
+		[]string{},
+		[]string{"27:FERIE A.P.", "77:FERIE MAT.", "121:FERIE GOD.", "166:FERIE RES.", "211:PERMESSI A.P.", "257:PERMESSI MAT.",
+			"393:ROL A.P.", "438:ROL MAT.", "484:ROL GOD.", "529:ROL RES."},
+		[]string{"70>40,00", "115>14,67", "160>8,00", "205>46,67", "485>9,33", "525>4,00", "570>5,33"},
+	)
+	// The current rounding: "ATTUALE" printed just below "ARROTONDAMENTO",
+	// and the values one line further down.
+	var labelY float64
+	for _, tok := range pg.Tokens {
+		if tok.Text == "ARROTONDAMENTO" {
+			labelY = tok.Y
+		}
+	}
+	pg.Tokens = append(pg.Tokens,
+		layout.Token{Text: "ATTUALE", X: 442, Y: labelY + 4.3, W: 35, H: 9},
+		layout.Token{Text: "0,67", X: 457, Y: labelY + 14, W: 20, H: 9},
+		layout.Token{Text: "1.799,00", X: 523, Y: labelY + 14, W: 40, H: 9},
+	)
+	p := Document(layout.Document{Pages: []layout.Page{pg}})[0]
+	if p.Month != 6 || p.Level != "C3" {
+		t.Errorf("month %d level %q", p.Month, p.Level)
+	}
+	if len(p.Items) != 4 {
+		t.Fatalf("items = %+v (the statistical column must be ignored)", p.Items)
+	}
+	find(t, p.Items, "earnings.reimbursement")
+	find(t, p.Items, "earnings.contribution_relief")
+	if it := find(t, p.Items, "tax.surcharge.regional"); it.Side != payslip.Deduction || it.Cents != 2500 {
+		t.Errorf("regional surcharge = %+v", it)
+	}
+	wantStatus(t, "gross", p.Gross, 230000, payslip.Verified)
+	wantStatus(t, "deductions", p.Deductions, 58667, payslip.Verified)
+	wantStatus(t, "net", p.Net, 179900, payslip.Verified)
+	wantStatus(t, "social contributions", p.SocialContributions, 21137, payslip.Verified)
+	wantStatus(t, "taxes", p.Taxes, 35000, payslip.Verified)
+	wantStatus(t, "current rounding", p.RoundingCurrent, 67, payslip.Verified)
+	wantStatus(t, "IRPEF base", p.IRPEFBase, 208863, payslip.Verified)
+	for _, c := range p.Checks {
+		if !c.OK && !c.Advisory {
+			t.Errorf("check %s failed: %s", c.Name, c.Detail)
+		}
+	}
+	if len(p.Leave) != 2 {
+		t.Fatalf("leave = %+v", p.Leave)
+	}
+	h, r := p.Leave[0], p.Leave[1]
+	if h.Kind != payslip.Holiday || *h.Previous != 4000 || *h.Accrued != 1467 || *h.Used != 800 || *h.Remaining != 4667 {
+		t.Errorf("holiday = %+v", h)
+	}
+	if r.Kind != payslip.ReducedHours || r.Previous != nil || *r.Accrued != 933 || *r.Used != 400 || *r.Remaining != 533 {
+		t.Errorf("rol = %+v", r)
+	}
+}
+
+// TestLeaveColumns covers leave tables with one column per kind and one row
+// per measure.
+func TestLeaveColumns(t *testing.T) {
+	pg := page(
+		[]string{"40:ORE", "200:FERIE", "300:PERMESSI", "400:EX FEST."},
+		[]string{"40:RESIDUO AP", "250>90,00", "350>36,00", "450>8,00"},
+		[]string{"40:MATURATO", "250>14,00", "350>6,00", "450>2,67"},
+		[]string{"40:GODUTO", "250>8,00", "350>0,00", "450>0,00"},
+		[]string{"40:SALDO", "250>96,00", "350>42,00", "450>10,67"},
+	)
+	p := Document(layout.Document{Pages: []layout.Page{pg}})[0]
+	if len(p.Leave) != 3 || p.Leave[2].Kind != payslip.FormerHolidays || *p.Leave[2].Remaining != 1067 || p.Leave[0].Unit != "hours" {
+		t.Fatalf("leave = %+v", p.Leave)
+	}
+	for _, c := range p.Checks {
+		if strings.HasPrefix(c.Name, "leave_balance") && !c.OK {
+			t.Errorf("%s: %s", c.Name, c.Detail)
+		}
 	}
 }

@@ -12,52 +12,190 @@ import (
 // apprentice rate. A rate outside this list is not an error, only unverified.
 var inpsRates = []int64{919, 949, 584}
 
+// outsideGross are item kinds that some payroll software leaves out of the
+// printed gross because they are not taxable pay.
+var outsideGross = map[string]bool{
+	"earnings.reimbursement":       true,
+	"earnings.contribution_relief": true,
+	"tax.credit":                   true,
+	"rounding":                     true,
+}
+
 // validate fills totals that can be computed, runs the cross-checks, and sets
 // the status of each total: verified when a check confirms it, inconsistent
 // when a check contradicts it, extracted when no check applies.
+//
+// Payroll software disagrees on what its totals mean: "totale trattenute" is
+// the item table total in some layouts and everything withheld in others,
+// and contributions and taxes may be items or summary boxes. Rather than
+// guess per vendor, validate tries the readings that are known to occur and
+// keeps the one under which the payslip's arithmetic holds.
 func validate(p *payslip.Payslip) {
-	earnings, deductions := p.Sum(payslip.Earning), p.Sum(payslip.Deduction)
+	earnings, tableDeductions := p.Sum(payslip.Earning), p.Sum(payslip.Deduction)
 	hasItems := len(p.Items) > 0
 
-	// Item sums against printed totals.
-	sumCheck := func(name, what string, total *payslip.Amount, sum int64) {
-		switch {
-		case total.Found() && hasItems:
-			ok := total.Cents == sum
-			p.Checks = append(p.Checks, payslip.Check{Name: name, OK: ok,
-				Detail: fmt.Sprintf("items add up to %s, printed %s is %s", money.Format(sum), what, money.Format(total.Cents))})
-			mark(total, ok)
-		case !total.Found() && hasItems:
-			*total = payslip.Amount{Cents: sum, Status: payslip.Inferred}
-		}
-	}
-	sumCheck("earnings_sum", "gross", &p.Gross, earnings)
-	sumCheck("deductions_sum", "total deductions", &p.Deductions, deductions)
-
-	// Gross minus deductions against net.
-	if p.Gross.Found() && p.Deductions.Found() {
-		expected := p.Gross.Cents - p.Deductions.Cents
-		if p.Net.Found() {
-			ok := p.Net.Cents == expected
-			p.Checks = append(p.Checks, payslip.Check{Name: "net_balance", OK: ok,
-				Detail: fmt.Sprintf("gross minus deductions is %s, printed net is %s", money.Format(expected), money.Format(p.Net.Cents))})
-			mark(&p.Net, ok)
-			if ok {
-				mark(&p.Gross, true)
-				mark(&p.Deductions, true)
+	// Gross: all earnings, or the taxable ones.
+	if hasItems {
+		var taxable int64
+		for _, it := range p.Items {
+			if it.Side == payslip.Earning && !outsideGross[it.Key] {
+				taxable += it.Cents
 			}
-		} else {
-			p.Net = payslip.Amount{Cents: expected, Status: payslip.Inferred}
+		}
+		switch {
+		case !p.Gross.Found():
+			p.Gross = payslip.Amount{Cents: earnings, Status: payslip.Inferred}
+		case p.Gross.Cents == earnings:
+			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: true,
+				Detail: fmt.Sprintf("items add up to %s, printed gross is %s", money.Format(earnings), money.Format(p.Gross.Cents))})
+			mark(&p.Gross, true)
+		case p.Gross.Cents == taxable:
+			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: true,
+				Detail: fmt.Sprintf("items other than reimbursements, contribution relief and tax credits add up to %s, printed gross is %s", money.Format(taxable), money.Format(p.Gross.Cents))})
+			mark(&p.Gross, true)
+		default:
+			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: false,
+				Detail: fmt.Sprintf("items add up to %s, printed gross is %s", money.Format(earnings), money.Format(p.Gross.Cents))})
+			mark(&p.Gross, false)
+		}
+	}
+	base := p.Gross.Cents
+	if hasItems {
+		base = earnings
+	}
+
+	// Everything withheld, under each known reading of the printed totals.
+	summary := tableDeductions
+	for _, a := range []payslip.Amount{p.SocialContributions, p.Taxes} {
+		if a.Found() {
+			summary += a.Cents
+		}
+	}
+	type reading struct {
+		total       int64
+		printedUsed bool // the printed total is everything withheld
+		desc        string
+	}
+	var readings []reading
+	if p.Deductions.Found() {
+		readings = append(readings, reading{p.Deductions.Cents, true, "printed total deductions"})
+	}
+	if p.Deductions.Found() && p.Deductions.Cents != summary && (p.SocialContributions.Found() || p.Taxes.Found()) {
+		readings = append(readings, reading{summary, false, "item deductions plus contributions and taxes"})
+	}
+	if !p.Deductions.Found() && hasItems {
+		readings = append(readings, reading{summary, false, "item deductions plus contributions and taxes"})
+	}
+
+	// Net: earnings minus everything withheld, adjusted by the rounding
+	// carried from the previous month and the rounding of this month.
+	if p.Net.Found() && len(readings) > 0 {
+		prev, curr := p.RoundingPrevious.Cents, p.RoundingCurrent.Cents
+		var adjustments [][2]int64
+		for _, a := range []int64{0, -1, 1} {
+			for _, b := range []int64{0, 1, -1} {
+				if (a != 0 && !p.RoundingPrevious.Found()) || (b != 0 && !p.RoundingCurrent.Found()) {
+					continue
+				}
+				adjustments = append(adjustments, [2]int64{a, b})
+			}
+		}
+		found := false
+		for _, r := range readings {
+			for _, adj := range adjustments {
+				if base-r.total+adj[0]*prev+adj[1]*curr != p.Net.Cents {
+					continue
+				}
+				found = true
+				detail := fmt.Sprintf("earnings %s minus %s %s", money.Format(base), r.desc, money.Format(r.total))
+				if adj[0] != 0 {
+					detail += fmt.Sprintf(", %s previous rounding %s", sign(adj[0]), money.Format(prev))
+				}
+				if adj[1] != 0 {
+					detail += fmt.Sprintf(", %s current rounding %s", sign(adj[1]), money.Format(curr))
+				}
+				detail += fmt.Sprintf(" gives the printed net %s", money.Format(p.Net.Cents))
+				p.Checks = append(p.Checks, payslip.Check{Name: "net_balance", OK: true, Detail: detail})
+				mark(&p.Net, true)
+				for _, a := range []*payslip.Amount{&p.SocialContributions, &p.Taxes} {
+					if !r.printedUsed {
+						mark(a, true)
+					}
+				}
+				if adj[0] != 0 {
+					mark(&p.RoundingPrevious, true)
+				}
+				if adj[1] != 0 {
+					mark(&p.RoundingCurrent, true)
+				}
+				if r.printedUsed {
+					mark(&p.Deductions, true)
+				} else {
+					// The printed total, if any, was the item table total.
+					p.Deductions = payslip.Amount{Cents: r.total, Status: payslip.Verified}
+				}
+				break
+			}
+			if found {
+				break
+			}
+		}
+		if !found {
+			r := readings[0]
+			p.Checks = append(p.Checks, payslip.Check{Name: "net_balance", OK: false,
+				Detail: fmt.Sprintf("earnings %s minus %s %s is %s, printed net is %s", money.Format(base), r.desc,
+					money.Format(r.total), money.Format(base-r.total), money.Format(p.Net.Cents))})
+			mark(&p.Net, false)
+			mark(&p.Deductions, false)
+		}
+	} else if !p.Net.Found() && len(readings) > 0 {
+		p.Net = payslip.Amount{Cents: base - readings[0].total, Status: payslip.Inferred}
+		if !p.Deductions.Found() {
+			p.Deductions = payslip.Amount{Cents: readings[0].total, Status: payslip.Inferred}
+		}
+	} else if !p.Deductions.Found() && len(readings) > 0 {
+		p.Deductions = payslip.Amount{Cents: readings[0].total, Status: payslip.Inferred}
+	}
+
+	// Total deductions against its parts: the item table alone, or with
+	// contributions and taxes, possibly including the rounding carried from
+	// the previous month.
+	if p.Deductions.Found() && hasItems {
+		withPrevious := p.RoundingPrevious.Found() && p.Deductions.Cents == summary+p.RoundingPrevious.Cents
+		ok := p.Deductions.Cents == summary || p.Deductions.Cents == tableDeductions || withPrevious
+		detail := fmt.Sprintf("item deductions add up to %s, with contributions and taxes %s; total deductions is %s",
+			money.Format(tableDeductions), money.Format(summary), money.Format(p.Deductions.Cents))
+		if withPrevious {
+			detail += fmt.Sprintf(", including the previous rounding %s", money.Format(p.RoundingPrevious.Cents))
+			mark(&p.RoundingPrevious, true)
+		}
+		p.Checks = append(p.Checks, payslip.Check{Name: "deductions_sum", OK: ok, Detail: detail})
+		if ok && summary != tableDeductions {
+			mark(&p.SocialContributions, true)
+			mark(&p.Taxes, true)
+		}
+		if !ok {
+			mark(&p.Deductions, false)
 		}
 	}
 
-	// INPS contribution against its taxable base and the known rates.
-	if inps, n := p.SumKey("deductions.inps"); n > 0 && p.INPSBase.Found() {
+	// INPS contribution against its taxable base and the known rates. The
+	// contribution is an item, a summary box, or failing both the total of
+	// social contributions.
+	inps, n := p.SumKey("deductions.inps")
+	switch {
+	case n > 0:
+	case p.INPS.Found():
+		inps, n = p.INPS.Cents, 1
+	case p.SocialContributions.Found():
+		inps, n = p.SocialContributions.Cents, 1
+	}
+	if n > 0 && p.INPSBase.Found() {
 		ok := false
 		for _, rate := range inpsRates {
 			if abs(inps-roundDiv(p.INPSBase.Cents*rate, 10000)) <= 1 {
 				ok = true
-				p.Checks = append(p.Checks, payslip.Check{Name: "inps_rate", OK: true,
+				p.Checks = append(p.Checks, payslip.Check{Name: "inps_rate", OK: true, Advisory: true,
 					Detail: fmt.Sprintf("INPS %s is %s%% of the taxable base %s", money.Format(inps), money.Format(rate), money.Format(p.INPSBase.Cents))})
 				break
 			}
@@ -65,20 +203,20 @@ func validate(p *payslip.Payslip) {
 		if ok {
 			mark(&p.INPSBase, true)
 		} else {
-			p.Checks = append(p.Checks, payslip.Check{Name: "inps_rate", OK: false,
+			p.Checks = append(p.Checks, payslip.Check{Name: "inps_rate", OK: false, Advisory: true,
 				Detail: fmt.Sprintf("INPS %s is not a usual rate of the taxable base %s; this can be normal for special contracts or contributions above the yearly threshold", money.Format(inps), money.Format(p.INPSBase.Cents))})
 		}
 	}
 
 	// IRPEF taxable base is usually the INPS base minus the INPS contribution.
-	if inps, n := p.SumKey("deductions.inps"); n > 0 && p.INPSBase.Found() && p.IRPEFBase.Found() {
+	if n > 0 && p.INPSBase.Found() && p.IRPEFBase.Found() {
 		expected := p.INPSBase.Cents - inps
 		ok := p.IRPEFBase.Cents == expected
 		detail := fmt.Sprintf("INPS base minus INPS contribution is %s, printed IRPEF base is %s", money.Format(expected), money.Format(p.IRPEFBase.Cents))
 		if !ok {
 			detail += "; a difference is normal when pension fund contributions or other deductible items exist"
 		}
-		p.Checks = append(p.Checks, payslip.Check{Name: "irpef_base", OK: ok, Detail: detail})
+		p.Checks = append(p.Checks, payslip.Check{Name: "irpef_base", OK: ok, Advisory: true, Detail: detail})
 		if ok {
 			mark(&p.IRPEFBase, true)
 		}
@@ -97,14 +235,15 @@ func validate(p *payslip.Payslip) {
 			if !ok {
 				detail += "; a difference is normal when the pay used for TFR differs from the taxable base"
 			}
-			p.Checks = append(p.Checks, payslip.Check{Name: "tfr_ratio", OK: ok, Detail: detail})
+			p.Checks = append(p.Checks, payslip.Check{Name: "tfr_ratio", OK: ok, Advisory: true, Detail: detail})
 			if ok {
 				mark(&p.TFR, true)
 			}
 		}
 	}
 
-	for _, a := range []*payslip.Amount{&p.Gross, &p.Deductions, &p.Net, &p.INPSBase, &p.IRPEFBase, &p.TFR} {
+	for _, a := range []*payslip.Amount{&p.Gross, &p.Deductions, &p.Net, &p.INPSBase, &p.IRPEFBase, &p.TFR,
+		&p.SocialContributions, &p.Taxes, &p.INPS, &p.RoundingPrevious, &p.RoundingCurrent} {
 		if a.Status == "" {
 			a.Status = payslip.Missing
 		}
@@ -124,6 +263,13 @@ func mark(a *payslip.Amount, ok bool) {
 	case a.Status != payslip.Inconsistent:
 		a.Status = payslip.Verified
 	}
+}
+
+func sign(v int64) string {
+	if v < 0 {
+		return "minus"
+	}
+	return "plus"
 }
 
 func abs(v int64) int64 {
