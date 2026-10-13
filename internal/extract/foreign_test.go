@@ -6,6 +6,7 @@ import (
 
 	"github.com/danielededo/cedolo/internal/layout"
 	"github.com/danielededo/cedolo/internal/payslip"
+	"github.com/danielededo/cedolo/internal/synth"
 )
 
 // page builds a layout from rows of cells. Each cell is "x:text" where x is
@@ -121,5 +122,67 @@ func TestUnsignedSingleColumn(t *testing.T) {
 	}
 	if p.Net.Status != payslip.Verified || p.Gross.Status != payslip.Inferred {
 		t.Errorf("net %s, gross %s", p.Net.Status, p.Gross.Status)
+	}
+}
+
+// TestLeaveInDaysWithoutPrevious covers a leave table in days whose header is
+// centered over wider columns, with no previous balance, and an item table
+// line about used holidays that must not be mistaken for a balance.
+func TestLeaveInDaysWithoutPrevious(t *testing.T) {
+	pg := page(
+		[]string{"40:Periodo: Maggio 2026"},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:Ferie godute", "450>120,00"},
+		[]string{},
+		[]string{},
+		[]string{},
+		[]string{"40:Giorni", "200:Spettanti", "300:Fruiti", "400:Da godere"},
+		[]string{"40:Ferie", "250>2,17", "330>1,00", "450>12,50"},
+		[]string{"40:Ex festività", "250>0,33", "330>0", "450>3,00"},
+	)
+	p := Document(layout.Document{Pages: []layout.Page{pg}})[0]
+	if len(p.Leave) != 2 {
+		t.Fatalf("leave = %+v", p.Leave)
+	}
+	h := p.Leave[0]
+	if h.Kind != payslip.Holiday || h.Unit != "days" || h.Previous != nil || *h.Accrued != 217 || *h.Used != 100 || *h.Remaining != 1250 {
+		t.Errorf("holiday = %+v", h)
+	}
+	if f := p.Leave[1]; f.Kind != payslip.FormerHolidays || *f.Used != 0 || *f.Remaining != 300 {
+		t.Errorf("former holidays = %+v", f)
+	}
+	for _, ch := range p.Checks {
+		if strings.HasPrefix(ch.Name, "leave_balance") {
+			t.Errorf("unexpected balance check without a previous balance: %+v", ch)
+		}
+	}
+	if len(p.Items) != 1 || p.Items[0].Key != "earnings.leave" {
+		t.Errorf("items = %+v", p.Items)
+	}
+}
+
+func TestLeaveBalanceMismatchFails(t *testing.T) {
+	doc := synth.Layout(synth.Example(), synth.StyleClassic)
+	for i, tok := range doc.Pages[0].Tokens {
+		if tok.Text == "96,00" {
+			doc.Pages[0].Tokens[i].Text = "69,00"
+		}
+	}
+	p := Document(doc)[0]
+	for _, ch := range p.Checks {
+		if ch.Name == "leave_balance_holiday" && ch.OK {
+			t.Errorf("mismatched balance passed: %s", ch.Detail)
+		}
+	}
+}
+
+func TestAmbiguousLeaveUnit(t *testing.T) {
+	pg := page(
+		[]string{"40:Giorni/Ore", "200:Maturato", "300:Goduto"},
+		[]string{"40:Ferie", "250>2,17", "330>1,00"},
+	)
+	p := Document(layout.Document{Pages: []layout.Page{pg}})[0]
+	if len(p.Leave) != 1 || p.Leave[0].Unit != "" {
+		t.Errorf("leave = %+v", p.Leave)
 	}
 }

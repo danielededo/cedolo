@@ -30,6 +30,9 @@ How to use this file:
   period, contract level, items classified into a canonical taxonomy, totals,
   taxable bases and TFR, each marked as verified, extracted, inferred,
   inconsistent or missing according to arithmetic cross-checks.
+- `cedolo extract` also reads leave balances (ferie, permessi and ROL, ex
+  festività, banca ore) printed as rows, columns or inline, and checks that
+  previous plus accrued minus used equals the remaining balance.
 
 [Unreleased]: https://github.com/danielededo/cedolo/commits/main
 <!-- After the first release, switch to:

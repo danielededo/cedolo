@@ -61,6 +61,8 @@ are data, not code.
   also use hand-built layouts the generator does not produce. Without real
   payslips there is still a risk that the heuristics fit the styles they
   were written against; the first real payslips are the true test.
+- Leave balances follow the same approach: measures and kinds are matched
+  from synonyms, in tables of either orientation or inline.
 - Known gaps today: scanned payslips, item tables printed in two side-by-side
   blocks, item descriptions wrapped over two lines, labels split over two
   lines. Each will be handled when a real layout shows it.

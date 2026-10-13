@@ -83,6 +83,32 @@ const (
 	Fourteenth Kind = "14th"
 )
 
+// LeaveKind identifies a leave balance.
+type LeaveKind string
+
+const (
+	// Holiday is annual paid leave (ferie).
+	Holiday LeaveKind = "holiday"
+	// ReducedHours is leave from working-time reduction (permessi, ROL).
+	ReducedHours LeaveKind = "rol"
+	// FormerHolidays is leave replacing abolished public holidays (ex festività).
+	FormerHolidays LeaveKind = "former_holidays"
+	// HoursBank is overtime banked as time off (banca ore).
+	HoursBank LeaveKind = "hours_bank"
+)
+
+// Leave is one leave balance as printed. Quantities are in hundredths of the
+// unit (900 is 9 hours or 9 days); nil means not printed.
+type Leave struct {
+	Kind      LeaveKind `json:"kind"`
+	Label     string    `json:"label"`
+	Unit      string    `json:"unit,omitempty"` // "hours", "days", or empty when not printed
+	Previous  *int64    `json:"previous,omitempty"`
+	Accrued   *int64    `json:"accrued,omitempty"`
+	Used      *int64    `json:"used,omitempty"`
+	Remaining *int64    `json:"remaining,omitempty"`
+}
+
 // Payslip is the normalized content of one payslip.
 type Payslip struct {
 	Pages []int  `json:"pages"`
@@ -100,6 +126,8 @@ type Payslip struct {
 	INPSBase   Amount `json:"inps_base"`
 	IRPEFBase  Amount `json:"irpef_base"`
 	TFR        Amount `json:"tfr"`
+
+	Leave []Leave `json:"leave,omitempty"`
 
 	Checks []Check `json:"checks"`
 }

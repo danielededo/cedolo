@@ -140,12 +140,14 @@ func renderClassic(c *canvas, p Payslip) {
 
 	y -= 24
 	c.text(colCode, y, 8, true, "ORE")
+	c.textRight(260, y, 8, true, "RES. PREC.")
 	c.textRight(330, y, 8, true, "MATURATE")
 	c.textRight(400, y, 8, true, "GODUTE")
 	c.textRight(480, y, 8, true, "RESIDUE")
 	for _, l := range p.Leave {
 		y -= 12
 		c.text(colCode, y, 8, false, l.Kind)
+		c.textRight(260, y, 8, false, l.Previous)
 		c.textRight(330, y, 8, false, l.Accrued)
 		c.textRight(400, y, 8, false, l.Used)
 		c.textRight(480, y, 8, false, l.Remaining)
@@ -204,6 +206,15 @@ func renderSigned(c *canvas, p Payslip) {
 	y -= 14
 	c.text(colCode, y, 8, false, "Quota TFR maturata")
 	c.textRight(250, y, 8, false, money.Format(p.TFRAccrued))
+	y -= 24
+	for _, l := range p.Leave {
+		c.text(colCode, y, 8, true, l.Kind+" (ore)")
+		c.text(130, y, 8, false, "res. prec. "+l.Previous)
+		c.text(230, y, 8, false, "maturate "+l.Accrued)
+		c.text(330, y, 8, false, "godute "+l.Used)
+		c.text(430, y, 8, false, "residue "+l.Remaining)
+		y -= 12
+	}
 }
 
 func renderGrid(c *canvas, p Payslip) {
@@ -270,6 +281,28 @@ func renderGrid(c *canvas, p Payslip) {
 	y -= 36
 	grid(y, []string{"IMPONIBILE INPS", "IMPONIBILE IRPEF", "TFR DEL MESE"},
 		[]int64{p.INPSBase, p.IRPEFBase, p.TFRAccrued})
+
+	// Leave balances with one column per kind and one row per measure.
+	y -= 40
+	c.text(colCode, y, 7, true, "ORE")
+	for i, l := range p.Leave {
+		c.textRight(250+float64(i)*90, y, 7, true, l.Kind)
+	}
+	for _, row := range []struct {
+		label string
+		value func(Leave) string
+	}{
+		{"RESIDUO AP", func(l Leave) string { return l.Previous }},
+		{"MATURATO", func(l Leave) string { return l.Accrued }},
+		{"GODUTO", func(l Leave) string { return l.Used }},
+		{"SALDO", func(l Leave) string { return l.Remaining }},
+	} {
+		y -= 11
+		c.text(colCode, y, 7, false, row.label)
+		for i, l := range p.Leave {
+			c.textRight(250+float64(i)*90, y, 7, false, row.value(l))
+		}
+	}
 }
 
 func firstNonEmpty(values ...string) string {

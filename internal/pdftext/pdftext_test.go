@@ -56,7 +56,7 @@ func checkExample(t *testing.T, r Reader) {
 		"TOTALE COMPETENZE " + money.Format(gross),
 		"TOTALE TRATTENUTE " + money.Format(deductions),
 		"NETTO DEL MESE " + money.Format(net),
-		"PERMESSI ROL 6,00 0,00 42,00",
+		"PERMESSI ROL 36,00 6,00 0,00 42,00",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("%s: missing line %q in:\n%s", r.Name(), want, got)

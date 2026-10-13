@@ -92,6 +92,17 @@ func printPayslip(out io.Writer, p payslip.Payslip) {
 	}
 	w.Flush()
 
+	if len(p.Leave) > 0 {
+		fmt.Fprintln(out, "  leave:")
+		w = tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
+		fmt.Fprintf(w, "    \tunit\tprevious\taccrued\tused\tremaining\t\n")
+		for _, l := range p.Leave {
+			fmt.Fprintf(w, "    %s\t%s\t%s\t%s\t%s\t%s\t\n", l.Label, l.Unit,
+				hundredths(l.Previous), hundredths(l.Accrued), hundredths(l.Used), hundredths(l.Remaining))
+		}
+		w.Flush()
+	}
+
 	fmt.Fprintln(out, "  checks:")
 	for _, c := range p.Checks {
 		mark := "ok  "
@@ -100,4 +111,11 @@ func printPayslip(out io.Writer, p payslip.Payslip) {
 		}
 		fmt.Fprintf(out, "    %s %s: %s\n", mark, c.Name, c.Detail)
 	}
+}
+
+func hundredths(v *int64) string {
+	if v == nil {
+		return "-"
+	}
+	return money.Format(*v)
 }
