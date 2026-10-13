@@ -33,6 +33,11 @@ Usage:
       Read payslips of several months and list what changed from one month
       to the next, with the most likely explanation. The output contains your
       payslip data: keep it local.
+  cedolo report [-lang it|en] [-o FILE] [-reader pdfium|poppler] FILE...
+      Write a self-contained HTML report (default: report.html) with charts
+      over time, what changed, leave balances and a glossary of the items.
+      It opens offline in any browser. It contains your payslip data: keep
+      it private.
   cedolo anonymize [-reader pdfium|poppler] FILE
       Print the positioned text of a payslip with everything but known payroll
       labels masked: names, companies, identifiers and every digit. Use it to
@@ -59,6 +64,8 @@ func main() {
 		err = runExtract(args, os.Stdout)
 	case "compare":
 		err = runCompare(args, os.Stdout)
+	case "report":
+		err = runReport(args, os.Stderr)
 	case "anonymize":
 		err = runAnonymize(args, os.Stdout, os.Stderr)
 	case "layout":

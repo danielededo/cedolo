@@ -175,3 +175,33 @@ func TestCompareCommand(t *testing.T) {
 		t.Error("unknown language accepted")
 	}
 }
+
+func TestReportCommand(t *testing.T) {
+	dir := t.TempDir()
+	in := filepath.Join(dir, "a.pdf")
+	out := filepath.Join(dir, "r.html")
+	if err := runSynth([]string{"-o", in}); err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	if err := runReport([]string{"-lang", "en", "-o", out, in}, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm()&0o077 != 0 {
+		t.Errorf("report readable by others: %v", info.Mode())
+	}
+	page, _ := os.ReadFile(out)
+	if !strings.Contains(string(page), "October 2026") {
+		t.Error("report lacks the period")
+	}
+	if !strings.Contains(stderr.String(), "keep it private") {
+		t.Errorf("no privacy warning: %q", stderr.String())
+	}
+	if err := runReport([]string{"-o", out}, &stderr); err == nil {
+		t.Error("no files accepted")
+	}
+}

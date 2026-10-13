@@ -39,6 +39,9 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   description keywords that classify items independently of the vendor.
 - `internal/anonymize`: allowlist anonymizer for sharing real layouts.
 - `internal/insights`: month-to-month comparison with explanations.
+- `internal/report`: the self-contained HTML report; it must never load
+  anything from the network (a Content-Security-Policy forbids it and a test
+  checks the page).
 - `internal/i18n`: user-facing texts in Italian and English; every new text
   goes into both catalogues.
 - `internal/extract`: the generic extractor and the arithmetic cross-checks
