@@ -31,6 +31,11 @@ type Entry struct {
 // keywords match a description wins, so "addizionale regionale" is tested
 // before anything that would match "irpef" alone.
 var Entries = []Entry{
+	{Key: "tfr.accrued", LabelEN: "TFR accrued this month", LabelIT: "TFR maturato nel mese",
+		Side: payslip.Info, Keywords: []string{"storno t f r", "storno tfr", "tfr a fondo", "tfr a f p c", "tfr a fpc",
+			"quota tfr", "tfr maturato", "tfr mese", "tfr del mese", "tfr maturata"}},
+	{Key: "pension_fund.contribution", LabelEN: "Supplementary pension contribution", LabelIT: "Contributo previdenza complementare",
+		Side: payslip.Info, Keywords: []string{"fpc", "f p c", "fondo pensione", "previdenza complementare"}},
 	{Key: "rounding", LabelEN: "Rounding", LabelIT: "Arrotondamento",
 		Keywords: []string{"arrotondamento", "arrotond", "arrot", "arr to"}},
 	{Key: "meal_vouchers", LabelEN: "Meal vouchers (taxable part)", LabelIT: "Buoni pasto (parte imponibile)",
@@ -84,6 +89,7 @@ var Entries = []Entry{
 const (
 	OtherEarning   = "earnings.other"
 	OtherDeduction = "deductions.other"
+	OtherInfo      = "info.other"
 )
 
 // Classify returns the canonical key for an item description printed on the
@@ -101,8 +107,11 @@ func Classify(description string, side payslip.Side) string {
 			}
 		}
 	}
-	if side == payslip.Deduction {
+	switch side {
+	case payslip.Deduction:
 		return OtherDeduction
+	case payslip.Info:
+		return OtherInfo
 	}
 	return OtherEarning
 }
@@ -119,6 +128,8 @@ func Lookup(key string) (Entry, bool) {
 		return Entry{Key: key, LabelEN: "Other earnings", LabelIT: "Altre competenze", Side: payslip.Earning}, true
 	case OtherDeduction:
 		return Entry{Key: key, LabelEN: "Other deductions", LabelIT: "Altre trattenute", Side: payslip.Deduction}, true
+	case OtherInfo:
+		return Entry{Key: key, LabelEN: "Other information", LabelIT: "Altre informazioni", Side: payslip.Info}, true
 	}
 	return Entry{}, false
 }

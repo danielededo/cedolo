@@ -52,6 +52,10 @@ func TestClassify(t *testing.T) {
 		{"RATA ADD.REG. A.P.", payslip.Deduction, "tax.surcharge.regional"},
 		{"STRAORDINARIO FESTIVO", payslip.Earning, "earnings.overtime"},
 		{"GETTONE PRESENZA", payslip.Earning, OtherEarning},
+		{"Storno T.F.R. a F.P.C.", payslip.Info, "tfr.accrued"},
+		{"Contr. FPC dipendente", payslip.Info, "pension_fund.contribution"},
+		{"CONTRIBUZIONE TFR", payslip.Info, OtherInfo},
+		{"ESONERO CTR - TFR PREV.C.", payslip.Info, OtherInfo},
 		{"PIGNORAMENTO", payslip.Deduction, OtherDeduction},
 		// An earnings keyword printed as a deduction is not forced into the
 		// earnings category.
@@ -80,7 +84,7 @@ func TestEntriesAreWellFormed(t *testing.T) {
 			}
 		}
 	}
-	for _, k := range []string{OtherEarning, OtherDeduction, "tax.irpef"} {
+	for _, k := range []string{OtherEarning, OtherDeduction, OtherInfo, "tax.irpef"} {
 		if _, ok := Lookup(k); !ok {
 			t.Errorf("Lookup(%q) failed", k)
 		}

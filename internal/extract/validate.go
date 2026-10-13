@@ -222,27 +222,42 @@ func validate(p *payslip.Payslip) {
 		}
 	}
 
-	// Monthly TFR accrual is the month's eligible pay divided by 13.5.
+	// Monthly TFR accrual is the month's eligible pay divided by 13.5, shown
+	// either as is or net of the 0.5 percent contribution that the law
+	// charges on it.
 	if p.TFR.Found() {
-		base := p.INPSBase
-		if !base.Found() {
-			base = p.Gross
+		base := p.TFRBase
+		for _, b := range []payslip.Amount{p.INPSBase, p.Gross} {
+			if !base.Found() {
+				base = b
+			}
 		}
 		if base.Found() {
-			expected := roundDiv(base.Cents*10, 135)
-			ok := abs(p.TFR.Cents-expected) <= 1
-			detail := fmt.Sprintf("TFR %s, the taxable base divided by 13.5 is %s", money.Format(p.TFR.Cents), money.Format(expected))
-			if !ok {
-				detail += "; a difference is normal when the pay used for TFR differs from the taxable base"
+			b := base.Cents
+			gross, net := roundDiv(b*2, 27), roundDiv(b*373, 5400)
+			var detail string
+			ok := true
+			switch {
+			case abs(p.TFR.Cents-gross) <= 2:
+				detail = fmt.Sprintf("TFR %s is the base %s divided by 13.5", money.Format(p.TFR.Cents), money.Format(b))
+			case abs(p.TFR.Cents-net) <= 2:
+				detail = fmt.Sprintf("TFR %s is the base %s divided by 13.5, net of the 0.5%% contribution", money.Format(p.TFR.Cents), money.Format(b))
+			default:
+				ok = false
+				detail = fmt.Sprintf("TFR %s, the base %s divided by 13.5 is %s (%s net of the 0.5%% contribution); a difference is normal when the pay used for TFR differs from this base",
+					money.Format(p.TFR.Cents), money.Format(b), money.Format(gross), money.Format(net))
 			}
 			p.Checks = append(p.Checks, payslip.Check{Name: "tfr_ratio", OK: ok, Advisory: true, Detail: detail})
 			if ok {
 				mark(&p.TFR, true)
+				if p.TFRBase.Found() {
+					mark(&p.TFRBase, true)
+				}
 			}
 		}
 	}
 
-	for _, a := range []*payslip.Amount{&p.Gross, &p.Deductions, &p.Net, &p.INPSBase, &p.IRPEFBase, &p.TFR,
+	for _, a := range []*payslip.Amount{&p.Gross, &p.Deductions, &p.Net, &p.INPSBase, &p.IRPEFBase, &p.TFR, &p.TFRBase,
 		&p.SocialContributions, &p.Taxes, &p.INPS, &p.RoundingPrevious, &p.RoundingCurrent} {
 		if a.Status == "" {
 			a.Status = payslip.Missing
