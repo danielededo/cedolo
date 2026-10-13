@@ -143,3 +143,35 @@ func TestAnonymizeCommand(t *testing.T) {
 		t.Errorf("output is not a layout: %v", err)
 	}
 }
+
+func TestCompareCommand(t *testing.T) {
+	dir := t.TempDir()
+	// Two months from the synthetic generator; the second in another style
+	// with the same content apart from the period.
+	a := filepath.Join(dir, "a.pdf")
+	b := filepath.Join(dir, "b.pdf")
+	if err := runSynth([]string{"-style", "classic", "-o", a}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runSynth([]string{"-style", "signed", "-o", b}); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runCompare([]string{"-lang", "en", a, b}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "October 2026") {
+		t.Errorf("unexpected output:\n%s", out.String())
+	}
+	out.Reset()
+	if err := runCompare([]string{"-json", a}, &out); err != nil {
+		t.Fatal(err)
+	}
+	var periods []map[string]any
+	if err := json.Unmarshal(out.Bytes(), &periods); err != nil || len(periods) != 1 {
+		t.Errorf("JSON output: %v, %d periods", err, len(periods))
+	}
+	if err := runCompare([]string{"-lang", "fr", a}, &out); err == nil {
+		t.Error("unknown language accepted")
+	}
+}

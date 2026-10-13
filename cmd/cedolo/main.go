@@ -29,6 +29,10 @@ Usage:
   cedolo extract [-json] [-reader pdfium|poppler] FILE...
       Read payslips and print their data, item by item, with the outcome of
       the cross-checks. The output contains your payslip data: keep it local.
+  cedolo compare [-lang it|en] [-json] [-reader pdfium|poppler] FILE...
+      Read payslips of several months and list what changed from one month
+      to the next, with the most likely explanation. The output contains your
+      payslip data: keep it local.
   cedolo anonymize [-reader pdfium|poppler] FILE
       Print the positioned text of a payslip with everything but known payroll
       labels masked: names, companies, identifiers and every digit. Use it to
@@ -53,6 +57,8 @@ func main() {
 		err = runInspect(args, os.Stdout)
 	case "extract":
 		err = runExtract(args, os.Stdout)
+	case "compare":
+		err = runCompare(args, os.Stdout)
 	case "anonymize":
 		err = runAnonymize(args, os.Stdout, os.Stderr)
 	case "layout":
