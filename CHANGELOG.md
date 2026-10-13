@@ -40,6 +40,11 @@ How to use this file:
   totals mean. Leave balances are also read from rows of "kind measure"
   cells and from side-by-side blocks with vertical titles. Checks that can
   legitimately fail (INPS rate, IRPEF base, TFR ratio) are shown as notes.
+- Rows in neutral or statistical columns are kept as information items,
+  never summed: for example the TFR transferred to a pension fund or the
+  pension contributions. The month's TFR is read from them when no TFR label
+  is printed, together with the pay the TFR is computed on, and checked as
+  that pay divided by 13.5, with or without the 0.5 percent contribution.
 - `cedolo anonymize` prints a payslip's layout with everything but known
   payroll labels masked (names, companies, identifiers, every digit, and
   words revealing health, union membership, family or debts), so a layout
@@ -47,6 +52,9 @@ How to use this file:
 
 ### Fixed
 
+- Item table values are assigned to columns by zone, from each header to the
+  next, so right-aligned amounts that extend past a narrow header are no
+  longer taken for the next column.
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 

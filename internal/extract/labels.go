@@ -25,6 +25,8 @@ var (
 		"arrotond precedente", "arrotond preced", "arr precedente", "arr prec"}
 	roundingCurrentLabels = []string{"arrotondamento attuale", "arrotond attuale", "arrotondamento corrente",
 		"arrotond corrente", "arr attuale"}
+	tfrBaseLabels = []string{"retribuzione utile per il t f r", "retribuzione utile tfr", "retribuzione utile t f r",
+		"retribuzione per t f r", "retribuzione per tfr", "imponibile tfr", "imponibile t f r", "imp tfr", "retrib utile tfr"}
 	tfrLabels = []string{"quota tfr maturata", "quota maturata nel mese", "tfr del mese", "quota tfr",
 		"tfr mese", "tfr maturato", "quota maturata"}
 )
@@ -48,7 +50,7 @@ var columnWords = map[string]colKind{
 	"qta": colQuantity, "rif": colQuantity, "riferimento": colQuantity, "numero": colQuantity,
 	"base": colBase, "dato": colBase, "unitario": colBase, "tariffa": colBase, "aliquota": colBase,
 	"unit": colBase, "neutra": colBase, "neutre": colBase,
-	"statistici": colInfo, "figurative": colInfo, "figurativi": colInfo,
+	"statistici": colInfo, "figurative": colInfo, "figurativi": colInfo, "neutri": colInfo,
 	"descrizione": colDescription, "voce": colDescription, "voci": colDescription,
 	"cod": colCode, "codice": colCode,
 }
@@ -82,7 +84,7 @@ var (
 func Vocabulary() []string {
 	var phrases []string
 	for _, list := range [][]string{grossLabels, deductionLabels, netLabels, inpsBaseLabels, irpefBaseLabels,
-		tfrLabels, socialLabels, taxLabels, inpsLabels, roundingPreviousLabels, roundingCurrentLabels,
+		tfrLabels, tfrBaseLabels, socialLabels, taxLabels, inpsLabels, roundingPreviousLabels, roundingCurrentLabels,
 		periodLabels, thirteenthWords, fourteenthWords} {
 		phrases = append(phrases, list...)
 	}

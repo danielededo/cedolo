@@ -71,7 +71,7 @@ func printPayslip(out io.Writer, p payslip.Payslip) {
 		a    payslip.Amount
 	}{
 		{"gross", p.Gross}, {"deductions", p.Deductions}, {"net", p.Net},
-		{"INPS base", p.INPSBase}, {"IRPEF base", p.IRPEFBase}, {"TFR accrued", p.TFR},
+		{"INPS base", p.INPSBase}, {"IRPEF base", p.IRPEFBase}, {"TFR accrued", p.TFR}, {"TFR base", p.TFRBase},
 	} {
 		value := "-"
 		if row.a.Found() {
@@ -85,8 +85,11 @@ func printPayslip(out io.Writer, p payslip.Payslip) {
 	w = tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	for _, it := range p.Items {
 		sign := "+"
-		if it.Side == payslip.Deduction {
+		switch it.Side {
+		case payslip.Deduction:
 			sign = "-"
+		case payslip.Info:
+			sign = "(info) "
 		}
 		fmt.Fprintf(w, "    %s\t%s\t%s\t%s%s\n", it.Code, it.Description, it.Key, sign, money.Format(it.Cents))
 	}

@@ -225,10 +225,11 @@ func TestSummaryBoxesWithCalendar(t *testing.T) {
 		[]string{"26:0121", "50:REC. BUONI PASTO", "240>20,00", "290>1,00000", "395>20,00", "391:03Gi", "440>8,00"},
 		[]string{"50:--------- VOCI NEUTRE ----------", "391:04Ve", "440>8,00"},
 		[]string{"26:0900", "50:Contr. FPC dipendente", "200>1,00%", "290>22,00", "391:05Sa"},
-		[]string{"391:06Do"},
+		[]string{"26:0901", "50:Storno T.F.R. a F.P.C.", "200>100,00%", "290>153,34", "391:06Do"},
 		[]string{"34:IMP.LE F.P.L.D. 2.220,00", "341:TOTALE COMPETENZE", "391:07Lu", "440>8,00"},
 		[]string{"34:CTR. F.P.L.D. 204,02", "352:2.220,00", "391:08Ma", "440>8,00"},
 		[]string{"34:CTR. FONDO PENS. 22,00", "341:TOTALE TRATTENUTE", "391:09Me", "440>8,00"},
+		[]string{"34:RETRIBUZIONE PER T.F.R. 2.220,00"},
 		[]string{"32:IMPONIBILE IRPEF 1.993,98", "357:20,00", "391:10Gi"},
 		[]string{"340:TOTALE TRATT.SOCIALI"},
 		[]string{"352:226,02"},
@@ -245,9 +246,20 @@ func TestSummaryBoxesWithCalendar(t *testing.T) {
 	if p.Month != 3 || p.Year != 2026 {
 		t.Errorf("period %d/%d", p.Month, p.Year)
 	}
-	if len(p.Items) != 3 {
+	// Three pay items, then two information items from the neutral column.
+	if len(p.Items) != 5 {
 		t.Fatalf("items = %+v", p.Items)
 	}
+	if it := find(t, p.Items, "pension_fund.contribution"); it.Side != payslip.Info || it.Cents != 2200 {
+		t.Errorf("pension contribution = %+v", it)
+	}
+	if it := find(t, p.Items, "tfr.accrued"); it.Side != payslip.Info || it.Cents != 15334 {
+		t.Errorf("TFR transfer = %+v", it)
+	}
+	// TFR from the neutral item, verified as the TFR base divided by 13.5
+	// net of the 0.5 percent contribution.
+	wantStatus(t, "TFR", p.TFR, 15334, payslip.Verified)
+	wantStatus(t, "TFR base", p.TFRBase, 222000, payslip.Verified)
 	if it := find(t, p.Items, "earnings.base_salary"); it.Cents != 220000 || it.Description != "RETRIBUZIONE ORDINARIA" || it.Quantity != "168,00" {
 		t.Errorf("base salary = %+v", it)
 	}
@@ -319,8 +331,9 @@ func TestGrandTotalAndTaxableGross(t *testing.T) {
 	if p.Month != 6 || p.Level != "C3" {
 		t.Errorf("month %d level %q", p.Month, p.Level)
 	}
-	if len(p.Items) != 4 {
-		t.Fatalf("items = %+v (the statistical column must be ignored)", p.Items)
+	// Four pay items and one information item from the statistical column.
+	if len(p.Items) != 5 || p.Items[4].Side != payslip.Info || p.Items[4].Key != "info.other" {
+		t.Fatalf("items = %+v (the statistical column must not count as pay)", p.Items)
 	}
 	find(t, p.Items, "earnings.reimbursement")
 	find(t, p.Items, "earnings.contribution_relief")

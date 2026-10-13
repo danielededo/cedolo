@@ -96,6 +96,17 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 	p.INPSBase = find(inpsBaseLabels)
 	p.IRPEFBase = find(irpefBaseLabels)
 	p.TFR = find(tfrLabels)
+	p.TFRBase = find(tfrBaseLabels)
+	if !p.TFR.Found() {
+		// Some layouts print the month's TFR only as a neutral item, such as
+		// its transfer to a pension fund.
+		for _, it := range p.Items {
+			if it.Key == "tfr.accrued" {
+				src := it.Source
+				p.TFR = payslip.Amount{Cents: p.TFR.Cents + it.Cents, Status: payslip.Extracted, Source: &src}
+			}
+		}
+	}
 	p.SocialContributions = find(socialLabels)
 	p.Taxes = find(taxLabels)
 	p.INPS = find(inpsLabels)
@@ -342,10 +353,12 @@ const (
 	colEarnings
 	colDeductions
 	colAmount // a single signed amount column
-	// colInfo is a column whose values are not pay: statistical data,
-	// neutral items, a presence calendar printed beside the table, or any
-	// header the extractor does not recognize.
+	// colInfo is a recognized column whose values are not pay, such as
+	// statistical data; its values become information items.
 	colInfo
+	// colUnknown is a header the extractor does not recognize, such as a
+	// presence calendar printed beside the table; its values are dropped.
+	colUnknown
 )
 
 func (k colKind) numeric() bool { return k >= colQuantity && k <= colAmount }
@@ -371,7 +384,7 @@ func findTable(lines []line, pageWidth float64) (table, bool) {
 		for _, w := range l.words {
 			k, ok := columnWords[w.text]
 			if !ok {
-				k = colInfo
+				k = colUnknown
 			}
 			t := l.toks[w.tok]
 			// "Voce" as the first column header names the item code.
@@ -381,7 +394,7 @@ func findTable(lines []line, pageWidth float64) (table, bool) {
 			// Another word of a header token already classified: the first
 			// recognized word decides ("VAL.UNIT./NEUTRA" is a base column).
 			if n := len(cols); n > 0 && cols[n-1].x0 == t.X && cols[n-1].x1 == t.Right() {
-				if cols[n-1].kind == colInfo && k != colInfo {
+				if cols[n-1].kind == colUnknown && k != colUnknown {
 					cols[n-1].kind = k
 					kinds[k] = true
 				}
@@ -437,14 +450,14 @@ func (t table) row(l line, page int) []payslip.Item {
 		}
 		k := t.nearestColumn(tok)
 		switch {
-		case k.numeric() && numericToken.MatchString(tok.Text):
+		case (k.numeric() || k == colInfo) && numericToken.MatchString(tok.Text):
 			assigned[i] = k
 		case k == colDescription:
 			// A description word printed far to the right.
 		default:
-			// Values under columns that are not pay, and anything that is
-			// not a number under a pay column, are dropped.
-			assigned[i] = colInfo
+			// Values under unrecognized columns, and anything that is not a
+			// number under a value column, are dropped.
+			assigned[i] = colUnknown
 		}
 	}
 	var code string
@@ -455,6 +468,7 @@ func (t table) row(l line, page int) []payslip.Item {
 		kind colKind
 	}
 	var amounts []amt
+	var infoTok *layout.Token // the value of a row that is not pay
 	for i, tok := range l.toks {
 		k := assigned[i]
 		// Some layouts share one reference column between quantities and
@@ -462,8 +476,11 @@ func (t table) row(l line, page int) []payslip.Item {
 		if k == colQuantity && strings.HasSuffix(tok.Text, "%") {
 			k = colBase
 		}
+		if (k == colInfo || k == colBase) && !strings.HasSuffix(tok.Text, "%") {
+			infoTok = &l.toks[i]
+		}
 		switch k {
-		case colInfo:
+		case colUnknown, colInfo:
 			continue
 		case colQuantity:
 			if qty == "" {
@@ -483,6 +500,15 @@ func (t table) row(l line, page int) []payslip.Item {
 	}
 	description := strings.Join(desc, " ")
 	var items []payslip.Item
+	// A row with no pay amount but a value in a neutral or statistical
+	// column is an information item: it is shown, never summed.
+	if len(amounts) == 0 && infoTok != nil && strings.IndexFunc(description, unicode.IsLetter) >= 0 {
+		if cents, err := money.Parse(infoTok.Text); err == nil {
+			items = append(items, payslip.Item{Code: code, Description: description, Quantity: qty,
+				Cents: cents, Side: payslip.Info, Key: taxonomy.Classify(description, payslip.Info),
+				Source: sourceOf(*infoTok, page)})
+		}
+	}
 	for _, a := range amounts {
 		cents, err := money.Parse(a.tok.Text)
 		if err != nil {
@@ -515,13 +541,26 @@ func (t table) row(l line, page int) []payslip.Item {
 	return items
 }
 
-// nearestColumn returns the kind of the header column whose right edge or
-// center is closest to a token; amounts are usually right-aligned while
-// headers may be centered.
+// nearestColumn returns the kind of the column a token belongs to. Each
+// header column owns the zone from its left edge to the next header's left
+// edge, and a token belongs to the zone holding its right edge: values are
+// usually right-aligned and may extend past the end of a narrow or centered
+// header, but not into the next column. A token ending before every header
+// goes to the closest one.
 func (t table) nearestColumn(tok layout.Token) colKind {
+	right := tok.Right()
+	zone := -1
+	for i, c := range t.cols {
+		if c.x0 <= right-1 {
+			zone = i
+		}
+	}
+	if zone >= 0 {
+		return t.cols[zone].kind
+	}
 	best, bestDist := colNone, math.Inf(1)
 	for _, c := range t.cols {
-		d := math.Min(math.Abs(tok.Right()-c.x1), math.Abs(center(tok)-(c.x0+c.x1)/2))
+		d := math.Min(math.Abs(right-c.x1), math.Abs(center(tok)-(c.x0+c.x1)/2))
 		if d < bestDist {
 			best, bestDist = c.kind, d
 		}

@@ -10,6 +10,10 @@ type Side string
 const (
 	Earning   Side = "earning"
 	Deduction Side = "deduction"
+	// Info marks values printed in columns that are not pay, such as neutral
+	// items or statistical data: the TFR transferred to a pension fund, the
+	// employer's pension contribution. They never count in the totals.
+	Info Side = "info"
 )
 
 // Status says how a value was obtained and how far it can be trusted.
@@ -140,6 +144,8 @@ type Payslip struct {
 	INPSBase   Amount `json:"inps_base"`
 	IRPEFBase  Amount `json:"irpef_base"`
 	TFR        Amount `json:"tfr"`
+	// TFRBase is the pay the TFR accrual is computed on, when printed.
+	TFRBase Amount `json:"tfr_base"`
 
 	// Summary values that some layouts print outside the item table.
 	SocialContributions Amount `json:"social_contributions"`
