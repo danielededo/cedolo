@@ -20,10 +20,12 @@ type Item struct {
 	Key         string
 }
 
-// Leave is a leave balance as printed, in hours.
+// Leave is a leave balance as printed, in hours. Key is the canonical kind a
+// correct extraction must assign to it.
 type Leave struct {
-	Kind                     string
-	Accrued, Used, Remaining string
+	Kind                               string
+	Key                                string
+	Previous, Accrued, Used, Remaining string
 }
 
 // Payslip is the canonical content of a synthetic payslip.
@@ -82,8 +84,8 @@ func ExampleFor(s Style) Payslip {
 		},
 		TFRAccrued: 16256,
 		Leave: []Leave{
-			{Kind: "FERIE", Accrued: "14,00", Used: "8,00", Remaining: "96,00"},
-			{Kind: "PERMESSI ROL", Accrued: "6,00", Used: "0,00", Remaining: "42,00"},
+			{Kind: "FERIE", Key: "holiday", Previous: "90,00", Accrued: "14,00", Used: "8,00", Remaining: "96,00"},
+			{Kind: "PERMESSI ROL", Key: "rol", Previous: "36,00", Accrued: "6,00", Used: "0,00", Remaining: "42,00"},
 		},
 	}
 	gross, _, _ := p.Totals()
@@ -96,7 +98,12 @@ func ExampleFor(s Style) Payslip {
 		Item{Code: "9150", Description: words[5], Amount: 2200, Deduction: true, Key: "tax.surcharge.regional"},
 		Item{Code: "9160", Description: words[6], Amount: 800, Deduction: true, Key: "tax.surcharge.municipal"},
 	)
+	if s == StyleSigned {
+		p.Leave[0].Kind, p.Leave[1].Kind = "Ferie", "Permessi"
+	}
 	if s == StyleGrid {
+		p.Leave[1].Kind = "PERMESSI"
+		p.Leave = append(p.Leave, Leave{Kind: "EX FEST.", Key: "former_holidays", Previous: "8,00", Accrued: "2,67", Used: "0,00", Remaining: "10,67"})
 		// This style rounds the net pay up to whole euros with an earnings
 		// item, as several payroll packages do.
 		_, _, net := p.Totals()

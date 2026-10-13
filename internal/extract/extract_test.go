@@ -3,9 +3,11 @@ package extract
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/danielededo/cedolo/internal/layout"
+	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/payslip"
 	"github.com/danielededo/cedolo/internal/pdftext"
 	"github.com/danielededo/cedolo/internal/synth"
@@ -68,10 +70,35 @@ func checkAgainst(t *testing.T, got []payslip.Payslip, want synth.Payslip, s syn
 			t.Errorf("%s has no source", c.name)
 		}
 	}
+	if len(p.Leave) != len(want.Leave) {
+		t.Fatalf("got %d leave balances, want %d: %+v", len(p.Leave), len(want.Leave), p.Leave)
+	}
+	for i, w := range want.Leave {
+		g := p.Leave[i]
+		if string(g.Kind) != w.Key || g.Label != w.Kind || g.Unit == "" {
+			t.Errorf("leave %d = %s %q unit %q, want %s %q", i, g.Kind, g.Label, g.Unit, w.Key, w.Kind)
+		}
+		for name, pair := range map[string]struct {
+			got  *int64
+			want string
+		}{"previous": {g.Previous, w.Previous}, "accrued": {g.Accrued, w.Accrued}, "used": {g.Used, w.Used}, "remaining": {g.Remaining, w.Remaining}} {
+			wv, _ := money.Parse(pair.want)
+			if pair.got == nil || *pair.got != wv {
+				t.Errorf("leave %s %s = %v, want %d", w.Key, name, pair.got, wv)
+			}
+		}
+	}
+	balanceChecks := 0
 	for _, ch := range p.Checks {
 		if !ch.OK {
 			t.Errorf("check %s failed: %s", ch.Name, ch.Detail)
 		}
+		if strings.HasPrefix(ch.Name, "leave_balance_") {
+			balanceChecks++
+		}
+	}
+	if balanceChecks != len(want.Leave) {
+		t.Errorf("got %d leave balance checks, want %d", balanceChecks, len(want.Leave))
 	}
 }
 

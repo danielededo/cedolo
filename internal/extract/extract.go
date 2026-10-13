@@ -96,8 +96,26 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 	p.IRPEFBase = find(irpefBaseLabels)
 	p.TFR = find(tfrLabels)
 
+	for _, pg := range all {
+		for _, lv := range findLeave(pg) {
+			if !hasLeave(p.Leave, lv.Kind) {
+				p.Leave = append(p.Leave, lv)
+			}
+		}
+	}
+
 	validate(&p)
+	checkLeave(&p)
 	return p
+}
+
+func hasLeave(ls []payslip.Leave, k payslip.LeaveKind) bool {
+	for _, l := range ls {
+		if l.Kind == k {
+			return true
+		}
+	}
+	return false
 }
 
 var numericPeriod = regexp.MustCompile(`^(0?[1-9]|1[0-2])[/.-]((?:19|20)\d\d)$`)
