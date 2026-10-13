@@ -45,6 +45,12 @@ How to use this file:
   pension contributions. The month's TFR is read from them when no TFR label
   is printed, together with the pay the TFR is computed on, and checked as
   that pay divided by 13.5, with or without the 0.5 percent contribution.
+- `cedolo compare` reads payslips of several months and lists what changed
+  from one month to the next (level or contract, net and gross beyond 10
+  percent, items that appear or disappear, tax and INPS rates, leave
+  balances, missing months), each with the most likely explanation, such as
+  surcharge instalments, the thirteenth month or the year-end tax
+  adjustment. Texts are in Italian or English (`-lang it|en`).
 - `cedolo anonymize` prints a payslip's layout with everything but known
   payroll labels masked (names, companies, identifiers, every digit, and
   words revealing health, union membership, family or debts), so a layout

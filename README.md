@@ -48,6 +48,7 @@ With Go installed:
 go run ./cmd/cedolo synth -o synthetic.pdf      # write a payslip with invented data
 go run ./cmd/cedolo inspect synthetic.pdf       # check that a PDF has a readable text layer
 go run ./cmd/cedolo extract synthetic.pdf       # read it: items, totals, cross-checks
+go run ./cmd/cedolo compare jan.pdf feb.pdf     # what changed from one month to the next
 ```
 
 `cedolo extract` does not need to know which payroll software produced the
@@ -104,6 +105,8 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 │   ├── taxonomy/             # canonical item catalogue, bilingual labels
 │   ├── extract/              # generic extraction and cross-checks
 │   ├── anonymize/            # allowlist anonymizer for sharing layouts
+│   ├── insights/             # month-to-month comparison
+│   ├── i18n/                 # user-facing texts in Italian and English
 │   └── synth/                # synthetic payslips for tests, in several styles
 ├── docs/
 │   ├── design/               # product and architecture design, spike reports

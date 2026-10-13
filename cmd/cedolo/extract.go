@@ -9,10 +9,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/danielededo/cedolo/internal/extract"
 	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/payslip"
-	"github.com/danielededo/cedolo/internal/pdftext"
 )
 
 func runExtract(args []string, out io.Writer) error {
@@ -25,17 +23,9 @@ func runExtract(args []string, out io.Writer) error {
 	if fs.NArg() == 0 {
 		return errors.New("extract: no files given")
 	}
-	r, err := pdftext.ByName(*readerName)
+	all, err := readAll(*readerName, fs.Args())
 	if err != nil {
 		return err
-	}
-	var all []payslip.Payslip
-	for _, path := range fs.Args() {
-		doc, err := r.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("%s: %w", path, err)
-		}
-		all = append(all, extract.Document(doc)...)
 	}
 	if *asJSON {
 		enc := json.NewEncoder(out)
