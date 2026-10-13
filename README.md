@@ -56,6 +56,12 @@ arithmetic), extracted, inferred, inconsistent or missing, so a misreading
 shows up instead of hiding behind a plausible number. It works on text PDFs
 only; scanned payslips are not supported yet.
 
+If cedolo reads your payslip badly, `cedolo anonymize payslip.pdf > layout.json`
+produces a version you can share: only known payroll labels are kept, while
+names, companies, identifiers and every digit are masked, together with words
+that would reveal health, union membership, family situation or debts. Read
+it before sharing it; see [CONTRIBUTING.md](CONTRIBUTING.md#reporting-a-payslip-layout).
+
 `cedolo inspect` prints counts only, never names, amounts or file names, so
 its output is safe to share when reporting that a payslip format is not read
 correctly. `cedolo layout -redact FILE` prints the positioned text with every
@@ -97,6 +103,7 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 │   ├── payslip/              # normalized payslip model
 │   ├── taxonomy/             # canonical item catalogue, bilingual labels
 │   ├── extract/              # generic extraction and cross-checks
+│   ├── anonymize/            # allowlist anonymizer for sharing layouts
 │   └── synth/                # synthetic payslips for tests, in several styles
 ├── docs/
 │   ├── design/               # product and architecture design, spike reports

@@ -9,8 +9,9 @@ assignees: ''
 <!--
 IMPORTANT: never attach real payslips, screenshots of payslips, or any personal
 data (names, codice fiscale, IBAN, amounts from your own documents). Issues are
-public and their edit history is kept even after you delete content. Describe
-the layout in words or use the synthetic fixtures instead.
+public and their edit history is kept even after you delete content. If
+cedolo misreads a payslip, attach the output of `cedolo anonymize` after
+reading it, as described in CONTRIBUTING.md.
 -->
 
 - [ ] I confirm this issue contains no real payslip, screenshot of a payslip, or personal data.

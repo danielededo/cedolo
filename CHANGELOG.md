@@ -33,6 +33,10 @@ How to use this file:
 - `cedolo extract` also reads leave balances (ferie, permessi and ROL, ex
   festività, banca ore) printed as rows, columns or inline, and checks that
   previous plus accrued minus used equals the remaining balance.
+- `cedolo anonymize` prints a payslip's layout with everything but known
+  payroll labels masked (names, companies, identifiers, every digit, and
+  words revealing health, union membership, family or debts), so a layout
+  that cedolo reads badly can be reported without sharing personal data.
 
 [Unreleased]: https://github.com/danielededo/cedolo/commits/main
 <!-- After the first release, switch to:
