@@ -73,10 +73,16 @@ This repository is a starting point for new personal projects, both public and p
 │   ├── BRANCHING-STRATEGY.md       # trunk-based/GitHub Flow vs release-based
 │   ├── COMMIT-CONVENTION.md        # Conventional Commits, with examples
 │   ├── AI-AGENTS.md                # guidelines for CLAUDE.md / AGENTS.md and agent setup
+│   ├── design/
+│   │   └── mvp-design.md           # cedolo product and architecture design for the MVP
 │   └── adr/
 │       ├── README.md               # what ADRs are and how to use them
 │       ├── 0000-template.md        # ADR template
-│       └── 0001-trunk-based-development.md  # this repo's own branching decision
+│       ├── 0001-trunk-based-development.md  # this repo's own branching decision
+│       ├── 0002-license-agpl-3.0.md
+│       ├── 0003-on-device-processing-by-default.md
+│       ├── 0004-go-core-with-pluggable-text-layer.md
+│       └── 0005-deterministic-extraction-with-validation.md
 ├── .agents/
 │   └── skills/                     # project skills (Agent Skills format), see docs/AI-AGENTS.md
 │       ├── new-adr/SKILL.md

@@ -45,5 +45,9 @@ makes onboarding trivial if the project ever gains collaborators.
 | --- | --- | --- |
 | [0000](0000-template.md) | Template | n/a |
 | [0001](0001-trunk-based-development.md) | Use trunk-based development for this repository | Accepted |
+| [0002](0002-license-agpl-3.0.md) | License cedolo under AGPL-3.0-or-later | Proposed |
+| [0003](0003-on-device-processing-by-default.md) | Process payslips on the user's device by default | Accepted |
+| [0004](0004-go-core-with-pluggable-text-layer.md) | Write the core in Go behind a text layout boundary | Proposed |
+| [0005](0005-deterministic-extraction-with-validation.md) | Extract with templates and arithmetic validation, without ML | Accepted |
 
 [TO BE FILLED IN: add a row per ADR as they are created]
