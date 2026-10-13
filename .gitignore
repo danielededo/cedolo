@@ -54,3 +54,25 @@ tmp/
 ### AI agent tooling (per-user, never shared)
 CLAUDE.local.md
 .claude/settings.local.json
+
+### Payslips and personal documents: never commit them
+# Real payslips must never enter the repository (ADR 0003). Test documents are
+# generated at test time from synthetic data, so no PDF or image is tracked.
+*.pdf
+*.PDF
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.heic
+*.webp
+# Local folders for private payslips and their ground truth.
+private/
+testdata/private/
+
+### Go
+/cedolo
+/dist/
+*.test
+*.out

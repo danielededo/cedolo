@@ -1,6 +1,6 @@
 # ADR 0002: License cedolo under AGPL-3.0-or-later
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-13
 - **Deciders:** maintainer (danielededo)
 
@@ -48,8 +48,8 @@ Contributions are accepted under the Developer Certificate of Origin
 
 ## Consequences
 
-- The AGPL text must be added verbatim from the GNU project as LICENSE, and
-  the template's licenses/ directory removed during initialization.
+- The AGPL text is kept verbatim in LICENSE; the template's licenses/
+  directory and license guide were removed during initialization.
 - Source files may carry an SPDX identifier (AGPL-3.0-or-later).
 - Dependencies must be AGPL-compatible; commercially licensed PDF SDKs are
   excluded anyway, permissive ones (MIT, BSD, Apache-2.0) are fine.
@@ -61,6 +61,5 @@ Contributions are accepted under the Developer Certificate of Origin
 ## References
 
 - [docs/design/mvp-design.md](../design/mvp-design.md), section 7
-- [docs/LICENSE-GUIDE.md](../LICENSE-GUIDE.md)
 - https://www.gnu.org/licenses/agpl-3.0.html
 - https://developercertificate.org/

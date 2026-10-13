@@ -20,18 +20,14 @@ How to use this file:
 
 ### Added
 
-- [TO BE FILLED IN: first notable change of the project]
+- `cedolo inspect` reports whether PDF files have a readable text layer,
+  printing counts only so the output contains no personal data.
+- `cedolo layout` prints the positioned text of a PDF as JSON, with `-redact`
+  to mask letters and digits.
+- `cedolo synth` writes a synthetic payslip PDF with invented data.
 
-<!--
-## [0.1.0] - YYYY-MM-DD
-
-### Added
-
-- Initial release.
--->
-
-[Unreleased]: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/commits/main
+[Unreleased]: https://github.com/danielededo/cedolo/commits/main
 <!-- After the first release, switch to:
-[Unreleased]: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/releases/tag/v0.1.0
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/danielededo/cedolo/releases/tag/v0.1.0
 -->

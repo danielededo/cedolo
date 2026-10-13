@@ -1,101 +1,111 @@
-# scaffold
+# cedolo
 
-A meta/template repository with a sensible baseline for personal projects: licensing, governance, documentation, and contribution workflow. It is deliberately **not** language-specific: it contains the parts that every project needs regardless of stack.
+cedolo helps employees in Italy understand their payslips (cedolini, buste
+paga). It reads the PDF payslips you already have, turns them into clean data,
+checks that the numbers add up, and shows how your gross pay, net pay,
+deductions, TFR and leave change over time, with plain-language explanations
+of every item. Everything runs on your own device: your payslips are never
+uploaded anywhere.
 
-## What this repo is
+cedolo explains what a payslip says. It is not tax, legal or labour advice and
+it can be wrong; for decisions, ask your payroll office, a CAF, a patronato or
+union office, or a consulente del lavoro.
 
-This repository is a starting point for new personal projects, both public and private. It collects the boilerplate that is easy to get wrong or to postpone forever:
+## Status
 
-- License texts and a guide for choosing between them
-- Community and governance files (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`)
-- A changelog skeleton following [Keep a Changelog](https://keepachangelog.com/) and [Semantic Versioning](https://semver.org/)
-- Documentation on branching strategies, commit conventions, and Architecture Decision Records (ADRs)
-- GitHub-specific configuration (issue and PR templates, `CODEOWNERS`, Dependabot)
-- Cross-language editor, line-ending, and ignore rules (`.editorconfig`, `.gitattributes`, `.gitignore`)
-- A checklist for the GitHub settings that files can't carry ([docs/REPO-SETTINGS.md](docs/REPO-SETTINGS.md))
+Early design and foundation work; nothing is usable yet. The first release
+(v0.1) will be a command-line tool supporting one payroll software layout,
+followed by a browser app in English and Italian. See the roadmap in
+[docs/design/mvp-design.md](docs/design/mvp-design.md#9-roadmap).
 
-[TO BE FILLED IN: anything else this template grows to include]
+## Features
 
-## How to use it as a template
+Planned for the first releases:
 
-1. Click **Use this template** on GitHub (or clone and re-init: `git clone`, delete `.git`, `git init`).
-   If you work with an AI coding agent, the `init-from-template` skill in `.agents/skills/` walks through steps 2 to 6.
-2. Search for the placeholders and replace them:
-   - `<PROJECT_NAME>`: the name of your new project
-   - `<OWNER_HANDLE>`: your GitHub username
-   - `<SECURITY_CONTACT_EMAIL>`: the address for vulnerability reports
-   - `<CONTACT_EMAIL>`: the code of conduct enforcement contact
-   - `<YEAR>` / `<COPYRIGHT_HOLDER>`: in the chosen license file
-   - `[TO BE FILLED IN]`: free-form sections that need project-specific content
-3. Pick a license: read [docs/LICENSE-GUIDE.md](docs/LICENSE-GUIDE.md), copy the right file from [licenses/](licenses/) to the repository root as `LICENSE`, and delete the `licenses/` directory.
-4. Rewrite this `README.md` for the actual project, starting from
-   [docs/README-TEMPLATE.md](docs/README-TEMPLATE.md).
-5. Configure the repository settings following [docs/REPO-SETTINGS.md](docs/REPO-SETTINGS.md).
-6. Delete what you don't need (see the notes below on optional files).
-7. Reset `CHANGELOG.md` to a fresh `Unreleased` section.
+- Extraction of header, totals, line items, TFR and leave balances from text
+  PDF payslips of supported payroll software.
+- Arithmetic cross-checks on every payslip, so each value is marked as verified,
+  extracted, inferred, missing, or corrected by you.
+- Time series of gross and net pay, deduction breakdown, and comparison between
+  periods.
+- Plain-language explanations of payslip items, in English and Italian.
+- Local storage only, with CSV and JSON export and one-step deletion.
 
-### Optional files
+## Privacy
 
-- **`CODE_OF_CONDUCT.md`**: included because it is useful the moment a public project receives external contributors, but it is optional: feel free to remove it for private or strictly personal repositories.
-- **`.github/CODEOWNERS`**: optional for single-maintainer projects; see the comments inside the file.
-- **`docs/adr/`**: keep it only if you intend to record architecture decisions.
-- **`.agents/skills/`** (and the `.claude/skills/` symlinks): `init-from-template` runs once and deletes itself; keep `new-adr` and `release` only if an agent will run those procedures for you.
+Payslips contain sensitive data, including in some cases health information
+and union membership. cedolo processes them on your device, keeps no copy of
+the original PDF by default, sends nothing over the network, and contains no
+analytics or telemetry. See [ADR 0003](docs/adr/0003-on-device-processing-by-default.md).
 
-## What it does NOT include (and why)
+Never attach a real payslip or a screenshot of one to an issue or pull request.
 
-- **Language-specific tooling** (linters, formatters, build files, package manifests): every stack has its own conventions and generators; duplicating them here would only go stale.
-- **CI/CD workflows**: pipelines depend heavily on the language, hosting, and deployment target. Add them per project.
-- **A `LICENSE` file at the root**: choosing a license is a per-project decision. The `licenses/` directory provides the candidates and `docs/LICENSE-GUIDE.md` explains how to choose.
-- **Issue tracker automation, bots, org policies**: this template targets personal projects maintained by one person or a small team, not an organization.
+## Trying the current CLI
 
-## Structure
+Only the text layer exists so far. With Go installed:
+
+```
+go run ./cmd/cedolo synth -o synthetic.pdf      # write a payslip with invented data
+go run ./cmd/cedolo inspect synthetic.pdf       # check that a PDF has a readable text layer
+```
+
+`cedolo inspect` prints counts only, never names, amounts or file names, so
+its output is safe to share when reporting that a payslip format is not read
+correctly. `cedolo layout -redact FILE` prints the positioned text with every
+letter and digit masked.
+
+## Development
+
+```
+go build ./cmd/cedolo
+go test ./...
+go vet ./...
+go run ./cmd/piiscan .
+```
+
+Tests that compare against poppler run only when `pdftotext` is installed. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and
+[docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for commit messages.
+
+## Layout
 
 ```
 /
-├── README.md                       # this file; replace with the project's own README
-├── AGENTS.md                       # AI agent instructions (single source of truth)
-├── CLAUDE.md                       # pointer to AGENTS.md
-├── CONTRIBUTING.md                 # contribution workflow
-├── CODE_OF_CONDUCT.md              # Contributor Covenant (optional for private repos)
-├── SECURITY.md                     # how to report vulnerabilities
-├── CHANGELOG.md                    # Keep a Changelog + SemVer skeleton
-├── .editorconfig                   # cross-language editor rules
-├── .gitattributes                  # line-ending normalization and binary handling
-├── .gitignore                      # OS, IDE, and secrets ignores (not language-specific)
-├── licenses/                       # license candidates; pick one, move to ./LICENSE
-│   ├── MIT.txt
-│   ├── APACHE-2.0.txt
-│   └── PROPRIETARY.txt
+├── README.md                 # this file
+├── LICENSE                   # GNU AGPL-3.0
+├── AGENTS.md                 # instructions for AI coding agents (CLAUDE.md points here)
+├── CONTRIBUTING.md           # contribution workflow, sign-off, personal data rules
+├── CODE_OF_CONDUCT.md        # Contributor Covenant
+├── SECURITY.md               # private vulnerability reporting
+├── CHANGELOG.md              # Keep a Changelog, SemVer
+├── go.mod, go.sum            # Go module
+├── cmd/
+│   ├── cedolo/               # the command-line tool
+│   └── piiscan/              # CI check for codici fiscali and IBANs
+├── internal/
+│   ├── layout/               # positioned text: the boundary between PDF readers and the core
+│   ├── pdftext/              # PDF readers (PDFium in WebAssembly, poppler)
+│   ├── money/                # Italian amount parsing, in cents
+│   ├── pii/                  # personal identifier detection
+│   └── synth/                # synthetic payslips for tests
 ├── docs/
-│   ├── LICENSE-GUIDE.md            # how to choose a license
-│   ├── README-TEMPLATE.md          # README skeleton for new projects
-│   ├── REPO-SETTINGS.md            # GitHub settings checklist per repository
-│   ├── BRANCHING-STRATEGY.md       # trunk-based/GitHub Flow vs release-based
-│   ├── COMMIT-CONVENTION.md        # Conventional Commits, with examples
-│   ├── AI-AGENTS.md                # guidelines for CLAUDE.md / AGENTS.md and agent setup
-│   ├── design/
-│   │   └── mvp-design.md           # cedolo product and architecture design for the MVP
-│   └── adr/
-│       ├── README.md               # what ADRs are and how to use them
-│       ├── 0000-template.md        # ADR template
-│       ├── 0001-trunk-based-development.md  # this repo's own branching decision
-│       ├── 0002-license-agpl-3.0.md
-│       ├── 0003-on-device-processing-by-default.md
-│       ├── 0004-go-core-with-pluggable-text-layer.md
-│       └── 0005-deterministic-extraction-with-validation.md
-├── .agents/
-│   └── skills/                     # project skills (Agent Skills format), see docs/AI-AGENTS.md
-│       ├── new-adr/SKILL.md
-│       ├── release/SKILL.md
-│       └── init-from-template/SKILL.md
-├── .claude/
-│   └── skills/                     # symlinks to .agents/skills/*, so Claude Code finds them
-└── .github/
-    ├── CODEOWNERS                  # optional for single-maintainer projects
-    ├── PULL_REQUEST_TEMPLATE.md
-    ├── ISSUE_TEMPLATE/
-    │   ├── bug_report.md
-    │   ├── feature_request.md
-    │   └── config.yml
-    └── dependabot.yml              # base config, adapt per ecosystem
+│   ├── design/               # product and architecture design, spike reports
+│   ├── adr/                  # architecture decision records
+│   ├── BRANCHING-STRATEGY.md
+│   ├── COMMIT-CONVENTION.md
+│   ├── REPO-SETTINGS.md      # GitHub settings checklist
+│   └── AI-AGENTS.md          # how agent instructions and skills are organized
+├── .agents/skills/           # agent procedures: new-adr, release
+├── .claude/skills/           # symlinks to .agents/skills
+└── .github/                  # CI workflow, issue and pull request templates, Dependabot
 ```
+
+## License
+
+Copyright (C) 2026 danielededo and cedolo contributors.
+
+cedolo is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See [LICENSE](LICENSE) and
+[ADR 0002](docs/adr/0002-license-agpl-3.0.md).

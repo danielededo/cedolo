@@ -93,7 +93,7 @@ carry out a specific procedure. A skill is a directory with a `SKILL.md` file
 instructions in the body) that the agent loads only when the task matches.
 Skills belong in the repository when the procedure is project-specific and
 already documented for humans; the skill then sequences the steps and points
-to the document instead of duplicating it. This template ships three: `new-adr`, `release`, and `init-from-template`.
+to the document instead of duplicating it. This repository ships two: `new-adr` and `release`.
 Keep yours equally thin; a skill that restates a guide will drift from it.
 
 The specification defines what a skill contains, not where it lives, and each
