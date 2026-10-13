@@ -42,12 +42,19 @@ Never attach a real payslip or a screenshot of one to an issue or pull request.
 
 ## Trying the current CLI
 
-Only the text layer exists so far. With Go installed:
+With Go installed:
 
 ```
 go run ./cmd/cedolo synth -o synthetic.pdf      # write a payslip with invented data
 go run ./cmd/cedolo inspect synthetic.pdf       # check that a PDF has a readable text layer
+go run ./cmd/cedolo extract synthetic.pdf       # read it: items, totals, cross-checks
 ```
+
+`cedolo extract` does not need to know which payroll software produced the
+payslip. Every value is marked as verified (confirmed by the payslip's own
+arithmetic), extracted, inferred, inconsistent or missing, so a misreading
+shows up instead of hiding behind a plausible number. It works on text PDFs
+only; scanned payslips are not supported yet.
 
 `cedolo inspect` prints counts only, never names, amounts or file names, so
 its output is safe to share when reporting that a payslip format is not read
@@ -87,7 +94,10 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 │   ├── pdftext/              # PDF readers (PDFium in WebAssembly, poppler)
 │   ├── money/                # Italian amount parsing, in cents
 │   ├── pii/                  # personal identifier detection
-│   └── synth/                # synthetic payslips for tests
+│   ├── payslip/              # normalized payslip model
+│   ├── taxonomy/             # canonical item catalogue, bilingual labels
+│   ├── extract/              # generic extraction and cross-checks
+│   └── synth/                # synthetic payslips for tests, in several styles
 ├── docs/
 │   ├── design/               # product and architecture design, spike reports
 │   ├── adr/                  # architecture decision records

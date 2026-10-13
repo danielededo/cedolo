@@ -16,6 +16,9 @@ func TestParse(t *testing.T) {
 		{"-12,30", -1230},
 		{"12,30-", -1230},
 		{" 7 ", 700},
+		{"€ 1.234,56", 123456},
+		{"1.234,56€", 123456},
+		{"EUR 12,30-", -1230},
 	}
 	for _, c := range cases {
 		got, err := Parse(c.in)
@@ -34,7 +37,7 @@ func TestParseRejects(t *testing.T) {
 }
 
 func TestIsAmount(t *testing.T) {
-	for in, want := range map[string]bool{"1.234,56": true, "12,30-": true, "173": false, "40,000": false, "RSSMRA": false} {
+	for in, want := range map[string]bool{"1.234,56": true, "12,30-": true, "€1.234,56": true, "€": false, "173": false, "40,000": false, "RSSMRA": false} {
 		if got := IsAmount(in); got != want {
 			t.Errorf("IsAmount(%q) = %v, want %v", in, got, want)
 		}

@@ -1,13 +1,15 @@
 // Package synth builds synthetic payslips: fictitious people and companies
-// with amounts that add up, rendered as PDF. They are the only payslip
-// documents allowed in tests and examples (see ADR 0003); real payslips never
-// enter the repository.
+// with amounts that add up, rendered as PDF or directly as a text layout in
+// several styles that imitate the variety of Italian payroll software. They
+// are the only payslip documents allowed in tests and examples (see ADR 0003);
+// real payslips never enter the repository.
 package synth
 
 import "time"
 
 // Item is one line of the payslip body. Amount is in cents and always
-// positive; Deduction says which column it is printed in.
+// positive; Deduction says on which side it is printed. Key is the canonical
+// taxonomy key a correct extraction must assign to it.
 type Item struct {
 	Code        string
 	Description string
@@ -15,6 +17,7 @@ type Item struct {
 	Base        string // rate or base as printed; empty if not applicable
 	Amount      int64
 	Deduction   bool
+	Key         string
 }
 
 // Leave is a leave balance as printed, in hours.
@@ -34,6 +37,8 @@ type Payslip struct {
 	Level          string
 	Qualification  string
 	Items          []Item
+	INPSBase       int64
+	IRPEFBase      int64
 	TFRAccrued     int64
 	Leave          []Leave
 }
@@ -50,11 +55,17 @@ func (p Payslip) Totals() (gross, deductions, net int64) {
 	return gross, deductions, gross - deductions
 }
 
-// Example returns a deterministic synthetic payslip. Names and companies are
-// invented; amounts are plausible but not computed from real tax rules,
-// except the INPS employee contribution, which is 9.19 percent of gross so
-// that cross-checks have something real to verify.
-func Example() Payslip {
+// Example returns the deterministic synthetic payslip used by the classic
+// style.
+func Example() Payslip { return ExampleFor(StyleClassic) }
+
+// ExampleFor returns a deterministic synthetic payslip whose item wording
+// follows the given style. Names and companies are invented; amounts are
+// plausible but not computed from real tax rules, except the INPS employee
+// contribution, which is 9.19 percent of its base so that cross-checks have
+// something real to verify.
+func ExampleFor(s Style) Payslip {
+	words := descriptions[s]
 	p := Payslip{
 		Employer:       "ESEMPIO SINTETICO SRL",
 		Employee:       "BIANCHI ANNA",
@@ -65,9 +76,9 @@ func Example() Payslip {
 		Level:          "4",
 		Qualification:  "IMPIEGATO",
 		Items: []Item{
-			{Code: "0001", Description: "RETRIBUZIONE ORDINARIA", Quantity: "168,00", Amount: 200000},
-			{Code: "0250", Description: "STRAORDINARIO 25%", Quantity: "10,00", Base: "14,45", Amount: 14450},
-			{Code: "0300", Description: "INDENNITÀ DI FUNZIONE", Amount: 5000},
+			{Code: "0001", Description: words[0], Quantity: "168,00", Amount: 200000, Key: "earnings.base_salary"},
+			{Code: "0250", Description: words[1], Quantity: "10,00", Base: "14,45", Amount: 14450, Key: "earnings.overtime"},
+			{Code: "0300", Description: words[2], Amount: 5000, Key: "earnings.allowance"},
 		},
 		TFRAccrued: 16256,
 		Leave: []Leave{
@@ -77,11 +88,32 @@ func Example() Payslip {
 	}
 	gross, _, _ := p.Totals()
 	inps := (gross*919 + 5000) / 10000 // 9.19 percent, rounded to the cent
+	p.INPSBase = gross
+	p.IRPEFBase = gross - inps
 	p.Items = append(p.Items,
-		Item{Code: "9001", Description: "CONTRIBUTO IVS", Base: "9,19%", Amount: inps, Deduction: true},
-		Item{Code: "9100", Description: "RITENUTA IRPEF", Amount: 29543, Deduction: true},
-		Item{Code: "9150", Description: "ADDIZIONALE REGIONALE", Amount: 2200, Deduction: true},
-		Item{Code: "9160", Description: "ADDIZIONALE COMUNALE", Amount: 800, Deduction: true},
+		Item{Code: "9001", Description: words[3], Base: "9,19%", Amount: inps, Deduction: true, Key: "deductions.inps"},
+		Item{Code: "9100", Description: words[4], Amount: 29543, Deduction: true, Key: "tax.irpef"},
+		Item{Code: "9150", Description: words[5], Amount: 2200, Deduction: true, Key: "tax.surcharge.regional"},
+		Item{Code: "9160", Description: words[6], Amount: 800, Deduction: true, Key: "tax.surcharge.municipal"},
 	)
+	if s == StyleGrid {
+		// This style rounds the net pay up to whole euros with an earnings
+		// item, as several payroll packages do.
+		_, _, net := p.Totals()
+		if r := (100 - net%100) % 100; r > 0 {
+			p.Items = append(p.Items, Item{Code: "9990", Description: "ARROTONDAMENTO MESE CORRENTE", Amount: r, Key: "rounding"})
+		}
+	}
 	return p
+}
+
+// descriptions holds the item wording of each style, in the order of the
+// items built by ExampleFor.
+var descriptions = map[Style][7]string{
+	StyleClassic: {"RETRIBUZIONE ORDINARIA", "STRAORDINARIO 25%", "INDENNITÀ DI FUNZIONE", "CONTRIBUTO IVS",
+		"RITENUTA IRPEF", "ADDIZIONALE REGIONALE", "ADDIZIONALE COMUNALE"},
+	StyleSigned: {"Retribuzione mensile", "Lavoro straordinario 25%", "Indennità di funzione", "Contributi INPS c/dipendente",
+		"Ritenute IRPEF", "Add.le regionale IRPEF", "Add.le comunale IRPEF"},
+	StyleGrid: {"PAGA BASE", "STRAORD. FERIALE 25%", "IND. FUNZIONE", "CTR. F.P.L.D. 9,19%",
+		"IRPEF NETTA", "ADD. REG. RATA", "ADD. COM. RATA"},
 }

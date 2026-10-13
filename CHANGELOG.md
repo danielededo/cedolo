@@ -24,7 +24,12 @@ How to use this file:
   printing counts only so the output contains no personal data.
 - `cedolo layout` prints the positioned text of a PDF as JSON, with `-redact`
   to mask letters and digits.
-- `cedolo synth` writes a synthetic payslip PDF with invented data.
+- `cedolo synth` writes a synthetic payslip PDF with invented data, in three
+  layout styles (`-style classic|signed|grid`).
+- `cedolo extract` reads payslips from any payroll software with a text PDF:
+  period, contract level, items classified into a canonical taxonomy, totals,
+  taxable bases and TFR, each marked as verified, extracted, inferred,
+  inconsistent or missing according to arithmetic cross-checks.
 
 [Unreleased]: https://github.com/danielededo/cedolo/commits/main
 <!-- After the first release, switch to:

@@ -21,7 +21,7 @@ func writeExample(t *testing.T) string {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	if err := synth.WritePDF(f, synth.Example()); err != nil {
+	if err := synth.WritePDF(f, synth.Example(), synth.StyleClassic); err != nil {
 		t.Fatal(err)
 	}
 	return path

@@ -1,6 +1,6 @@
 # ADR 0005: Extract with templates and arithmetic validation, without ML
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0006](0006-generic-extraction-first.md)
 - **Date:** 2026-10-13
 - **Deciders:** maintainer (danielededo)
 
