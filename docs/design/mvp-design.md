@@ -283,14 +283,17 @@ less mature than pdf.js or poppler, and the best-known complete Go PDF SDK is
 commercially licensed. The plan handles this by isolating PDF reading behind
 the text layout interface:
 
-- In the CLI, a pure-Go PDF reader is the first candidate, with the poppler
-  pdftotext bounding-box output as a fallback if the spike shows gaps.
+- In the CLI, PDFium compiled to WebAssembly and run inside the Go binary,
+  chosen after the [phase 0 spike](spike-pdf-text-layer.md) showed the best
+  known pure Go reader losing positions on common font encodings; poppler's
+  pdftotext stays available as a reference.
 - In the browser, pdf.js (Apache-2.0) extracts text and positions and hands a
   text layout to the Go core compiled to WebAssembly.
 
-The first task of phase 0 is a spike that tests a pure-Go reader on the
-maintainer's own payslips. If it cannot recover positions reliably, that is
-found in week one, not month three.
+The phase 0 spike tested this on synthetic documents from three PDF
+generators; the same check still has to run on real payslips, which the
+maintainer can do locally with `cedolo inspect`, whose output contains no
+personal data.
 
 What would make Go wrong: if the public product must be a browser app and the
 Go WebAssembly bundle turns out too large or slow on mid-range phones (a few MB
@@ -663,6 +666,12 @@ for this workload; the phase 2 exit criteria measure it explicitly.
 
 Name and trademark, vendor relations, and the copyright status of public sample
 payslips all need a check before the repository is public.
+
+Prior art exists and should be reviewed before phase 2, both to learn from it
+and to avoid duplicating effort: for example MCP-Buste-Paga
+(github.com/morettimarco/MCP-Buste-Paga), which parses INAZ payslips into a
+local SQLite database for AI clients. Its license and approach have not been
+checked yet.
 
 Open questions for the maintainer:
 
