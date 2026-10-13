@@ -125,3 +125,21 @@ func TestExtractEveryStyle(t *testing.T) {
 		}
 	}
 }
+
+func TestAnonymizeCommand(t *testing.T) {
+	path := synthFile(t, "anon.pdf")
+	var out, info bytes.Buffer
+	if err := runAnonymize([]string{path}, &out, &info); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "BIANCHI") || strings.Contains(out.String(), "1.667,40") {
+		t.Error("anonymized output leaks personal data")
+	}
+	if !strings.Contains(out.String(), "TOTALE") || !strings.Contains(info.String(), "Review the output") {
+		t.Errorf("unexpected output; info: %s", info.String())
+	}
+	var doc layout.Document
+	if err := json.Unmarshal(out.Bytes(), &doc); err != nil || doc.TokenCount() == 0 {
+		t.Errorf("output is not a layout: %v", err)
+	}
+}
