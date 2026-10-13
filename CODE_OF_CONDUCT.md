@@ -1,9 +1,5 @@
 # Contributor Covenant Code of Conduct
 
-> **Note for template users:** this file is most useful for public projects that may
-> receive external contributors. For private or strictly personal repositories it is
-> optional and can be removed. Remember to replace `<CONTACT_EMAIL>` below.
-
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our
@@ -63,8 +59,9 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-<CONTACT_EMAIL>.
+reported to the community leaders responsible for enforcement through
+GitHub's private reporting channels, as described in SECURITY.md, or by
+contacting @danielededo on GitHub.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

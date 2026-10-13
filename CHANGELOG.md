@@ -18,20 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
-### Added
-
-- [TO BE FILLED IN: first notable change of the project]
-
-<!--
-## [0.1.0] - YYYY-MM-DD
-
-### Added
-
-- Initial release.
--->
-
-[Unreleased]: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/commits/main
+[Unreleased]: https://github.com/danielededo/cedolo/commits/main
 <!-- After the first release, switch to:
-[Unreleased]: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/releases/tag/v0.1.0
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/danielededo/cedolo/releases/tag/v0.1.0
 -->
