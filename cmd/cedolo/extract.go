@@ -106,7 +106,10 @@ func printPayslip(out io.Writer, p payslip.Payslip) {
 	fmt.Fprintln(out, "  checks:")
 	for _, c := range p.Checks {
 		mark := "ok  "
-		if !c.OK {
+		switch {
+		case !c.OK && c.Advisory:
+			mark = "note"
+		case !c.OK:
 			mark = "FAIL"
 		}
 		fmt.Fprintf(out, "    %s %s: %s\n", mark, c.Name, c.Detail)

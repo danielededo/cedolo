@@ -61,6 +61,21 @@ are data, not code.
   also use hand-built layouts the generator does not produce. Without real
   payslips there is still a risk that the heuristics fit the styles they
   were written against; the first real payslips are the true test.
+- Payroll packages differ in ways the first synthetic styles did not cover,
+  and the extractor handles them generically, each case covered by tests
+  with invented values: contributions, taxes and roundings printed in
+  summary boxes outside the item table; columns that are not pay (neutral
+  items, statistical data, a presence calendar beside the table); and
+  printed totals whose meaning varies ("totale trattenute" can be the item
+  table total or everything withheld), resolved by a net balance check that
+  tries the known readings and keeps the one under which the arithmetic
+  holds. The PDF text layer joins glyphs of vertical text. The main risk
+  recorded above stands: heuristics written against invented layouts can
+  miss real ones, so every newly reported layout is worth more than any
+  amount of synthetic variety.
+- Checks that test a relation which legitimately fails in some situations
+  (INPS rate, IRPEF taxable base, TFR ratio) are advisory: a mismatch is
+  reported as a note and does not mark values inconsistent.
 - Leave balances follow the same approach: measures and kinds are matched
   from synonyms, in tables of either orientation or inline.
 - Known gaps today: scanned payslips, item tables printed in two side-by-side

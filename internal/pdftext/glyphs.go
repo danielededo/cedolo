@@ -15,6 +15,9 @@ type glyph struct {
 	x0, x1      float64
 	top, bottom float64
 	size        float64 // font size, used to scale the grouping thresholds
+	// vertical marks glyphs of text rotated by a quarter turn, as some
+	// payslips print the titles of narrow table blocks.
+	vertical bool
 }
 
 // groupWords merges glyphs, in content order, into word tokens. A word ends
@@ -46,15 +49,26 @@ func groupWords(glyphs []glyph) []layout.Token {
 			continue
 		}
 		if cur.Len() > 0 {
-			gap := g.x0 - last.x1
-			sameLine := math.Abs(g.bottom-last.bottom) < 0.3*g.size
-			if !sameLine || gap > 0.15*g.size || gap < -0.5*g.size {
-				flush()
+			if g.vertical || last.vertical {
+				// Rotated text runs along a column: glyphs stay aligned
+				// horizontally and follow each other vertically.
+				aligned := g.vertical && last.vertical && math.Abs(g.x0-last.x0) < 0.5*g.size
+				near := math.Abs((g.top+g.bottom)/2-(last.top+last.bottom)/2) < 1.5*g.size
+				if !aligned || !near {
+					flush()
+				}
+			} else {
+				gap := g.x0 - last.x1
+				sameLine := math.Abs(g.bottom-last.bottom) < 0.3*g.size
+				if !sameLine || gap > 0.15*g.size || gap < -0.5*g.size {
+					flush()
+				}
 			}
 		}
 		if cur.Len() == 0 {
 			word = g
 		} else {
+			word.x0 = math.Min(word.x0, g.x0)
 			word.x1 = math.Max(word.x1, g.x1)
 			word.top = math.Min(word.top, g.top)
 			word.bottom = math.Max(word.bottom, g.bottom)

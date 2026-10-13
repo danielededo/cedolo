@@ -42,7 +42,16 @@ func TestClassify(t *testing.T) {
 		{"ARROTONDAMENTO MESE CORRENTE", payslip.Earning, "rounding"},
 		{"Arrot. mese precedente", payslip.Deduction, "rounding"},
 		{"RATEO TREDICESIMA", payslip.Earning, "earnings.thirteenth"},
-		{"BUONI PASTO", payslip.Earning, OtherEarning},
+		{"BUONI PASTO", payslip.Earning, "meal_vouchers"},
+		{"REC. ASSOGGETTAMENTO PASTI", payslip.Deduction, "meal_vouchers"},
+		{"NOTA SPESE OTTOBRE", payslip.Earning, "earnings.reimbursement"},
+		{"ESON.CONTR.IVS L.234/21", payslip.Earning, "earnings.contribution_relief"},
+		{"LAVORO ORDIN.(mens.)", payslip.Earning, "earnings.base_salary"},
+		{"RATA ADD.COMUN.A.P.", payslip.Deduction, "tax.surcharge.municipal"},
+		{"ACCONTO ADD.COMUNALE", payslip.Deduction, "tax.surcharge.municipal"},
+		{"RATA ADD.REG. A.P.", payslip.Deduction, "tax.surcharge.regional"},
+		{"STRAORDINARIO FESTIVO", payslip.Earning, "earnings.overtime"},
+		{"GETTONE PRESENZA", payslip.Earning, OtherEarning},
 		{"PIGNORAMENTO", payslip.Deduction, OtherDeduction},
 		// An earnings keyword printed as a deduction is not forced into the
 		// earnings category.

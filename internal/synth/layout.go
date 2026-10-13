@@ -20,6 +20,10 @@ const (
 func Layout(p Payslip, s Style) layout.Document {
 	page := layout.Page{Number: 1, Width: pageWidth, Height: pageHeight}
 	for _, t := range render(p, s).texts {
+		if t.up {
+			page.Tokens = append(page.Tokens, upTokens(t)...)
+			continue
+		}
 		x := t.x
 		space := textWidth(" ", t.size)
 		for i, word := range strings.Split(t.s, " ") {
@@ -40,4 +44,29 @@ func Layout(p Payslip, s Style) layout.Document {
 		}
 	}
 	return layout.Document{Pages: []layout.Page{page}}
+}
+
+// upTokens returns the words of a run drawn upward: each word's box spans the
+// glyph height horizontally and the word's length vertically.
+func upTokens(t drawnText) []layout.Token {
+	var out []layout.Token
+	offset := 0.0
+	space := textWidth(" ", t.size)
+	for i, word := range strings.Split(t.s, " ") {
+		if i > 0 {
+			offset += space
+		}
+		w := textWidth(word, t.size)
+		if word != "" {
+			out = append(out, layout.Token{
+				Text: word,
+				X:    t.x - ascent*t.size,
+				Y:    pageHeight - (t.y + offset + w),
+				W:    (ascent + descent) * t.size,
+				H:    w,
+			})
+		}
+		offset += w
+	}
+	return out
 }

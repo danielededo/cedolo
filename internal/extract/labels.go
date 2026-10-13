@@ -12,11 +12,31 @@ var (
 	netLabels       = []string{"netto del mese", "netto in busta", "netto a pagare", "netto da pagare",
 		"netto busta", "netto mese", "netto"}
 	inpsBaseLabels = []string{"imponibile inps", "imponibile previdenziale", "imponibile contributivo",
-		"imponibile contributi", "imp inps", "imp previdenziale"}
+		"imponibile contributi sociali", "imponibile contributi", "imponibile f p l d", "imp le f p l d",
+		"impon contr soc", "imp contr soc", "imp le inps", "imp inps", "imp previdenziale"}
 	irpefBaseLabels = []string{"imponibile irpef", "imponibile fiscale", "imp irpef", "imp fiscale"}
-	tfrLabels       = []string{"quota tfr maturata", "quota maturata nel mese", "tfr del mese", "quota tfr",
+	socialLabels    = []string{"totale contributi sociali", "totale tratt sociali", "totale trattenute sociali",
+		"totale contributi previdenziali", "totale contributi"}
+	taxLabels = []string{"totale trattenute irpef", "totale tratt fiscale", "totale trattenute fiscali",
+		"totale ritenute fiscali", "totale ritenute irpef", "totale irpef"}
+	inpsLabels = []string{"ctr f p l d", "contributo f p l d", "contributi f p l d", "contributo ivs",
+		"contributi ivs", "ctr ivs"}
+	roundingPreviousLabels = []string{"arrotondamento mese precedente", "arrotondamento precedente",
+		"arrotond precedente", "arrotond preced", "arr precedente", "arr prec"}
+	roundingCurrentLabels = []string{"arrotondamento attuale", "arrotond attuale", "arrotondamento corrente",
+		"arrotond corrente", "arr attuale"}
+	tfrLabels = []string{"quota tfr maturata", "quota maturata nel mese", "tfr del mese", "quota tfr",
 		"tfr mese", "tfr maturato", "quota maturata"}
 )
+
+// labelContinuations are words that, right after a label, show that the
+// label is part of a longer one with a different meaning: "totale trattenute"
+// followed by "irpef", "imponibile irpef" followed by "annuo".
+var labelContinuations = map[string]bool{
+	"irpef": true, "fiscale": true, "fiscali": true, "sociali": true, "sociale": true, "previdenziali": true,
+	"corpo": true, "t": true, "ts": true, "inail": true, "inps": true, "annuo": true, "annua": true,
+	"annue": true, "annui": true, "progressivi": true, "progr": true, "ap": true, "anno": true, "tassaz": true,
+}
 
 // Column header words of the item table, by column kind.
 var columnWords = map[string]colKind{
@@ -27,6 +47,8 @@ var columnWords = map[string]colKind{
 	"quantita": colQuantity, "ore": colQuantity, "gg": colQuantity, "giorni": colQuantity,
 	"qta": colQuantity, "rif": colQuantity, "riferimento": colQuantity, "numero": colQuantity,
 	"base": colBase, "dato": colBase, "unitario": colBase, "tariffa": colBase, "aliquota": colBase,
+	"unit": colBase, "neutra": colBase, "neutre": colBase,
+	"statistici": colInfo, "figurative": colInfo, "figurativi": colInfo,
 	"descrizione": colDescription, "voce": colDescription, "voci": colDescription,
 	"cod": colCode, "codice": colCode,
 }
@@ -60,7 +82,8 @@ var (
 func Vocabulary() []string {
 	var phrases []string
 	for _, list := range [][]string{grossLabels, deductionLabels, netLabels, inpsBaseLabels, irpefBaseLabels,
-		tfrLabels, periodLabels, thirteenthWords, fourteenthWords} {
+		tfrLabels, socialLabels, taxLabels, inpsLabels, roundingPreviousLabels, roundingCurrentLabels,
+		periodLabels, thirteenthWords, fourteenthWords} {
 		phrases = append(phrases, list...)
 	}
 	for w := range columnWords {

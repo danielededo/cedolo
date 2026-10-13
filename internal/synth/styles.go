@@ -282,26 +282,30 @@ func renderGrid(c *canvas, p Payslip) {
 	grid(y, []string{"IMPONIBILE INPS", "IMPONIBILE IRPEF", "TFR DEL MESE"},
 		[]int64{p.INPSBase, p.IRPEFBase, p.TFRAccrued})
 
-	// Leave balances with one column per kind and one row per measure.
+	// Leave balances in side-by-side blocks, one per kind, with the kind
+	// printed vertically at the block's left edge and each measure label
+	// qualified on the line just below, next to the unit and the value.
 	y -= 40
-	c.text(colCode, y, 7, true, "ORE")
-	for i, l := range p.Leave {
-		c.textRight(250+float64(i)*90, y, 7, true, l.Kind)
-	}
+	lefts := []float64{70, 170, 270}
 	for _, row := range []struct {
-		label string
-		value func(Leave) string
+		measure, qualifier string
+		value              func(Leave) string
 	}{
-		{"RESIDUO AP", func(l Leave) string { return l.Previous }},
-		{"MATURATO", func(l Leave) string { return l.Accrued }},
-		{"GODUTO", func(l Leave) string { return l.Used }},
-		{"SALDO", func(l Leave) string { return l.Remaining }},
+		{"RESIDUO", "A.P.", func(l Leave) string { return l.Previous }},
+		{"MATURATO", "A.C.", func(l Leave) string { return l.Accrued }},
+		{"GODUTO", "A.C.", func(l Leave) string { return l.Used }},
+		{"RESIDUO", "TOT.", func(l Leave) string { return l.Remaining }},
 	} {
-		y -= 11
-		c.text(colCode, y, 7, false, row.label)
 		for i, l := range p.Leave {
-			c.textRight(250+float64(i)*90, y, 7, false, row.value(l))
+			c.text(lefts[i], y, 6, false, row.measure)
+			c.text(lefts[i], y-3.5, 6, false, row.qualifier)
+			c.text(lefts[i]+24, y-3.5, 6, false, "O")
+			c.textRight(lefts[i]+80, y-3.5, 6, false, row.value(l))
 		}
+		y -= 12
+	}
+	for i, l := range p.Leave {
+		c.textUp(lefts[i]-4, y+6, 6, l.Kind)
 	}
 }
 

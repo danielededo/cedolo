@@ -28,3 +28,20 @@ func TestGroupWords(t *testing.T) {
 		t.Errorf("NETTO box = %+v", got[0])
 	}
 }
+
+func TestGroupWordsVertical(t *testing.T) {
+	// "FERIE" printed upward in a column, next to a horizontal value.
+	var glyphs []glyph
+	for i, r := range "FERIE" {
+		top := 100 - float64(i+1)*6
+		glyphs = append(glyphs, glyph{r: r, x0: 20, x1: 27, top: top, bottom: top + 6, size: 8, vertical: true})
+	}
+	glyphs = append(glyphs, glyph{r: '9', x0: 40, x1: 44, top: 90, bottom: 98, size: 8})
+	got := groupWords(glyphs)
+	if len(got) != 2 || got[0].Text != "FERIE" || got[1].Text != "9" {
+		t.Fatalf("got %+v", got)
+	}
+	if got[0].H < 25 || got[0].W > 8 {
+		t.Errorf("vertical word box = %+v", got[0])
+	}
+}
