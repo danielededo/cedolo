@@ -51,6 +51,12 @@ How to use this file:
   balances, missing months), each with the most likely explanation, such as
   surcharge instalments, the thirteenth month or the year-end tax
   adjustment. Texts are in Italian or English (`-lang it|en`).
+- `cedolo report` writes one self-contained HTML page, readable offline in
+  any browser and only by its owner: the latest month at a glance, gross and
+  net over time, what is withheld each month (contributions, taxes, other),
+  a month-by-month table with the outcome of the checks, what changed, leave
+  balances and a glossary of the items found, in Italian or English, with a
+  light and a dark theme.
 - `cedolo anonymize` prints a payslip's layout with everything but known
   payroll labels masked (names, companies, identifiers, every digit, and
   words revealing health, union membership, family or debts), so a layout
