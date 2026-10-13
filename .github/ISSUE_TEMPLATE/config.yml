@@ -1,0 +1,14 @@
+# Configuration for the issue template chooser.
+# Docs: https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests
+
+# Allow issues that don't fit a template (sensible default for small projects).
+blank_issues_enabled: true
+
+# Redirect non-issue conversations elsewhere (uncomment and adapt if needed):
+# contact_links:
+#   - name: Question / discussion
+#     url: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/discussions
+#     about: Ask questions and discuss ideas here instead of opening an issue.
+#   - name: Security report
+#     url: https://github.com/<OWNER_HANDLE>/<PROJECT_NAME>/security/policy
+#     about: Please report security issues privately — see SECURITY.md.

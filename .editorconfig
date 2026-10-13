@@ -1,0 +1,28 @@
+# EditorConfig: cross-language editor defaults (https://editorconfig.org)
+# Language-specific projects can extend these rules; keep this file at the root.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Web / config formats conventionally use 2 spaces
+[*.{json,yml,yaml,toml,html,css,scss,js,jsx,ts,tsx}]
+indent_size = 2
+
+# Markdown: trailing spaces are meaningful (hard line breaks)
+[*.md]
+trim_trailing_whitespace = false
+
+# Makefiles require tabs
+[Makefile]
+indent_style = tab
+
+# Windows scripts expect CRLF
+[*.{bat,cmd,ps1}]
+end_of_line = crlf

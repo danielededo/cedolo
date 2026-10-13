@@ -1,0 +1,42 @@
+# Git attributes: consistent line endings and file handling across platforms.
+# Docs: https://git-scm.com/docs/gitattributes
+# Complements .editorconfig (which acts at editor level; this acts at git level).
+
+# Auto-detect text files and normalize them to LF in the repository.
+* text=auto
+
+# Force LF in the working tree for common text formats, regardless of OS.
+*.md      text eol=lf
+*.txt     text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.toml    text eol=lf
+*.sh      text eol=lf
+.editorconfig  text eol=lf
+.gitattributes text eol=lf
+.gitignore     text eol=lf
+
+# Windows scripts must keep CRLF (mirrors .editorconfig).
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# Common binary formats: never normalize or diff as text.
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.zip     binary
+*.gz      binary
+*.woff    binary
+*.woff2   binary
+
+# --- Optional, uncomment as needed ---
+# Exclude files from "Download ZIP" / git archive exports:
+# .github/        export-ignore
+# docs/           export-ignore
+# Override GitHub language statistics (linguist):
+# docs/** linguist-documentation

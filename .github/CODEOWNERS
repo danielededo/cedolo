@@ -1,0 +1,15 @@
+# CODEOWNERS — automatically requests reviews from the listed users when a PR
+# touches matching paths. Docs: https://docs.github.com/articles/about-code-owners
+#
+# NOTE: this file is OPTIONAL for single-maintainer projects. If you are the
+# only person with write access, GitHub cannot request a review from yourself,
+# so you can safely delete this file. It becomes useful the moment the project
+# has a second collaborator or you enable "require review from code owners"
+# branch protection.
+
+# Default owner for everything in the repo:
+# * @<OWNER_HANDLE>
+
+# Path-specific owners (examples — uncomment and adapt):
+# /docs/          @<OWNER_HANDLE>
+# /.github/       @<OWNER_HANDLE>

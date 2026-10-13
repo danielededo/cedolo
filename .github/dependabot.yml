@@ -1,0 +1,61 @@
+# Dependabot base configuration.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# This template is language-agnostic, so only the GitHub Actions ecosystem is
+# enabled (it applies to any repo with workflows). When the project picks a
+# stack, add the matching ecosystem block — examples below.
+
+version: 2
+
+updates:
+  # Keep GitHub Actions in workflows up to date.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # --- Examples: uncomment and adapt for the project's ecosystem ---
+  #
+  # - package-ecosystem: "npm"            # JavaScript / TypeScript
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #   groups:
+  #     minor-and-patch:
+  #       update-types: ["minor", "patch"]
+  #
+  # - package-ecosystem: "pip"            # Python
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #
+  # - package-ecosystem: "gomod"          # Go
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #
+  # - package-ecosystem: "cargo"          # Rust
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
+  #
+  # - package-ecosystem: "docker"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   commit-message:
+  #     prefix: "chore"
