@@ -2,6 +2,7 @@ package pdftext
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -127,13 +128,20 @@ func readPDFiumPage(inst pdfium.Pdfium, d references.FPDF_DOCUMENT, index int) (
 		if err != nil {
 			return layout.Page{}, err
 		}
+		angle, err := inst.FPDFText_GetCharAngle(&requests.FPDFText_GetCharAngle{TextPage: text.TextPage, Index: i})
+		if err != nil {
+			return layout.Page{}, err
+		}
+		// The angle is in radians; a quarter turn either way is vertical.
+		quarter := math.Abs(math.Mod(float64(angle.CharAngle), math.Pi) - math.Pi/2)
 		glyphs = append(glyphs, glyph{
-			r:      r,
-			x0:     float64(box.Rect.Left),
-			x1:     float64(box.Rect.Right),
-			top:    height - float64(box.Rect.Top),
-			bottom: height - float64(box.Rect.Bottom),
-			size:   size.FontSize,
+			r:        r,
+			x0:       float64(box.Rect.Left),
+			x1:       float64(box.Rect.Right),
+			top:      height - float64(box.Rect.Top),
+			bottom:   height - float64(box.Rect.Bottom),
+			size:     size.FontSize,
+			vertical: quarter < 0.2,
 		})
 	}
 	return layout.Page{

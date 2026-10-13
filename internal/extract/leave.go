@@ -8,6 +8,7 @@ import (
 	"github.com/danielededo/cedolo/internal/layout"
 	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/payslip"
+	"github.com/danielededo/cedolo/internal/taxonomy"
 )
 
 // Leave balances are printed in one of three shapes, all handled here:
@@ -16,7 +17,11 @@ import (
 //     per kind of leave;
 //   - columns:    a header of kinds (ferie, permessi, ex festività) and one row
 //     per measure;
-//   - inline:     one line per kind with measure and value pairs.
+//   - inline:     one line per kind with measure and value pairs;
+//   - cells:      a row of "kind measure" labels with values in the cells
+//     below ("FERIE MAT.", "FERIE GOD.", "PERMESSI RES.");
+//   - stacked:    side-by-side blocks, one per kind, each a column of
+//     measure labels qualified on the line below ("RESIDUO" over "A.P.").
 
 type measure int
 
@@ -37,14 +42,18 @@ type phrase[T any] struct {
 var leaveKinds = []phrase[payslip.LeaveKind]{
 	{"ex festivita", payslip.FormerHolidays}, {"festivita soppresse", payslip.FormerHolidays},
 	{"fest soppresse", payslip.FormerHolidays}, {"ex fest", payslip.FormerHolidays},
-	{"banca ore", payslip.HoursBank},
+	{"fest", payslip.FormerHolidays},
+	{"banca ore", payslip.HoursBank}, {"b ore", payslip.HoursBank},
 	{"permessi rol", payslip.ReducedHours}, {"riduzione orario", payslip.ReducedHours},
-	{"permessi", payslip.ReducedHours}, {"rol", payslip.ReducedHours}, {"par", payslip.ReducedHours},
+	{"permessi", payslip.Permits}, {"r o l", payslip.ReducedHours}, {"rol", payslip.ReducedHours},
+	{"p a r", payslip.ReducedHours}, {"par", payslip.ReducedHours},
+	{"flessibilita", payslip.Flexibility}, {"fless", payslip.Flexibility},
 	{"ferie", payslip.Holiday},
 }
 
 var leaveMeasures = []phrase[measure]{
-	{"residuo anno precedente", mPrevious}, {"residuo ap", mPrevious}, {"res ap", mPrevious},
+	{"residuo anno precedente", mPrevious}, {"residuo a p", mPrevious}, {"residuo ap", mPrevious},
+	{"res a p", mPrevious}, {"res ap", mPrevious}, {"a p", mPrevious},
 	{"residuo prec", mPrevious}, {"res prec", mPrevious}, {"anno precedente", mPrevious},
 	{"residuo iniziale", mPrevious}, {"riporto", mPrevious},
 	{"maturato", mAccrued}, {"maturate", mAccrued}, {"maturati", mAccrued}, {"maturata", mAccrued},
@@ -53,6 +62,7 @@ var leaveMeasures = []phrase[measure]{
 	{"fruito", mUsed}, {"fruite", mUsed}, {"fruiti", mUsed}, {"usufruito", mUsed},
 	{"da godere", mRemaining}, {"residuo", mRemaining}, {"residue", mRemaining}, {"residui", mRemaining},
 	{"saldo", mRemaining}, {"rimanenti", mRemaining},
+	{"mat", mAccrued}, {"god", mUsed}, {"res", mRemaining},
 }
 
 // match is a phrase found in a line, with the horizontal extent of its tokens.
@@ -129,19 +139,45 @@ func leaveUnit(l line) string {
 func findLeave(lines []line) []payslip.Leave {
 	var out []payslip.Leave
 	byKind := map[payslip.LeaveKind]int{}
+	// A kind seen again (a later row of stacked blocks, a second table)
+	// fills the measures still missing; it never overwrites one.
 	add := func(lv payslip.Leave) {
 		if lv.Previous == nil && lv.Accrued == nil && lv.Used == nil && lv.Remaining == nil {
 			return
 		}
-		if _, dup := byKind[lv.Kind]; dup {
+		i, seen := byKind[lv.Kind]
+		if !seen {
+			byKind[lv.Kind] = len(out)
+			out = append(out, lv)
 			return
 		}
-		byKind[lv.Kind] = len(out)
-		out = append(out, lv)
+		cur := &out[i]
+		for _, f := range []struct{ dst, src **int64 }{
+			{&cur.Previous, &lv.Previous}, {&cur.Accrued, &lv.Accrued}, {&cur.Used, &lv.Used}, {&cur.Remaining, &lv.Remaining},
+		} {
+			if *f.dst == nil {
+				*f.dst = *f.src
+			}
+		}
+		if cur.Unit == "" {
+			cur.Unit = lv.Unit
+		}
 	}
 	for i, l := range lines {
 		kinds := scan(l, leaveKinds)
 		measures := scan(l, leaveMeasures)
+		if cells := leaveCells(lines, i, kinds, measures); cells != nil {
+			for _, lv := range cells {
+				add(lv)
+			}
+			continue
+		}
+		if stacked := leaveStacked(lines, i, measures); stacked != nil {
+			for _, lv := range stacked {
+				add(lv)
+			}
+			continue
+		}
 		switch {
 		case distinct(measures) >= 2 && (len(kinds) == 0 || kinds[0].firstWord > 0):
 			// A header of measures: rows below start with a kind.
@@ -212,6 +248,148 @@ func leaveInline(l line, kind match[payslip.LeaveKind], measures []match[measure
 		}
 	}
 	return lv
+}
+
+// leaveCells reads a row of "kind measure" labels, each heading a cell whose
+// value is printed on the next line. It returns nil when line i is not such
+// a row.
+func leaveCells(lines []line, i int, kinds []match[payslip.LeaveKind], measures []match[measure]) []payslip.Leave {
+	type cell struct {
+		kind    match[payslip.LeaveKind]
+		measure measure
+	}
+	var cells []cell
+	for _, k := range kinds {
+		for _, m := range measures {
+			if m.firstWord == k.afterWord {
+				cells = append(cells, cell{k, m.value})
+			}
+		}
+	}
+	if len(cells) < 2 {
+		return nil
+	}
+	l := lines[i]
+	byKind := map[payslip.LeaveKind]*payslip.Leave{}
+	var order []payslip.LeaveKind
+	for c, cl := range cells {
+		x0, x1 := cl.kind.x0-2, math.Inf(1)
+		if c+1 < len(cells) {
+			x1 = cells[c+1].kind.x0 - 2
+		}
+		lv, ok := byKind[cl.kind.value]
+		if !ok {
+			lv = &payslip.Leave{Kind: cl.kind.value, Label: cl.kind.label, Unit: leaveUnit(l)}
+			byKind[cl.kind.value] = lv
+			order = append(order, cl.kind.value)
+		}
+		for j := i + 1; j < len(lines) && lines[j].y-l.y <= 3*l.h; j++ {
+			if leaveLabelLine(lines[j]) {
+				break
+			}
+			for _, t := range lines[j].toks {
+				if c := center(t); c >= x0 && c < x1 {
+					if v, ok := quantity(t.Text); ok {
+						setMeasure(lv, cl.measure, v)
+					}
+				}
+			}
+		}
+	}
+	out := make([]payslip.Leave, 0, len(order))
+	for _, k := range order {
+		out = append(out, *byKind[k])
+	}
+	return out
+}
+
+// leaveLabelLine reports whether a line is itself a row of leave labels.
+func leaveLabelLine(l line) bool {
+	return len(scan(l, leaveKinds)) >= 2 && len(scan(l, leaveMeasures)) >= 2
+}
+
+// leaveStacked reads side-by-side leave blocks: line i repeats one measure
+// label once per block ("RESIDUO ... RESIDUO ..."), a qualifier on the line
+// just below may change its meaning ("A.P." makes it the previous balance),
+// the value sits in the block on the same or the next line, and each block's
+// kind is the kind label printed at the block's left edge nearby. It returns
+// nil when line i is not such a row.
+func leaveStacked(lines []line, i int, measures []match[measure]) []payslip.Leave {
+	if len(measures) < 2 {
+		return nil
+	}
+	for _, m := range measures[1:] {
+		if m.value != measures[0].value {
+			return nil
+		}
+	}
+	l := lines[i]
+	var below *line
+	if i+1 < len(lines) && lines[i+1].y-l.y <= 6 {
+		below = &lines[i+1]
+	}
+	var out []payslip.Leave
+	for b, m := range measures {
+		x0, x1 := m.x0-3, 0.0
+		if b+1 < len(measures) {
+			x1 = measures[b+1].x0 - 3
+		} else {
+			x1 = m.x0 + (m.x0 - measures[b-1].x0) - 3
+		}
+		kind, label, ok := blockKind(lines, i, m.x0)
+		if !ok {
+			continue
+		}
+		lv := payslip.Leave{Kind: kind, Label: label}
+		meaning := m.value
+		var value *int64
+		for _, ln := range []*line{&l, below} {
+			if ln == nil {
+				continue
+			}
+			for _, t := range ln.toks {
+				if t.X < x0 || center(t) >= x1 {
+					continue
+				}
+				norm := taxonomy.Normalize(t.Text)
+				switch {
+				case ln == below && meaning == mRemaining && (norm == "a" || norm == "ap" || norm == "a p" ||
+					strings.HasPrefix(norm, "prec") || strings.HasPrefix(norm, "a p ")):
+					meaning = mPrevious
+				case norm == "o" || norm == "ore":
+					lv.Unit = "hours"
+				case norm == "g" || norm == "gg":
+					lv.Unit = "days"
+				}
+				if v, ok := quantity(t.Text); ok && value == nil {
+					value = &v
+				}
+			}
+		}
+		if value != nil {
+			setMeasure(&lv, meaning, *value)
+		}
+		out = append(out, lv)
+	}
+	return out
+}
+
+// blockKind finds the kind label aligned with the left edge of a block, within
+// a few lines above or below line i.
+func blockKind(lines []line, i int, left float64) (payslip.LeaveKind, string, bool) {
+	for d := 0; d <= 12; d++ {
+		for _, j := range []int{i - d, i + d} {
+			if j < 0 || j >= len(lines) || math.Abs(lines[j].y-lines[i].y) > 45 {
+				continue
+			}
+			for _, k := range scan(lines[j], leaveKinds) {
+				if k.x0 >= left-12 && k.x0 <= left+8 {
+					return k.value, k.label, true
+				}
+			}
+		}
+	}
+	return "", "", false
 }
 
 // nextBlock returns the lines that directly follow, stopping at a vertical

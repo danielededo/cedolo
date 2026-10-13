@@ -64,6 +64,52 @@ func (l line) find(phrase string) (first, last int, ok bool) {
 	return 0, 0, false
 }
 
+// occurrence is one match of a phrase in a line.
+type occurrence struct {
+	first, last int // token indexes
+	afterWord   int // index of the first word after the phrase
+}
+
+// findAll returns every occurrence of phrase in the line that is a complete
+// label: the word after it is not one that turns it into a longer label with
+// another meaning (see labelContinuations).
+func (l line) findAll(phrase string) []occurrence {
+	pw := strings.Fields(phrase)
+	var out []occurrence
+	for i := 0; i+len(pw) <= len(l.words); i++ {
+		match := true
+		for k := range pw {
+			if l.words[i+k].text != pw[k] {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		after := i + len(pw)
+		// A word repeating the label's last word starts a new label
+		// ("IMPONIBILE IRPEF" next to "IRPEF LORDA").
+		if after < len(l.words) && labelContinuations[l.words[after].text] && l.words[after].text != pw[len(pw)-1] &&
+			l.continues(l.words[after-1].tok, l.words[after].tok) {
+			continue
+		}
+		out = append(out, occurrence{first: l.words[i].tok, last: l.words[after-1].tok, afterWord: after})
+	}
+	return out
+}
+
+// continues reports whether token b follows token a closely enough to be part
+// of the same label: the same token, or the next one after a gap narrower
+// than a few characters. Labels printed side by side in a grid of cells are
+// further apart.
+func (l line) continues(a, b int) bool {
+	if a == b {
+		return true
+	}
+	return l.toks[b].X-l.toks[a].Right() < 1.2*l.toks[a].H
+}
+
 // has reports whether the line contains any of the phrases.
 func (l line) has(phrases ...string) bool {
 	for _, p := range phrases {

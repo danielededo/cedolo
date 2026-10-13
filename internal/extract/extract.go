@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/danielededo/cedolo/internal/layout"
 	"github.com/danielededo/cedolo/internal/money"
@@ -95,6 +96,11 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 	p.INPSBase = find(inpsBaseLabels)
 	p.IRPEFBase = find(irpefBaseLabels)
 	p.TFR = find(tfrLabels)
+	p.SocialContributions = find(socialLabels)
+	p.Taxes = find(taxLabels)
+	p.INPS = find(inpsLabels)
+	p.RoundingPrevious = find(roundingPreviousLabels)
+	p.RoundingCurrent = find(roundingCurrentLabels)
 
 	for _, pg := range all {
 		for _, lv := range findLeave(pg) {
@@ -238,38 +244,66 @@ func levelField(lines []line, pageWidth float64) string {
 }
 
 // amountField returns the amount printed for the first label that has one.
+// A label may be split over two stacked lines ("ARROTONDAMENTO" above
+// "ATTUALE"); its value is then searched from the first line of the label.
 func amountField(lines []line, pageWidth float64, labels []string) (payslip.Amount, bool) {
 	for _, label := range labels {
 		for i, l := range lines {
-			first, last, ok := l.find(label)
-			if !ok {
-				continue
-			}
-			for _, t := range amountCandidates(lines, i, first, last, pageWidth) {
-				cents, err := money.Parse(t.Text)
-				if err != nil {
-					continue
+			occs := l.findAll(label)
+			occs = append(occs, stackedLabel(lines, i, label)...)
+			for _, o := range occs {
+				for _, t := range amountCandidates(lines, i, o.first, o.last, pageWidth) {
+					cents, err := money.Parse(t.Text)
+					if err != nil {
+						continue
+					}
+					src := sourceOf(t, l.page)
+					return payslip.Amount{Cents: cents, Status: payslip.Extracted, Source: &src}, true
 				}
-				src := sourceOf(t, l.page)
-				return payslip.Amount{Cents: cents, Status: payslip.Extracted, Source: &src}, true
 			}
 		}
 	}
 	return payslip.Amount{}, false
 }
 
-// amountCandidates returns the amounts to the right of a label on its line,
-// nearest first, or the amounts in the label's cell on the following lines.
-func amountCandidates(lines []line, i, first, last int, pageWidth float64) []layout.Token {
-	l := lines[i]
-	var right []layout.Token
-	for k := last + 1; k < len(l.toks); k++ {
-		if money.IsAmount(l.toks[k].Text) {
-			right = append(right, l.toks[k])
+// stackedLabel finds a label whose first words end line i and whose remaining
+// words start the line just below, at the same horizontal position.
+func stackedLabel(lines []line, i int, label string) []occurrence {
+	pw := strings.Fields(label)
+	if len(pw) < 2 || i+1 >= len(lines) || lines[i+1].y-lines[i].y > 6 {
+		return nil
+	}
+	l, next := lines[i], lines[i+1]
+	var out []occurrence
+	for k := 1; k < len(pw); k++ {
+		head, tail := strings.Join(pw[:k], " "), strings.Join(pw[k:], " ")
+		for _, h := range l.findAll(head) {
+			for _, t := range next.findAll(tail) {
+				tok := next.toks[t.first]
+				if tok.X >= l.toks[h.first].X-5 && tok.X <= l.toks[h.last].Right()+5 {
+					out = append(out, occurrence{first: h.first, last: h.last, afterWord: h.afterWord})
+				}
+			}
 		}
 	}
-	if len(right) > 0 {
-		return right[:1]
+	return out
+}
+
+// amountCandidates returns the amount printed right after a label on its
+// line, or failing that the amounts in the label's cell on the following
+// lines. A value to the right counts only when nothing but currency signs or
+// punctuation separates it from the label, so that a neighbouring block (a
+// calendar, another column) is not mistaken for the label's value.
+func amountCandidates(lines []line, i, first, last int, pageWidth float64) []layout.Token {
+	l := lines[i]
+	for k := last + 1; k < len(l.toks); k++ {
+		t := l.toks[k]
+		if money.IsAmount(t.Text) {
+			return []layout.Token{t}
+		}
+		if !isFiller(t.Text) {
+			break
+		}
 	}
 	x0, x1 := l.cell(first, last, pageWidth)
 	for j := i + 1; j < len(lines) && lines[j].y-l.y <= 3*l.h; j++ {
@@ -280,6 +314,15 @@ func amountCandidates(lines []line, i, first, last int, pageWidth float64) []lay
 		}
 	}
 	return nil
+}
+
+// isFiller reports whether a token carries no information between a label
+// and its value: a currency sign or punctuation.
+func isFiller(s string) bool {
+	if s == "€" || strings.EqualFold(s, "eur") {
+		return true
+	}
+	return strings.IndexFunc(s, func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }) < 0
 }
 
 func sourceOf(t layout.Token, page int) payslip.Source {
@@ -299,9 +342,13 @@ const (
 	colEarnings
 	colDeductions
 	colAmount // a single signed amount column
+	// colInfo is a column whose values are not pay: statistical data,
+	// neutral items, a presence calendar printed beside the table, or any
+	// header the extractor does not recognize.
+	colInfo
 )
 
-func (k colKind) numeric() bool { return k >= colQuantity }
+func (k colKind) numeric() bool { return k >= colQuantity && k <= colAmount }
 
 type column struct {
 	kind   colKind
@@ -324,12 +371,21 @@ func findTable(lines []line, pageWidth float64) (table, bool) {
 		for _, w := range l.words {
 			k, ok := columnWords[w.text]
 			if !ok {
-				continue
+				k = colInfo
 			}
 			t := l.toks[w.tok]
 			// "Voce" as the first column header names the item code.
 			if k == colDescription && w.tok == 0 && w.text == "voce" {
 				k = colCode
+			}
+			// Another word of a header token already classified: the first
+			// recognized word decides ("VAL.UNIT./NEUTRA" is a base column).
+			if n := len(cols); n > 0 && cols[n-1].x0 == t.X && cols[n-1].x1 == t.Right() {
+				if cols[n-1].kind == colInfo && k != colInfo {
+					cols[n-1].kind = k
+					kinds[k] = true
+				}
+				continue
 			}
 			if n := len(cols); n > 0 && cols[n-1].kind == k {
 				cols[n-1].x1 = math.Max(cols[n-1].x1, t.Right())
@@ -376,8 +432,19 @@ func (t table) rows(lines []line, page int) []payslip.Item {
 func (t table) row(l line, page int) []payslip.Item {
 	assigned := make([]colKind, len(l.toks))
 	for i, tok := range l.toks {
-		if numericToken.MatchString(tok.Text) && center(tok) > t.numericStart {
-			assigned[i] = t.nearestNumeric(tok)
+		if center(tok) <= t.numericStart {
+			continue
+		}
+		k := t.nearestColumn(tok)
+		switch {
+		case k.numeric() && numericToken.MatchString(tok.Text):
+			assigned[i] = k
+		case k == colDescription:
+			// A description word printed far to the right.
+		default:
+			// Values under columns that are not pay, and anything that is
+			// not a number under a pay column, are dropped.
+			assigned[i] = colInfo
 		}
 	}
 	var code string
@@ -396,8 +463,12 @@ func (t table) row(l line, page int) []payslip.Item {
 			k = colBase
 		}
 		switch k {
+		case colInfo:
+			continue
 		case colQuantity:
-			qty = tok.Text
+			if qty == "" {
+				qty = tok.Text
+			}
 		case colBase:
 			base = tok.Text
 		case colEarnings, colDeductions, colAmount:
@@ -444,15 +515,12 @@ func (t table) row(l line, page int) []payslip.Item {
 	return items
 }
 
-// nearestNumeric assigns a numeric token to the numeric column whose right
-// edge or center is closest; amounts are usually right-aligned while headers
-// may be centered.
-func (t table) nearestNumeric(tok layout.Token) colKind {
+// nearestColumn returns the kind of the header column whose right edge or
+// center is closest to a token; amounts are usually right-aligned while
+// headers may be centered.
+func (t table) nearestColumn(tok layout.Token) colKind {
 	best, bestDist := colNone, math.Inf(1)
 	for _, c := range t.cols {
-		if !c.kind.numeric() {
-			continue
-		}
 		d := math.Min(math.Abs(tok.Right()-c.x1), math.Abs(center(tok)-(c.x0+c.x1)/2))
 		if d < bestDist {
 			best, bestDist = c.kind, d

@@ -29,10 +29,12 @@ type canvas struct {
 }
 
 // drawnText is one text run: its left edge, baseline and font size in PDF
-// coordinates (origin at the bottom-left corner).
+// coordinates (origin at the bottom-left corner). Text drawn up runs from
+// bottom to top, rotated a quarter turn counterclockwise.
 type drawnText struct {
 	x, y, size float64
 	s          string
+	up         bool
 }
 
 func (c *canvas) text(x, y, size float64, bold bool, s string) {
@@ -42,6 +44,13 @@ func (c *canvas) text(x, y, size float64, bold bool, s string) {
 	}
 	fmt.Fprintf(&c.content, "BT /%s %.1f Tf 1 0 0 1 %.2f %.2f Tm (%s) Tj ET\n", font, size, x, y, pdfString(s))
 	c.texts = append(c.texts, drawnText{x: x, y: y, size: size, s: s})
+}
+
+// textUp draws text rotated a quarter turn counterclockwise, starting at
+// (x, y) and running upward, as some payslips print block titles.
+func (c *canvas) textUp(x, y, size float64, s string) {
+	fmt.Fprintf(&c.content, "BT /F1 %.1f Tf 0 1 -1 0 %.2f %.2f Tm (%s) Tj ET\n", size, x, y, pdfString(s))
+	c.texts = append(c.texts, drawnText{x: x, y: y, size: size, s: s, up: true})
 }
 
 func (c *canvas) textRight(right, y, size float64, bold bool, s string) {

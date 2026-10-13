@@ -33,10 +33,22 @@ How to use this file:
 - `cedolo extract` also reads leave balances (ferie, permessi and ROL, ex
   festività, banca ore) printed as rows, columns or inline, and checks that
   previous plus accrued minus used equals the remaining balance.
+- Extraction now handles contributions, taxes and roundings printed in
+  summary boxes outside the item table, ignores columns that are not pay
+  (neutral items, statistical data, presence calendars), reads labels split
+  over two lines, and decides from the payslip's arithmetic what its printed
+  totals mean. Leave balances are also read from rows of "kind measure"
+  cells and from side-by-side blocks with vertical titles. Checks that can
+  legitimately fail (INPS rate, IRPEF base, TFR ratio) are shown as notes.
 - `cedolo anonymize` prints a payslip's layout with everything but known
   payroll labels masked (names, companies, identifiers, every digit, and
   words revealing health, union membership, family or debts), so a layout
   that cedolo reads badly can be reported without sharing personal data.
+
+### Fixed
+
+- The PDFium text layer joins glyphs of vertical text into words, as poppler
+  does, instead of reporting them as scattered letters.
 
 [Unreleased]: https://github.com/danielededo/cedolo/commits/main
 <!-- After the first release, switch to:

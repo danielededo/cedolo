@@ -72,6 +72,10 @@ type Check struct {
 	Name   string `json:"name"`
 	OK     bool   `json:"ok"`
 	Detail string `json:"detail"`
+	// Advisory checks test a relation that usually holds but legitimately
+	// fails in some situations (special contribution rates, deductible
+	// pension contributions); a mismatch is a note, not an error.
+	Advisory bool `json:"advisory,omitempty"`
 }
 
 // Kind distinguishes ordinary monthly payslips from additional months.
@@ -89,12 +93,17 @@ type LeaveKind string
 const (
 	// Holiday is annual paid leave (ferie).
 	Holiday LeaveKind = "holiday"
-	// ReducedHours is leave from working-time reduction (permessi, ROL).
+	// ReducedHours is leave from working-time reduction (ROL, PAR).
 	ReducedHours LeaveKind = "rol"
+	// Permits is paid leave printed simply as "permessi", which some layouts
+	// keep separate from ROL.
+	Permits LeaveKind = "permits"
 	// FormerHolidays is leave replacing abolished public holidays (ex festività).
 	FormerHolidays LeaveKind = "former_holidays"
 	// HoursBank is overtime banked as time off (banca ore).
 	HoursBank LeaveKind = "hours_bank"
+	// Flexibility is time off from flexible working hours (flessibilità).
+	Flexibility LeaveKind = "flexibility"
 )
 
 // Leave is one leave balance as printed. Quantities are in hundredths of the
@@ -120,12 +129,24 @@ type Payslip struct {
 
 	Items []Item `json:"items"`
 
-	Gross      Amount `json:"gross"`
+	// Gross is the gross pay as printed. Some payroll software excludes
+	// non-taxable items such as expense reimbursements from it.
+	Gross Amount `json:"gross"`
+	// Deductions is everything withheld between gross and net: item table
+	// deductions plus contributions and taxes, whether the payslip prints
+	// them in the item table or in summary boxes.
 	Deductions Amount `json:"deductions"`
 	Net        Amount `json:"net"`
 	INPSBase   Amount `json:"inps_base"`
 	IRPEFBase  Amount `json:"irpef_base"`
 	TFR        Amount `json:"tfr"`
+
+	// Summary values that some layouts print outside the item table.
+	SocialContributions Amount `json:"social_contributions"`
+	Taxes               Amount `json:"taxes"`
+	INPS                Amount `json:"inps"`
+	RoundingPrevious    Amount `json:"rounding_previous"`
+	RoundingCurrent     Amount `json:"rounding_current"`
 
 	Leave []Leave `json:"leave,omitempty"`
 

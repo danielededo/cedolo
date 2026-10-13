@@ -99,10 +99,10 @@ func ExampleFor(s Style) Payslip {
 		Item{Code: "9160", Description: words[6], Amount: 800, Deduction: true, Key: "tax.surcharge.municipal"},
 	)
 	if s == StyleSigned {
-		p.Leave[0].Kind, p.Leave[1].Kind = "Ferie", "Permessi"
+		p.Leave[0].Kind, p.Leave[1].Kind, p.Leave[1].Key = "Ferie", "Permessi", "permits"
 	}
 	if s == StyleGrid {
-		p.Leave[1].Kind = "PERMESSI"
+		p.Leave[1].Kind, p.Leave[1].Key = "PERMESSI", "permits"
 		p.Leave = append(p.Leave, Leave{Kind: "EX FEST.", Key: "former_holidays", Previous: "8,00", Accrued: "2,67", Used: "0,00", Remaining: "10,67"})
 		// This style rounds the net pay up to whole euros with an earnings
 		// item, as several payroll packages do.
