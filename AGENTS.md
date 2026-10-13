@@ -32,7 +32,13 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   poppler).
 - `internal/money`: Italian amount parsing and formatting, always in cents.
 - `internal/pii`: detection of codici fiscali and IBANs.
-- `internal/synth`: synthetic payslips, the only payslip documents tests use.
+- `internal/synth`: synthetic payslips in several layout styles, the only
+  payslip documents tests use.
+- `internal/payslip`: the normalized payslip model with value statuses.
+- `internal/taxonomy`: canonical item keys, bilingual labels, and the
+  description keywords that classify items independently of the vendor.
+- `internal/extract`: the generic extractor and the arithmetic cross-checks
+  (ADR 0006). New layout traits get a test in `foreign_test.go`.
 
 ## Conventions
 

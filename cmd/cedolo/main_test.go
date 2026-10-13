@@ -100,3 +100,28 @@ func TestVerdict(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractEveryStyle(t *testing.T) {
+	for _, style := range []string{"classic", "signed", "grid"} {
+		path := filepath.Join(t.TempDir(), style+".pdf")
+		if err := runSynth([]string{"-style", style, "-o", path}); err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		if err := runExtract([]string{path}, &out); err != nil {
+			t.Fatal(err)
+		}
+		got := out.String()
+		if !strings.Contains(got, "October 2026 (monthly)") || strings.Contains(got, "FAIL") || strings.Contains(got, "inconsistent") {
+			t.Errorf("%s: unexpected extraction:\n%s", style, got)
+		}
+		out.Reset()
+		if err := runExtract([]string{"-json", path}, &out); err != nil {
+			t.Fatal(err)
+		}
+		var ps []map[string]any
+		if err := json.Unmarshal(out.Bytes(), &ps); err != nil || len(ps) != 1 {
+			t.Errorf("%s: JSON output: %v, %d payslips", style, err, len(ps))
+		}
+	}
+}

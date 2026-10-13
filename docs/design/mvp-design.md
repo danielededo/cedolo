@@ -143,6 +143,12 @@ of totals every Italian payslip prints with recognizable labels, arithmetic
 validation on everything, and explicit user confirmation for what remains
 uncertain.
 
+> Update (phase 1): the template-first approach below was replaced by a
+> generic engine that works without knowing the payroll software, with vendor
+> profiles only as tuning. See
+> [ADR 0006](../adr/0006-generic-extraction-first.md). The options analysis
+> is kept as the record of how the decision evolved.
+
 ### Recommendation
 
 Hybrid, without ML: templates first, a label-dictionary fallback for key
