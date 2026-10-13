@@ -12,10 +12,27 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
 
 ## Commands
 
-- There is no code yet; the Go module, build, test and lint commands arrive
-  with phase 0 of the roadmap and must be added here in the same pull request.
+- Build: `go build ./cmd/cedolo`
+- Test: `go test ./...` (the poppler comparison tests are skipped when
+  `pdftotext` is not installed; CI installs it)
+- Lint: `gofmt -l .` must print nothing; `go vet ./...`;
+  `go run honnef.co/go/tools/cmd/staticcheck@2026.1 ./...`
+- Personal data scan: `go run ./cmd/piiscan .`
+- Go version: as declared in `go.mod`; the toolchain is downloaded
+  automatically if the local one is older.
 - Project procedures are available as skills in `.agents/skills/` (exposed to
   Claude Code through symlinks in `.claude/skills/`): `new-adr` and `release`.
+
+## Layout
+
+- `cmd/cedolo`: the CLI. `cmd/piiscan`: the CI scanner for personal identifiers.
+- `internal/layout`: the positioned-text model, the boundary between text
+  layers and the core (ADR 0004).
+- `internal/pdftext`: PDF readers producing a layout (PDFium in WebAssembly,
+  poppler).
+- `internal/money`: Italian amount parsing and formatting, always in cents.
+- `internal/pii`: detection of codici fiscali and IBANs.
+- `internal/synth`: synthetic payslips, the only payslip documents tests use.
 
 ## Conventions
 
@@ -60,6 +77,9 @@ code comments.
 - No code path may send document content, extracted values, or file names
   over the network, and logs never contain them (ADR 0003).
 - No external AI or LLM service is used for extraction (ADR 0003, ADR 0005).
+- Money is always `int64` cents, never floating point.
+- Test documents are generated at test time from `internal/synth`; never add
+  PDF or image fixtures (they are git-ignored on purpose).
 - `LICENSE` (AGPL-3.0) and the body of `CODE_OF_CONDUCT.md` are canonical
   third-party texts: never reword them.
 - When adding, renaming, or removing top-level files or directories, update

@@ -18,6 +18,14 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- `cedolo inspect` reports whether PDF files have a readable text layer,
+  printing counts only so the output contains no personal data.
+- `cedolo layout` prints the positioned text of a PDF as JSON, with `-redact`
+  to mask letters and digits.
+- `cedolo synth` writes a synthetic payslip PDF with invented data.
+
 [Unreleased]: https://github.com/danielededo/cedolo/commits/main
 <!-- After the first release, switch to:
 [Unreleased]: https://github.com/danielededo/cedolo/compare/v0.1.0...HEAD

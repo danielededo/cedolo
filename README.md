@@ -40,11 +40,32 @@ analytics or telemetry. See [ADR 0003](docs/adr/0003-on-device-processing-by-def
 
 Never attach a real payslip or a screenshot of one to an issue or pull request.
 
+## Trying the current CLI
+
+Only the text layer exists so far. With Go installed:
+
+```
+go run ./cmd/cedolo synth -o synthetic.pdf      # write a payslip with invented data
+go run ./cmd/cedolo inspect synthetic.pdf       # check that a PDF has a readable text layer
+```
+
+`cedolo inspect` prints counts only, never names, amounts or file names, so
+its output is safe to share when reporting that a payslip format is not read
+correctly. `cedolo layout -redact FILE` prints the positioned text with every
+letter and digit masked.
+
 ## Development
 
-There is no code yet. The Go module, build and test commands arrive with
-phase 0. See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow
-and [docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for commit messages.
+```
+go build ./cmd/cedolo
+go test ./...
+go vet ./...
+go run ./cmd/piiscan .
+```
+
+Tests that compare against poppler run only when `pdftotext` is installed. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and
+[docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for commit messages.
 
 ## Layout
 
@@ -57,8 +78,18 @@ and [docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for commit messages.
 ├── CODE_OF_CONDUCT.md        # Contributor Covenant
 ├── SECURITY.md               # private vulnerability reporting
 ├── CHANGELOG.md              # Keep a Changelog, SemVer
+├── go.mod, go.sum            # Go module
+├── cmd/
+│   ├── cedolo/               # the command-line tool
+│   └── piiscan/              # CI check for codici fiscali and IBANs
+├── internal/
+│   ├── layout/               # positioned text: the boundary between PDF readers and the core
+│   ├── pdftext/              # PDF readers (PDFium in WebAssembly, poppler)
+│   ├── money/                # Italian amount parsing, in cents
+│   ├── pii/                  # personal identifier detection
+│   └── synth/                # synthetic payslips for tests
 ├── docs/
-│   ├── design/               # product and architecture design
+│   ├── design/               # product and architecture design, spike reports
 │   ├── adr/                  # architecture decision records
 │   ├── BRANCHING-STRATEGY.md
 │   ├── COMMIT-CONVENTION.md
@@ -66,7 +97,7 @@ and [docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for commit messages.
 │   └── AI-AGENTS.md          # how agent instructions and skills are organized
 ├── .agents/skills/           # agent procedures: new-adr, release
 ├── .claude/skills/           # symlinks to .agents/skills
-└── .github/                  # issue and pull request templates, Dependabot
+└── .github/                  # CI workflow, issue and pull request templates, Dependabot
 ```
 
 ## License
