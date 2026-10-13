@@ -1,6 +1,14 @@
-# Contributing to <PROJECT_NAME>
+# Contributing to cedolo
 
 Thanks for taking the time to contribute! This project is maintained by a solo developer (or a small team), so the process is intentionally lightweight. The goal of this document is to make contributions smooth, not to add bureaucracy.
+
+## Personal data comes first
+
+cedolo works on payslips, which contain sensitive personal data. Never commit,
+attach, or paste a real payslip, a screenshot of one, or values copied from
+one, in code, test fixtures, issues, pull requests, or discussions. Test data
+in this repository is synthetic. CI rejects fixtures that contain a valid
+codice fiscale or IBAN, but that check is a safety net, not a permission.
 
 ## Ways to contribute
 
@@ -18,9 +26,16 @@ Thanks for taking the time to contribute! This project is maintained by a solo d
    - `docs/short-description` for documentation
 3. **Make your changes.** Keep the scope of each PR small and focused: one logical change per PR is much easier to review than a grab-bag.
 4. **Follow the commit convention.** This project uses [Conventional Commits](https://www.conventionalcommits.org/); see [docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for the format and examples.
-5. **Test your changes.** Run the project's test suite and linters before opening the PR. [TO BE FILLED IN: project-specific commands, e.g. `make test`]
+5. **Test your changes.** Run `go vet ./...` and `go test ./...` before opening the PR; CI runs the same checks plus a formatting check.
 6. **Update documentation** if your change affects behavior, configuration, or public APIs. Add an entry to the `Unreleased` section of `CHANGELOG.md` when the change is user-visible.
 7. **Open a pull request** against `main` and fill in the PR template.
+
+## Sign-off
+
+Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/).
+Sign off every commit with `git commit -s`, which adds a `Signed-off-by:` line
+certifying that you have the right to submit the change under the project's
+license (AGPL-3.0-or-later).
 
 ## Pull request expectations
 

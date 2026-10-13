@@ -6,6 +6,15 @@ labels: bug
 assignees: ''
 ---
 
+<!--
+IMPORTANT: never attach real payslips, screenshots of payslips, or any personal
+data (names, codice fiscale, IBAN, amounts from your own documents). Issues are
+public and their edit history is kept even after you delete content. Describe
+the layout in words or use the synthetic fixtures instead.
+-->
+
+- [ ] I confirm this issue contains no real payslip, screenshot of a payslip, or personal data.
+
 ## Description
 
 <!-- A clear and concise description of the bug. -->
@@ -32,4 +41,4 @@ assignees: ''
 
 ## Additional context
 
-<!-- Anything else that helps: configuration, screenshots, related issues. -->
+<!-- Anything else that helps: configuration, related issues. No screenshots of real payslips. -->

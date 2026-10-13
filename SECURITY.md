@@ -8,12 +8,12 @@ not backed by a dedicated security team.
 
 **Please do not open a public issue for security problems.**
 
-Instead, use one of these private channels:
+Instead, use GitHub private vulnerability reporting: go to the **Security**
+tab of the repository and click **Report a vulnerability**.
 
-1. **GitHub private vulnerability reporting** (preferred, if enabled for this
-   repository): go to the **Security** tab and click **Report a vulnerability**.
-2. **Email**: send a report to `<SECURITY_CONTACT_EMAIL>` with a subject line
-   starting with `[SECURITY]`.
+Never attach real payslips, screenshots of payslips, or any personal data to a
+report. If a reproduction needs a document, describe the layout or use the
+synthetic fixtures in the repository.
 
 A useful report includes:
 
@@ -44,9 +44,11 @@ branch) receive security fixes.
 | latest  | yes       |
 | older   | no        |
 
-[TO BE FILLED IN: adjust this table if the project maintains multiple release lines]
-
 ## Scope notes
+
+- cedolo processes payslips on the user's device. Any code path that sends
+  document content, extracted values, or file names over the network is a
+  security issue and in scope.
 
 - Vulnerabilities in third-party dependencies should be reported upstream first;
   a report here is still welcome if this project needs to update or mitigate.

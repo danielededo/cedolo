@@ -666,11 +666,10 @@ payslips all need a check before the repository is public.
 
 Open questions for the maintainer:
 
-- Confirm AGPL-3.0-or-later (ADR 0002), and whether templates should share it.
+- Whether templates should stay under AGPL-3.0-or-later (ADR 0002) or get a
+  separate data license.
 - Confirm the Go core boundary and PDF strategy (ADR 0004) after the spike.
 - Which payroll software produces the maintainer's payslips, and which public
   samples are available, to choose templates two and three.
 - Static web app or local binary for v0.2 (section 4), to be decided after v0.1.
 - Whether the public app should be hosted on GitHub Pages or a project domain.
-- Whether to run init-from-template now, which rewrites the README, license and
-  changelog for cedolo.
