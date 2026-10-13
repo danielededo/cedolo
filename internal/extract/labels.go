@@ -1,5 +1,7 @@
 package extract
 
+import "strings"
+
 // Labels are normalized phrases (see taxonomy.Normalize), ordered from most to
 // least specific within each list: the first phrase that yields a value wins.
 
@@ -51,3 +53,34 @@ var (
 	thirteenthWords = []string{"tredicesima", "13ma", "13a mensilita", "gratifica natalizia", "13 mensilita"}
 	fourteenthWords = []string{"quattordicesima", "14ma", "14a mensilita", "14 mensilita"}
 )
+
+// Vocabulary returns every word the extractor recognizes in labels, column
+// headers, periods and leave tables, normalized. The anonymizer keeps these
+// words and masks everything else.
+func Vocabulary() []string {
+	var phrases []string
+	for _, list := range [][]string{grossLabels, deductionLabels, netLabels, inpsBaseLabels, irpefBaseLabels,
+		tfrLabels, periodLabels, thirteenthWords, fourteenthWords} {
+		phrases = append(phrases, list...)
+	}
+	for w := range columnWords {
+		phrases = append(phrases, w)
+	}
+	for w := range headerLabelWords {
+		phrases = append(phrases, w)
+	}
+	for w := range monthNames {
+		phrases = append(phrases, w)
+	}
+	for _, p := range leaveKinds {
+		phrases = append(phrases, p.words)
+	}
+	for _, p := range leaveMeasures {
+		phrases = append(phrases, p.words)
+	}
+	var words []string
+	for _, p := range phrases {
+		words = append(words, strings.Fields(p)...)
+	}
+	return words
+}

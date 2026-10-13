@@ -37,6 +37,7 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
 - `internal/payslip`: the normalized payslip model with value statuses.
 - `internal/taxonomy`: canonical item keys, bilingual labels, and the
   description keywords that classify items independently of the vendor.
+- `internal/anonymize`: allowlist anonymizer for sharing real layouts.
 - `internal/extract`: the generic extractor and the arithmetic cross-checks
   (ADR 0006). New layout traits get a test in `foreign_test.go`.
 

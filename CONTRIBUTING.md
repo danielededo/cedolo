@@ -10,6 +10,20 @@ one, in code, test fixtures, issues, pull requests, or discussions. Test data
 in this repository is synthetic. CI rejects fixtures that contain a valid
 codice fiscale or IBAN, but that check is a safety net, not a permission.
 
+## Reporting a payslip layout
+
+When cedolo misreads a payslip, the most useful report is its anonymized
+layout, never the payslip itself:
+
+1. Run `cedolo anonymize payslip.pdf > layout.json` on your own machine.
+2. Open `layout.json` and read every `"text"` value. Only payroll labels
+   should be readable; anything else (a name, a street, a company) should
+   appear as `Xxxx` and every number as `0`. If something personal survived,
+   do not share the file and report that instead, since it is a bug.
+3. Attach `layout.json` to an issue, with a description in words of what
+   cedolo got wrong (for example "the net pay is read from the wrong cell").
+   Do not include the amounts from your payslip.
+
 ## Ways to contribute
 
 - **Report a bug**: open an issue using the bug report template.
