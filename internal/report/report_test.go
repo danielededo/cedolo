@@ -2,6 +2,8 @@ package report
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"html"
 	"strings"
 	"testing"
@@ -140,5 +142,23 @@ func TestContract(t *testing.T) {
 	c = Build(i18n.IT, slips, "").Contract
 	if c == nil || c.Code != "" || !strings.Contains(c.Note, "cedolo ccnl -search") {
 		t.Errorf("contract without code = %+v", c)
+	}
+}
+
+// The inline script must render verbatim, or pages embedding the report
+// with ScriptHash in their policy would block it.
+func TestScriptHash(t *testing.T) {
+	var b bytes.Buffer
+	if err := Render(&b, i18n.EN, months(t, 2), ""); err != nil {
+		t.Fatal(err)
+	}
+	_, rest, _ := strings.Cut(b.String(), "<script>")
+	script, _, ok := strings.Cut(rest, "</script>")
+	if !ok || strings.Count(b.String(), "<script") != 1 {
+		t.Fatal("the report should have exactly one inline script")
+	}
+	sum := sha256.Sum256([]byte(script))
+	if want := "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"; ScriptHash() != want {
+		t.Errorf("ScriptHash() = %s, rendered script hashes to %s", ScriptHash(), want)
 	}
 }

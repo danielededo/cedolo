@@ -1,0 +1,13 @@
+{
+  "name": "cedolo-web",
+  "private": true,
+  "description": "cedolo web app: static files around the Go core compiled to WebAssembly",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "pdfjs-dist": "6.3.289"
+  }
+}

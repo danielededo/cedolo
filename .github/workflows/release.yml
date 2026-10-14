@@ -55,9 +55,16 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Build
         run: |
           mkdir dist
+          (cd web && npm ci --omit=optional)
+          go run ./cmd/webbuild -o "cedolo-web_${TAG}" -version "$TAG"
+          zip -qr "dist/cedolo-web_${TAG}.zip" "cedolo-web_${TAG}"
           for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
             os="${target%/*}" arch="${target#*/}"
             name="cedolo_${TAG}_${os}_${arch}"

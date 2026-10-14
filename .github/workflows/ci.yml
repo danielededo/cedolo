@@ -41,3 +41,29 @@ jobs:
 
       - name: Scan for personal identifiers
         run: go run ./cmd/piiscan .
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install pdf.js
+        run: npm ci --omit=optional
+        working-directory: web
+
+      - name: Build the web app
+        run: go run ./cmd/webbuild -o dist/web
+
+      - name: Test that the web app reads payslips as the CLI does
+        run: npm test
+        working-directory: web

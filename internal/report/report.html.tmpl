@@ -335,6 +335,12 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
       seg.addEventListener("blur", function () { tip.hidden = true; });
     });
   });
+  // Inside the web app the report sits in a frame: tell it the height.
+  if (window.parent !== window) {
+    var tell = function () { window.parent.postMessage({ cedoloHeight: document.documentElement.scrollHeight }, "*"); };
+    window.addEventListener("load", tell);
+    window.addEventListener("resize", tell);
+  }
 })();
 </script>
 </body>

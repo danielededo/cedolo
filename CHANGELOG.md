@@ -18,6 +18,20 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- A web app: drop the PDFs of your payslips in the page and get the report,
+  in Italian or English. It runs entirely in the browser (pdf.js reads the
+  PDFs, the cedolo core runs as WebAssembly): files are never uploaded and
+  nothing is saved. It is a set of static files, built with
+  `go run ./cmd/webbuild`, attached to each release and publishable with
+  GitHub Pages.
+
+### Fixed
+
+- The synthetic "grid" payslip printed the contract name past the edge of
+  the page.
+
 ## [0.1.0] - 2026-10-14
 
 ### Added

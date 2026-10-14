@@ -26,7 +26,10 @@ func main() {
 				return err
 			}
 			if d.IsDir() {
-				if d.Name() == ".git" {
+				// Version control data, downloaded packages and build
+				// output are not ours and are never committed.
+				switch d.Name() {
+				case ".git", "node_modules", "dist":
 					return filepath.SkipDir
 				}
 				return nil

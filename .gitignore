@@ -76,3 +76,6 @@ testdata/private/
 /dist/
 *.test
 *.out
+
+### Web app
+web/node_modules/

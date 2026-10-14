@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Nothing leaves the page: scripts, workers and requests are limited to
+     this site, and the report frame only runs its own known script. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' {{REPORT_SCRIPT_HASH}}; worker-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Capisci il tuo cedolino: cedolo legge i PDF sul tuo dispositivo, controlla i totali e spiega ogni voce.">
+<title>cedolo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M9 8h14v16H9z' fill='%23fff'/%3E%3Cpath d='M12 12h8M12 16h8M12 20h5' stroke='%232a78d6' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script src="wasm_exec.js"></script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap bar-inner">
+    <span class="brand">cedolo</span>
+    <div class="lang" role="group" data-t-aria="web.language">
+      <button type="button" data-lang="it">IT</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <h1 data-t="web.heading"></h1>
+    <p class="lead" data-t="web.lead"></p>
+    <ul class="promises">
+      <li data-t="web.private.device"></li>
+      <li data-t="web.private.network"></li>
+      <li data-t="web.private.storage"></li>
+    </ul>
+  </section>
+
+  <section id="pick">
+    <label class="drop" id="drop" for="files">
+      <input type="file" id="files" accept="application/pdf,.pdf" multiple disabled>
+      <span class="drop-title" data-t="web.drop"></span>
+      <span class="drop-choose" data-t="web.choose"></span>
+      <span class="drop-hint" data-t="web.drop.hint"></span>
+    </label>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="result" hidden>
+    <div class="toolbar">
+      <button type="button" class="primary" id="download" data-t="web.download"></button>
+      <button type="button" id="restart" data-t="web.restart"></button>
+    </div>
+    <details class="files" id="files-box">
+      <summary data-t="web.files"></summary>
+      <ul id="file-list"></ul>
+    </details>
+    <p class="notice" id="none" hidden data-t="web.none"></p>
+    <iframe id="report" title="Report" sandbox="allow-scripts" hidden></iframe>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p data-t="report.disclaimer"></p>
+  <p><a href="https://github.com/danielededo/cedolo" rel="noreferrer" data-t="web.source"></a> · AGPL-3.0 · <span id="version"></span></p>
+</footer>
+</body>
+</html>

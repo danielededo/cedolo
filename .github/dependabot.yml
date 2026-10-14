@@ -1,7 +1,8 @@
 # Dependabot base configuration.
 # Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
-# GitHub Actions and Go modules are kept up to date weekly.
+# GitHub Actions, Go modules and the web app's npm packages are kept up to
+# date weekly.
 
 version: 2
 
@@ -29,3 +30,11 @@ updates:
       go:
         patterns:
           - "*"
+
+  # Keep pdf.js, the web app's only npm dependency, up to date.
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
