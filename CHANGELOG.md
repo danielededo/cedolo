@@ -20,6 +20,14 @@ How to use this file:
 
 ### Added
 
+- Payslips protected by a password open in the CLI, which asks for it in
+  the terminal without showing it (or reads `CEDOLO_PDF_PASSWORD`), and in
+  the web app, which asks in the page. A password that worked is tried first
+  on the next protected file, since one employer usually uses one; it is
+  kept in memory only.
+- `cedolo synth -password` and `-rotate` write protected and turned
+  synthetic payslips, for tests.
+
 - A web app: drop the PDFs of your payslips in the page and get the report,
   in Italian or English. It runs entirely in the browser (pdf.js reads the
   PDFs, the cedolo core runs as WebAssembly): files are never uploaded and
@@ -42,6 +50,15 @@ How to use this file:
 
 ### Fixed
 
+- Two complete payslips of the same month in one file are read as two, not
+  merged into one that does not add up.
+- A file that cannot be read no longer stops the others: the CLI and the web
+  app report it in plain words (protected, damaged, too large) and carry on.
+- The same payslip given twice is counted once, with a note.
+- The web app reads pages stored turned for display with their own
+  coordinates, and uses the pdf.js build for older browsers, where protected
+  PDFs otherwise failed to open; a browser that cannot run it gets a plain
+  message instead of an empty page.
 - The synthetic "grid" payslip printed the contract name past the edge of
   the page.
 

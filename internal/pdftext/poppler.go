@@ -19,16 +19,33 @@ type Poppler struct{}
 
 func (Poppler) Name() string { return "poppler" }
 
-func (Poppler) ReadFile(path string) (layout.Document, error) {
+func (p Poppler) ReadFile(path string) (layout.Document, error) {
+	return p.ReadFileWithPassword(path, "")
+}
+
+// ReadFileWithPassword passes the password to pdftotext on its command line,
+// where other users of the same computer could see it in the process list.
+func (Poppler) ReadFileWithPassword(path, password string) (layout.Document, error) {
 	bin, err := exec.LookPath("pdftotext")
 	if err != nil {
 		return layout.Document{}, errors.New("pdftotext not found; install poppler-utils or use the pdfium reader")
 	}
+	args := []string{"-bbox", "-enc", "UTF-8"}
+	if password != "" {
+		args = append(args, "-upw", password)
+	}
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command(bin, "-bbox", "-enc", "UTF-8", path, "-")
+	cmd := exec.Command(bin, append(args, path, "-")...)
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
-		return layout.Document{}, fmt.Errorf("pdftotext: %w: %s", err, strings.TrimSpace(stderr.String()))
+		msg := strings.TrimSpace(stderr.String())
+		switch {
+		case strings.Contains(msg, "Incorrect password"):
+			return layout.Document{}, ErrPassword
+		case strings.Contains(msg, "May not be a PDF"), strings.Contains(msg, "Couldn't find trailer"):
+			return layout.Document{}, ErrDamaged
+		}
+		return layout.Document{}, fmt.Errorf("pdftotext: %w: %s", err, msg)
 	}
 	return parseBBox(stdout.Bytes())
 }

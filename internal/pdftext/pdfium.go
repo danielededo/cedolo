@@ -1,6 +1,7 @@
 package pdftext
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/klippa-app/go-pdfium"
+	pdfiumerrors "github.com/klippa-app/go-pdfium/errors"
 	"github.com/klippa-app/go-pdfium/references"
 	"github.com/klippa-app/go-pdfium/requests"
 	"github.com/klippa-app/go-pdfium/webassembly"
@@ -40,7 +42,11 @@ func pdfiumInstance() (pdfium.Pdfium, error) {
 	return pdfiumPool.GetInstance(30 * time.Second)
 }
 
-func (PDFium) ReadFile(path string) (layout.Document, error) {
+func (p PDFium) ReadFile(path string) (layout.Document, error) {
+	return p.ReadFileWithPassword(path, "")
+}
+
+func (PDFium) ReadFileWithPassword(path, password string) (layout.Document, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return layout.Document{}, err
@@ -51,8 +57,17 @@ func (PDFium) ReadFile(path string) (layout.Document, error) {
 	}
 	defer inst.Close()
 
-	opened, err := inst.OpenDocument(&requests.OpenDocument{File: &data})
-	if err != nil {
+	open := &requests.OpenDocument{File: &data}
+	if password != "" {
+		open.Password = &password
+	}
+	opened, err := inst.OpenDocument(open)
+	switch {
+	case errors.Is(err, pdfiumerrors.ErrPassword):
+		return layout.Document{}, ErrPassword
+	case errors.Is(err, pdfiumerrors.ErrFormat), errors.Is(err, pdfiumerrors.ErrFile):
+		return layout.Document{}, ErrDamaged
+	case err != nil:
 		return layout.Document{}, fmt.Errorf("open PDF: %w", err)
 	}
 	defer inst.FPDF_CloseDocument(&requests.FPDF_CloseDocument{Document: opened.Document})

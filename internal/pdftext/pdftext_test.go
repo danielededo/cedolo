@@ -1,6 +1,7 @@
 package pdftext
 
 import (
+	"errors"
 	"math"
 	"os"
 	"os/exec"
@@ -129,5 +130,37 @@ func TestByName(t *testing.T) {
 	}
 	if _, err := ByName("ocr"); err == nil {
 		t.Error("ByName accepted an unknown reader")
+	}
+}
+
+func TestPassword(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "locked.pdf")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := synth.WritePDFWith(f, synth.Example(), synth.StyleClassic, synth.Options{Password: "segreto"}); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	damaged := filepath.Join(t.TempDir(), "damaged.pdf")
+	os.WriteFile(damaged, []byte("not a pdf"), 0o600)
+	for _, r := range readers {
+		if _, err := exec.LookPath("pdftotext"); err != nil && r.Name() == "poppler" {
+			continue
+		}
+		if _, err := r.ReadFile(path); !errors.Is(err, ErrPassword) {
+			t.Errorf("%s without password: %v", r.Name(), err)
+		}
+		if _, err := r.ReadFileWithPassword(path, "sbagliata"); !errors.Is(err, ErrPassword) {
+			t.Errorf("%s with a wrong password: %v", r.Name(), err)
+		}
+		doc, err := r.ReadFileWithPassword(path, "segreto")
+		if err != nil || len(doc.Pages) != 1 || len(doc.Pages[0].Tokens) < 50 {
+			t.Errorf("%s with the password: %v", r.Name(), err)
+		}
+		if _, err := r.ReadFile(damaged); !errors.Is(err, ErrDamaged) {
+			t.Errorf("%s on a damaged file: %v", r.Name(), err)
+		}
 	}
 }

@@ -17,7 +17,23 @@ const (
 // using the standard Helvetica fonts with an explicit width table so that text
 // positions are well defined for every reader.
 func WritePDF(w io.Writer, p Payslip, s Style) error {
-	_, err := w.Write(render(p, s).document())
+	return WritePDFWith(w, p, s, Options{})
+}
+
+// Options vary how a synthetic PDF is written, to test readers on traits
+// real payslips have.
+type Options struct {
+	// Password protects the document, as payslips sent by email often are,
+	// with the PDF standard security handler (revision 3, 128-bit RC4).
+	Password string
+	// Rotate turns the page for display by 90, 180 or 270 degrees, as
+	// landscape payslips are often stored.
+	Rotate int
+}
+
+// WritePDFWith is WritePDF with options.
+func WritePDFWith(w io.Writer, p Payslip, s Style, o Options) error {
+	_, err := w.Write(render(p, s).document(o))
 	return err
 }
 
@@ -61,7 +77,7 @@ func (c *canvas) rule(x1, y, x2 float64) {
 	fmt.Fprintf(&c.content, "0.5 w %.2f %.2f m %.2f %.2f l S\n", x1, y, x2, y)
 }
 
-func (c *canvas) document() []byte {
+func (c *canvas) document(o Options) []byte {
 	widths := make([]string, 0, 224)
 	for code := 32; code <= 255; code++ {
 		widths = append(widths, fmt.Sprint(glyphWidth(byte(code))))
@@ -73,11 +89,19 @@ func (c *canvas) document() []byte {
 	objects := []string{
 		"<< /Type /Catalog /Pages 2 0 R >>",
 		"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-		fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %g %g] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>", pageWidth, pageHeight),
+		fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %g %g] /Rotate %d /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>", pageWidth, pageHeight, o.Rotate),
 		font("Helvetica"),
 		font("Helvetica-Bold"),
-		fmt.Sprintf("<< /Length %d >>\nstream\n%sendstream", c.content.Len(), c.content.String()),
+		"", // content stream, below
 	}
+	content := c.content.Bytes()
+	var enc *encryption
+	if o.Password != "" {
+		enc = newEncryption(o.Password)
+		content = enc.object(6, content)
+		objects = append(objects, enc.dict())
+	}
+	objects[5] = fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream", len(content), content)
 	var b bytes.Buffer
 	b.WriteString("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
 	offsets := make([]int, len(objects))
@@ -90,7 +114,11 @@ func (c *canvas) document() []byte {
 	for _, off := range offsets {
 		fmt.Fprintf(&b, "%010d 00000 n \n", off)
 	}
-	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(objects)+1, xref)
+	trailer := fmt.Sprintf("/Size %d /Root 1 0 R", len(objects)+1)
+	if enc != nil {
+		trailer += fmt.Sprintf(" /Encrypt %d 0 R /ID [<%x> <%x>]", len(objects), enc.id, enc.id)
+	}
+	fmt.Fprintf(&b, "trailer\n<< %s >>\nstartxref\n%d\n%%%%EOF\n", trailer, xref)
 	return b.Bytes()
 }
 

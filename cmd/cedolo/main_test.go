@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -223,5 +225,63 @@ func TestCCNLCommand(t *testing.T) {
 	}
 	if err := runCCNL(nil, &out); err == nil {
 		t.Error("no arguments accepted")
+	}
+}
+
+func TestReadingIsResilient(t *testing.T) {
+	dir := t.TempDir()
+	good := filepath.Join(dir, "good.pdf")
+	locked := filepath.Join(dir, "locked.pdf")
+	locked2 := filepath.Join(dir, "locked2.pdf")
+	damaged := filepath.Join(dir, "damaged.pdf")
+	if err := runSynth([]string{"-o", good}); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{locked, locked2} {
+		if err := runSynth([]string{"-style", "grid", "-password", "segreto", "-o", p}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	os.WriteFile(damaged, []byte("not a pdf"), 0o600)
+
+	var warn bytes.Buffer
+	warnings = &warn
+	defer func() { warnings = os.Stderr }()
+
+	// A damaged file is skipped; the others are read.
+	asked := 0
+	askPassword = func(string) (string, error) { asked++; return "segreto", nil }
+	slips, err := readAll("pdfium", []string{good, damaged, locked, locked2})
+	if err != nil || len(slips) != 3 {
+		t.Fatalf("readAll = %d payslips, %v", len(slips), err)
+	}
+	if !strings.Contains(warn.String(), "damaged.pdf: the file is not a PDF or is damaged (skipped)") {
+		t.Errorf("warnings: %q", warn.String())
+	}
+	// The password is asked once and reused for the next protected file.
+	if asked != 1 {
+		t.Errorf("asked for a password %d times", asked)
+	}
+
+	// Without a terminal, the environment variable is used.
+	askPassword = func(string) (string, error) { return "", errors.New("no terminal") }
+	t.Setenv(passwordEnv, "segreto")
+	if slips, err := readAll("pdfium", []string{locked}); err != nil || len(slips) != 1 {
+		t.Errorf("with %s: %d payslips, %v", passwordEnv, len(slips), err)
+	}
+	t.Setenv(passwordEnv, "")
+	warn.Reset()
+	if _, err := readAll("pdfium", []string{locked}); err == nil || !strings.Contains(warn.String(), passwordEnv) {
+		t.Errorf("no password available: %v, %q", err, warn.String())
+	}
+
+	// The same payslip given twice is counted once in the report.
+	warn.Reset()
+	out := filepath.Join(dir, "r.html")
+	if err := runReport([]string{"-o", out, good, good}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(warn.String(), "1 repeated payslip(s) ignored") {
+		t.Errorf("warnings: %q", warn.String())
 	}
 }

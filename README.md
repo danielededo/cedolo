@@ -68,6 +68,7 @@ To build it from source, with Go and Node.js installed:
 (cd web && npm ci --omit=optional --ignore-scripts)
 go run ./cmd/webbuild -o dist/web
 (cd web && npm test)        # the web app must read payslips as the CLI does
+(cd web && npx playwright install chromium && npm run test:e2e)   # in a real browser
 ```
 
 ## Usage
@@ -81,7 +82,10 @@ cedolo report -o report.html *.pdf   # an offline HTML report with charts
 cedolo ccnl -search metalmeccanici   # look up a collective agreement (CCNL)
 ```
 
-Run `cedolo help` for every command and option.
+Run `cedolo help` for every command and option. Payslips protected by a
+password (often the codice fiscale) are opened after cedolo asks for it in
+the terminal; scripts can set `CEDOLO_PDF_PASSWORD` instead. Files that
+cannot be read are reported and skipped.
 
 `cedolo extract` does not need to know which payroll software produced the
 payslip. Every value is marked as verified (confirmed by the payslip's own

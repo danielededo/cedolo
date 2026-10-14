@@ -1,6 +1,6 @@
 // cedolo web app: reads payslip PDFs with pdf.js and analyzes them with the
 // Go core compiled to WebAssembly. Files are read in memory and never sent;
-// nothing is stored, not even the chosen language.
+// nothing is stored, not even the chosen language or a password.
 import * as pdfjs from './pdfjs/pdf.min.mjs';
 import { layoutOf, hasText } from './layout.js';
 
@@ -11,16 +11,22 @@ import { layoutOf, hasText } from './layout.js';
 // worker-src 'none' in the policy keeps it that way.
 globalThis.pdfjsWorker = await import('./pdfjs/pdf.worker.min.mjs');
 
-// Limits that keep a huge or hostile file from freezing the page.
+// Limits that keep huge, hostile or too many files from freezing the page.
 const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 50;
+const MAX_FILES = 60;
 
 const $ = (id) => document.getElementById(id);
 const state = {
   lang: navigator.language?.toLowerCase().startsWith('it') ? 'it' : 'en',
   texts: {},
-  files: [], // {name, layout, error, count}
+  // {name, layout, error, refused: [key, ...args], read, repeated}
+  files: [],
+  tooMany: false,
   report: '',
+  // Passwords that opened a file, tried first on the next protected one;
+  // payslips from one employer usually share one. Memory only.
+  passwords: [],
 };
 
 // t returns a text, filling %s and %d in order.
@@ -49,47 +55,99 @@ async function start() {
     const { instance } = await WebAssembly.instantiateStreaming(fetch('cedolo.wasm'), go.importObject);
     go.run(instance);
   } catch (err) {
-    status(`cedolo: ${err.message}`, true);
+    status(`${window.cedoloUnsupported} (${err.message})`, true);
     return;
   }
   applyTexts();
   $('version').textContent = globalThis.cedolo.version;
   $('files').disabled = false;
   status('');
+  window.cedoloReady = true;
+}
+
+// askPassword shows the password form for a file and resolves with the
+// password typed, or null when the file is skipped.
+function askPassword(name, wrong) {
+  const form = $('pw-form');
+  $('pw-title').textContent = t('web.password.title', name);
+  $('pw-error').hidden = !wrong;
+  $('pw-input').value = '';
+  form.hidden = false;
+  form.scrollIntoView({ block: 'nearest' });
+  $('pw-input').focus();
+  return new Promise((resolve) => {
+    const done = (value) => {
+      form.hidden = true;
+      $('pw-input').value = '';
+      form.removeEventListener('submit', onSubmit);
+      $('pw-skip').removeEventListener('click', onSkip);
+      resolve(value);
+    };
+    const onSubmit = (ev) => {
+      ev.preventDefault(); // never submitted anywhere
+      done($('pw-input').value);
+    };
+    const onSkip = () => done(null);
+    form.addEventListener('submit', onSubmit);
+    $('pw-skip').addEventListener('click', onSkip);
+  });
 }
 
 async function readFile(file) {
-  const entry = { name: file.name, layout: null, error: '', refused: null, count: 0 };
+  const entry = { name: file.name, layout: null, error: '', refused: null, read: 0, repeated: 0 };
   if (file.size > MAX_BYTES) {
     entry.refused = ['web.file.too_big', MAX_BYTES / 1024 / 1024];
     return entry;
   }
+  const task = pdfjs.getDocument({
+    data: new Uint8Array(await file.arrayBuffer()),
+    // Only text is read: no fonts handed to the browser, no system fonts,
+    // no forms or scripts, no canvas.
+    disableFontFace: true,
+    useSystemFonts: false,
+    enableXfa: false,
+    isOffscreenCanvasSupported: false,
+    standardFontDataUrl: './pdfjs/standard_fonts/',
+    cMapUrl: './pdfjs/cmaps/',
+    cMapPacked: true,
+    verbosity: 0,
+  });
+  // Known passwords first, then ask; a skipped file stops here.
+  let untried = [...state.passwords];
+  let tried = null;
+  task.onPassword = async (update, reason) => {
+    if (untried.length) {
+      tried = untried.shift();
+      update(tried);
+      return;
+    }
+    const wrong = reason === pdfjs.PasswordResponses.INCORRECT_PASSWORD && tried !== null && !state.passwords.includes(tried);
+    tried = await askPassword(file.name, wrong);
+    if (tried === null) {
+      entry.refused = ['web.file.locked'];
+      task.destroy();
+    } else {
+      update(tried);
+    }
+  };
   try {
-    const task = pdfjs.getDocument({
-      data: new Uint8Array(await file.arrayBuffer()),
-      // Only text is read: no fonts handed to the browser, no system fonts,
-      // no forms or scripts, no canvas.
-      disableFontFace: true,
-      useSystemFonts: false,
-      enableXfa: false,
-      isOffscreenCanvasSupported: false,
-      standardFontDataUrl: './pdfjs/standard_fonts/',
-      cMapUrl: './pdfjs/cmaps/',
-      cMapPacked: true,
-      verbosity: 0,
-    });
-    try {
-      const doc = await task.promise;
-      if (doc.numPages > MAX_PAGES) {
-        entry.refused = ['web.file.too_long', MAX_PAGES];
-      } else {
-        entry.layout = await layoutOf(doc);
-      }
-    } finally {
-      await task.destroy();
+    const doc = await task.promise;
+    if (tried !== null && !state.passwords.includes(tried)) state.passwords.push(tried);
+    if (doc.numPages > MAX_PAGES) {
+      entry.refused = ['web.file.too_long', MAX_PAGES];
+    } else {
+      entry.layout = await layoutOf(doc);
     }
   } catch (err) {
-    entry.error = err.message || String(err);
+    if (entry.refused) {
+      // skipped by the person
+    } else if (err?.name === 'InvalidPDFException') {
+      entry.refused = ['web.file.damaged'];
+    } else {
+      entry.error = err.message || String(err);
+    }
+  } finally {
+    await task.destroy();
   }
   return entry;
 }
@@ -98,20 +156,31 @@ function analyze() {
   const readable = state.files.filter((f) => f.layout && hasText(f.layout));
   const result = globalThis.cedolo.analyze(JSON.stringify(readable.map((f) => f.layout)), state.lang);
   if (result.error) throw new Error(result.error);
-  readable.forEach((f, i) => { f.count = result.perDocument[i]; });
+  readable.forEach((f, i) => {
+    const r = result.perDocument[i];
+    if (r.error) f.error = r.error;
+    f.read = r.read ?? 0;
+    f.repeated = r.repeated ?? 0;
+  });
   state.report = result.report;
+}
+
+function describe(f) {
+  if (f.refused) return ['bad', '!', t(...f.refused)];
+  if (f.error) return ['bad', '!', t('web.file.error', f.error)];
+  if (!hasText(f.layout)) return ['warn', '~', t('web.file.notext')];
+  if (f.read === 0) return ['warn', '~', t('web.file.none')];
+  if (f.repeated > 0) return ['warn', '~', t('web.file.repeated', f.read, f.repeated)];
+  return ['ok', '✓', t('web.file.ok', f.read)];
 }
 
 function render() {
   const list = $('file-list');
   list.replaceChildren();
+  let attention = false;
   for (const f of state.files) {
-    let cls, icon, note;
-    if (f.refused) [cls, icon, note] = ['bad', '!', t(...f.refused)];
-    else if (f.error) [cls, icon, note] = ['bad', '!', t('web.file.error', f.error)];
-    else if (!hasText(f.layout)) [cls, icon, note] = ['warn', '~', t('web.file.notext')];
-    else if (f.count === 0) [cls, icon, note] = ['warn', '~', t('web.file.none')];
-    else [cls, icon, note] = ['ok', '✓', t('web.file.ok', f.count)];
+    const [cls, icon, note] = describe(f);
+    attention ||= cls !== 'ok';
     const li = document.createElement('li');
     li.className = cls;
     const i = document.createElement('span');
@@ -127,8 +196,10 @@ function render() {
     list.append(li);
   }
   const any = state.report !== '';
-  $('files-box').open = !any || state.files.some((f) => f.error || f.refused || f.count === 0);
+  $('files-box').open = !any || attention;
   $('none').hidden = any;
+  $('too-many').hidden = !state.tooMany;
+  $('too-many').textContent = t('web.too_many', MAX_FILES);
   $('download').hidden = !any;
   $('report').hidden = !any;
   if (any) $('report').srcdoc = state.report;
@@ -137,8 +208,10 @@ function render() {
 }
 
 async function handle(fileList) {
-  const files = [...fileList].filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+  let files = [...fileList].filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
   if (files.length === 0) return;
+  state.tooMany = files.length > MAX_FILES;
+  files = files.slice(0, MAX_FILES);
   $('drop').classList.add('busy');
   try {
     for (const [i, file] of files.entries()) {
@@ -158,6 +231,8 @@ async function handle(fileList) {
 function restart() {
   state.files = [];
   state.report = '';
+  state.tooMany = false;
+  state.passwords = [];
   $('report').removeAttribute('srcdoc');
   $('files').value = '';
   $('result').hidden = true;
@@ -177,7 +252,7 @@ function download() {
 // The report frame tells its height, so the page scrolls as one.
 window.addEventListener('message', (ev) => {
   if (ev.source === $('report').contentWindow && typeof ev.data?.cedoloHeight === 'number') {
-    $('report').style.height = `${Math.ceil(ev.data.cedoloHeight) + 2}px`;
+    $('report').style.height = `${Math.min(Math.ceil(ev.data.cedoloHeight) + 2, 100000)}px`;
   }
 });
 
@@ -188,7 +263,7 @@ drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', (ev) => {
   ev.preventDefault();
   drop.classList.remove('over');
-  if (!$('files').disabled) handle(ev.dataTransfer.files);
+  if (!$('files').disabled && !drop.classList.contains('busy')) handle(ev.dataTransfer.files);
 });
 $('restart').addEventListener('click', restart);
 $('download').addEventListener('click', download);
@@ -198,8 +273,12 @@ for (const b of document.querySelectorAll('[data-lang]')) {
     state.lang = b.dataset.lang;
     applyTexts();
     if (state.files.length) {
-      analyze();
-      render();
+      try {
+        analyze();
+        render();
+      } catch (err) {
+        status(t('web.failed', err.message), true);
+      }
     }
   });
 }

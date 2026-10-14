@@ -33,6 +33,7 @@ func runReport(args []string, stderr io.Writer) error {
 	if len(slips) == 0 {
 		return errors.New("report: no payslips found")
 	}
+	slips = dedupe(slips)
 	// The report holds personal data: readable by its owner only.
 	f, err := os.OpenFile(*outPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {

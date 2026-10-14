@@ -30,16 +30,25 @@ func Document(doc layout.Document) []payslip.Payslip {
 	type group struct {
 		pages       []layout.Page
 		year, month int
+		closed      bool // a page already printed the net pay
 	}
 	var groups []group
 	for _, p := range doc.Pages {
-		year, month := findPeriod(buildLines(p))
+		lines := buildLines(p)
+		year, month := findPeriod(lines)
 		n := len(groups)
 		switch {
-		case n == 0, month != 0 && (month != groups[n-1].month || year != groups[n-1].year):
+		// A new period starts a new payslip; so does a page with a period
+		// after a payslip that already printed its net pay, as when two
+		// payslips of the same month share a file. Continuation pages repeat
+		// the header but leave the net to the last page.
+		case n == 0, month != 0 && (month != groups[n-1].month || year != groups[n-1].year || groups[n-1].closed):
 			groups = append(groups, group{pages: []layout.Page{p}, year: year, month: month})
 		default:
 			groups[n-1].pages = append(groups[n-1].pages, p)
+		}
+		if _, ok := amountField(lines, p.Width, netLabels); ok {
+			groups[len(groups)-1].closed = true
 		}
 	}
 	out := make([]payslip.Payslip, 0, len(groups))

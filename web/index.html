@@ -14,6 +14,7 @@
 <title>cedolo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M9 8h14v16H9z' fill='%23fff'/%3E%3Cpath d='M12 12h8M12 16h8M12 20h5' stroke='%232a78d6' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
+<script src="boot.js"></script>
 <script src="wasm_exec.js"></script>
 <script type="module" src="app.js"></script>
 </head>
@@ -46,6 +47,16 @@
       <span class="drop-choose" data-t="web.choose"></span>
       <span class="drop-hint" data-t="web.drop.hint"></span>
     </label>
+    <form class="password" id="pw-form" hidden>
+      <p class="pw-title" id="pw-title"></p>
+      <p class="pw-hint" data-t="web.password.hint"></p>
+      <p class="pw-error" id="pw-error" role="alert" hidden data-t="web.password.wrong"></p>
+      <div class="pw-row">
+        <input type="password" id="pw-input" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+        <button type="submit" class="primary" data-t="web.password.open"></button>
+        <button type="button" id="pw-skip" data-t="web.password.skip"></button>
+      </div>
+    </form>
     <p class="status" id="status" role="status" aria-live="polite"></p>
   </section>
 
@@ -59,6 +70,7 @@
       <ul id="file-list"></ul>
     </details>
     <p class="notice" id="none" hidden data-t="web.none"></p>
+    <p class="notice" id="too-many" hidden></p>
     <iframe id="report" title="Report" sandbox="allow-scripts" hidden></iframe>
   </section>
 </main>

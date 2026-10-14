@@ -65,6 +65,33 @@ func Sort(slips []payslip.Payslip) {
 	})
 }
 
+// Dedupe drops payslips that repeat an earlier one: same period and kind,
+// and the same gross, deductions and net. The same file given twice, or a
+// payslip printed again, would otherwise count twice in comparisons and
+// charts. It keeps the order of the rest and returns how many were dropped.
+func Dedupe(slips []payslip.Payslip) ([]payslip.Payslip, int) {
+	type key struct {
+		year, month     int
+		kind            payslip.Kind
+		gross, ded, net int64
+	}
+	seen := map[key]bool{}
+	out := slips[:0:0]
+	for _, p := range slips {
+		if p.Month == 0 || !p.Net.Found() {
+			out = append(out, p)
+			continue
+		}
+		k := key{p.Year, p.Month, p.Kind, p.Gross.Cents, p.Deductions.Cents, p.Net.Cents}
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, p)
+	}
+	return out, len(slips) - len(out)
+}
+
 // Label names a payslip's period.
 func Label(l i18n.Lang, p payslip.Payslip) string {
 	if p.Month == 0 {

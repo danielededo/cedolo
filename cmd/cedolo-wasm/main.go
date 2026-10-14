@@ -6,7 +6,8 @@
 //
 // It defines a global object cedolo with:
 //
-//	analyze(layoutsJSON, lang) -> {payslips, perDocument, report} or {error}
+//	analyze(layoutsJSON, lang) -> {payslips, perDocument, report} or {error};
+//	    perDocument has, for each document, {read, repeated} or {error}
 //	texts(lang) -> JSON object of the web app's texts
 //	version -> string
 package main
@@ -20,6 +21,7 @@ import (
 
 	"github.com/danielededo/cedolo/internal/extract"
 	"github.com/danielededo/cedolo/internal/i18n"
+	"github.com/danielededo/cedolo/internal/insights"
 	"github.com/danielededo/cedolo/internal/layout"
 	"github.com/danielededo/cedolo/internal/payslip"
 	"github.com/danielededo/cedolo/internal/report"
@@ -52,12 +54,20 @@ func analyze(_ js.Value, args []js.Value) (result any) {
 	if err != nil {
 		return failure(err)
 	}
+	// Each document is read on its own, so one that trips the extractor is
+	// reported and the others are kept. Payslips repeating an earlier one
+	// (the same file twice) are counted once.
 	perDoc := make([]any, len(docs))
 	var slips []payslip.Payslip
 	for i, d := range docs {
-		found := extract.Document(d)
-		perDoc[i] = len(found)
-		slips = append(slips, found...)
+		found, err := extractOne(d)
+		if err != nil {
+			perDoc[i] = map[string]any{"error": err.Error()}
+			continue
+		}
+		kept, dropped := insights.Dedupe(append(append([]payslip.Payslip(nil), slips...), found...))
+		perDoc[i] = map[string]any{"read": len(found), "repeated": dropped}
+		slips = kept
 	}
 	var page bytes.Buffer
 	if len(slips) > 0 {
@@ -70,6 +80,17 @@ func analyze(_ js.Value, args []js.Value) (result any) {
 		return failure(err)
 	}
 	return map[string]any{"payslips": string(data), "perDocument": perDoc, "report": page.String()}
+}
+
+// extractOne reads the payslips of one document, turning a panic into an
+// error.
+func extractOne(d layout.Document) (slips []payslip.Payslip, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("internal error: %v", r)
+		}
+	}()
+	return extract.Document(d), nil
 }
 
 // texts returns the web app's texts and the report texts it reuses.
