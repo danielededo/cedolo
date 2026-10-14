@@ -18,8 +18,12 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-14
+
 ### Added
 
+- Each GitHub release has ready-to-run binaries for Linux, macOS and
+  Windows (amd64 and arm64), built without external dependencies.
 - `cedolo inspect` reports whether PDF files have a readable text layer,
   printing counts only so the output contains no personal data.
 - `cedolo layout` prints the positioned text of a PDF as JSON, with `-redact`
@@ -80,8 +84,5 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/commits/main
-<!-- After the first release, switch to:
 [Unreleased]: https://github.com/danielededo/cedolo/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danielededo/cedolo/releases/tag/v0.1.0
--->

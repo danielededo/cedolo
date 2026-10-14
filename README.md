@@ -13,23 +13,21 @@ union office, or a consulente del lavoro.
 
 ## Status
 
-Early design and foundation work; nothing is usable yet. The first release
-(v0.1) will be a command-line tool supporting one payroll software layout,
-followed by a browser app in English and Italian. See the roadmap in
-[docs/design/mvp-design.md](docs/design/mvp-design.md#9-roadmap).
+v0.1 is a command-line tool for text PDF payslips, independent of the payroll
+software that produced them. A browser app in English and Italian is next;
+see the roadmap in [docs/design/mvp-design.md](docs/design/mvp-design.md#9-roadmap).
 
 ## Features
 
-Planned for the first releases:
-
-- Extraction of header, totals, line items, TFR and leave balances from text
-  PDF payslips of supported payroll software.
-- Arithmetic cross-checks on every payslip, so each value is marked as verified,
-  extracted, inferred, missing, or corrected by you.
-- Time series of gross and net pay, deduction breakdown, and comparison between
-  periods.
-- Plain-language explanations of payslip items, in English and Italian.
-- Local storage only, with CSV and JSON export and one-step deletion.
+- Reads header, totals, line items, TFR and leave balances from text PDF
+  payslips, without templates per payroll software.
+- Cross-checks every payslip with its own arithmetic, so each value is marked
+  as verified, extracted, inferred, inconsistent or missing.
+- Compares months and explains what changed, such as surcharge instalments,
+  the thirteenth month or the year-end tax adjustment.
+- Writes an offline HTML report with charts over time, in Italian or English.
+- Identifies the collective agreement (CCNL) from its CNEL code and shows its
+  sector, latest agreement and signatories.
 
 ## Privacy
 
@@ -40,18 +38,31 @@ analytics or telemetry. See [ADR 0003](docs/adr/0003-on-device-processing-by-def
 
 Never attach a real payslip or a screenshot of one to an issue or pull request.
 
-## Trying the current CLI
+## Install
 
-With Go installed:
+Download the archive for your system from the
+[latest release](https://github.com/danielededo/cedolo/releases/latest),
+unpack it and run `cedolo` from a terminal. Nothing else is needed. Check the
+download against `SHA256SUMS` if you like.
+
+The binaries are not signed. On macOS, allow it once with
+`xattr -d com.apple.quarantine cedolo`; on Windows, SmartScreen may ask you to
+confirm with "More info", then "Run anyway".
+
+With Go installed you can also run it from source: `go run ./cmd/cedolo`.
+
+## Usage
 
 ```
-go run ./cmd/cedolo synth -o synthetic.pdf      # write a payslip with invented data
-go run ./cmd/cedolo inspect synthetic.pdf       # check that a PDF has a readable text layer
-go run ./cmd/cedolo extract synthetic.pdf       # read it: items, totals, cross-checks
-go run ./cmd/cedolo compare jan.pdf feb.pdf     # what changed from one month to the next
-go run ./cmd/cedolo report -o report.html *.pdf  # an offline HTML report with charts
-go run ./cmd/cedolo ccnl -search metalmeccanici  # look up a collective agreement (CCNL)
+cedolo synth -o synthetic.pdf        # write a payslip with invented data
+cedolo inspect synthetic.pdf         # check that a PDF has a readable text layer
+cedolo extract synthetic.pdf         # read it: items, totals, cross-checks
+cedolo compare jan.pdf feb.pdf       # what changed from one month to the next
+cedolo report -o report.html *.pdf   # an offline HTML report with charts
+cedolo ccnl -search metalmeccanici   # look up a collective agreement (CCNL)
 ```
+
+Run `cedolo help` for every command and option.
 
 `cedolo extract` does not need to know which payroll software produced the
 payslip. Every value is marked as verified (confirmed by the payslip's own
