@@ -14,8 +14,9 @@ union office, or a consulente del lavoro.
 ## Status
 
 v0.1 is a command-line tool for text PDF payslips, independent of the payroll
-software that produced them. A browser app in English and Italian is next;
-see the roadmap in [docs/design/mvp-design.md](docs/design/mvp-design.md#9-roadmap).
+software that produced them. A web app with the same engine, in English and
+Italian, is in progress; see the roadmap in
+[docs/design/mvp-design.md](docs/design/mvp-design.md#9-roadmap).
 
 ## Features
 
@@ -50,6 +51,23 @@ The binaries are not signed. On macOS, allow it once with
 confirm with "More info", then "Run anyway".
 
 With Go installed you can also run it from source: `go run ./cmd/cedolo`.
+
+## Web app
+
+The same engine runs in the browser: drop your payslip PDFs in the page and
+read the report. Everything happens on your device; the files are never
+uploaded and nothing is saved. Each release has `cedolo-web_<version>.zip`,
+static files you can serve with any web server (for example
+`python3 -m http.server` in the unpacked folder); browsers do not run it from
+a file opened directly.
+
+To build it from source, with Go and Node.js installed:
+
+```
+(cd web && npm ci --omit=optional)
+go run ./cmd/webbuild -o dist/web
+(cd web && npm test)        # the web app must read payslips as the CLI does
+```
 
 ## Usage
 
@@ -109,7 +127,10 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 ├── cmd/
 │   ├── cedolo/               # the command-line tool
 │   ├── piiscan/              # CI check for codici fiscali and IBANs
-│   └── ccnlgen/              # regenerates the CCNL list from the CNEL open data
+│   ├── ccnlgen/              # regenerates the CCNL list from the CNEL open data
+│   ├── cedolo-wasm/          # the core compiled to WebAssembly for the web app
+│   └── webbuild/             # assembles the web app as static files
+├── web/                      # the web app: page, pdf.js text layer, tests
 ├── internal/
 │   ├── layout/               # positioned text: the boundary between PDF readers and the core
 │   ├── pdftext/              # PDF readers (PDFium in WebAssembly, poppler)

@@ -5,7 +5,10 @@
 package report
 
 import (
+	"bytes"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
@@ -89,6 +92,21 @@ type Data struct {
 	Contract *Contract
 	Items    []ItemRow
 	Version  string
+}
+
+// ScriptHash returns the Content-Security-Policy source that allows the
+// report's inline script, such as "'sha256-…'", for pages that embed the
+// report and so pass their own policy on to it.
+func ScriptHash() string {
+	// Hash the script as rendered: html/template drops its comments.
+	var page bytes.Buffer
+	if err := Render(&page, i18n.IT, nil, ""); err != nil {
+		panic(err)
+	}
+	_, rest, _ := strings.Cut(page.String(), "<script>")
+	script, _, _ := strings.Cut(rest, "</script>")
+	sum := sha256.Sum256([]byte(script))
+	return "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
 }
 
 // Render writes the report for the payslips. The slice is sorted in place.

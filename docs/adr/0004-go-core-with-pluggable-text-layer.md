@@ -1,6 +1,6 @@
 # ADR 0004: Write the core in Go behind a text layout boundary
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-14, after the [browser spike](../design/spike-browser-wasm.md))
 - **Date:** 2026-10-13 (updated after the phase 0 spike)
 - **Deciders:** maintainer (danielededo)
 

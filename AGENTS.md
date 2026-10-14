@@ -28,6 +28,13 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
 - `cmd/cedolo`: the CLI. `cmd/piiscan`: the CI scanner for personal identifiers.
   `cmd/ccnlgen`: regenerates `internal/ccnl/ccnl.tsv` from a CNEL open data
   export (ADR 0007); never edit the table by hand.
+- `cmd/cedolo-wasm`: the core as WebAssembly for the web app.
+  `cmd/webbuild`: assembles the web app into static files.
+- `web/`: the web app. pdf.js reads the PDFs (`layout.js`), the core analyzes
+  them; its texts come from `internal/i18n` (`web.*` keys). The page's
+  Content-Security-Policy allows no request outside the site.
+  `web/test/agreement.test.mjs` checks that it reads every synthetic style as
+  the CLI does; run it with `npm test` in `web/` after `go run ./cmd/webbuild`.
 - `internal/ccnl`: the embedded list of national collective agreements by
   CNEL code. A contract is identified only from a printed code, never from
   its name.

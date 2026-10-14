@@ -47,7 +47,7 @@ makes onboarding trivial if the project ever gains collaborators.
 | [0001](0001-trunk-based-development.md) | Use trunk-based development with squash merges | Accepted |
 | [0002](0002-license-agpl-3.0.md) | License cedolo under AGPL-3.0-or-later | Accepted |
 | [0003](0003-on-device-processing-by-default.md) | Process payslips on the user's device by default | Accepted |
-| [0004](0004-go-core-with-pluggable-text-layer.md) | Write the core in Go behind a text layout boundary | Proposed |
+| [0004](0004-go-core-with-pluggable-text-layer.md) | Write the core in Go behind a text layout boundary | Accepted |
 | [0005](0005-deterministic-extraction-with-validation.md) | Extract with templates and arithmetic validation, without ML | Superseded by 0006 |
 | [0006](0006-generic-extraction-first.md) | Extract generically first, tune per vendor only where needed | Accepted |
 | [0007](0007-embed-cnel-contract-list.md) | Embed the CNEL list of national collective agreements | Accepted |

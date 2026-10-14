@@ -57,6 +57,18 @@ func Month(l Lang, m int) string {
 	return time.Month(m).String()
 }
 
+// Template returns the text of a key with its placeholders (%s, %d) left in,
+// for callers that substitute them themselves, such as the web app.
+func Template(l Lang, key string) string {
+	if tpl, ok := catalog[l][key]; ok {
+		return tpl
+	}
+	if tpl, ok := catalog[EN][key]; ok {
+		return tpl
+	}
+	return key
+}
+
 // Date renders an ISO date (YYYY-MM-DD) as 31/03/2027 in Italian and
 // 2027-03-31 in English; anything else is returned unchanged.
 func Date(l Lang, iso string) string {
@@ -146,6 +158,28 @@ var catalog = map[Lang]map[string]string{
 		"report.table":        "Show the numbers",
 		"unit.hours":          "h",
 		"unit.days":           "d",
+		"web.title":           "cedolo: understand your payslip",
+		"web.heading":         "Understand your payslip",
+		"web.lead":            "Add the PDFs of your payslips: cedolo checks the totals, explains every item and shows what changes from month to month.",
+		"web.private.device":  "Everything happens on this device.",
+		"web.private.network": "Your payslips are never uploaded or sent anywhere.",
+		"web.private.storage": "Nothing is saved: closing the page forgets everything.",
+		"web.drop":            "Drop your payslip PDFs here",
+		"web.choose":          "or choose files",
+		"web.drop.hint":       "Several months at once give the best picture. Only PDFs with text are supported, not scans or photos.",
+		"web.loading":         "Starting cedolo…",
+		"web.reading":         "Reading %d of %d…",
+		"web.file.ok":         "%d payslip(s) read",
+		"web.file.none":       "no payslip recognized",
+		"web.file.notext":     "no text in this PDF: it is probably a scan, which is not supported yet",
+		"web.file.error":      "could not be opened: %s",
+		"web.files":           "Files",
+		"web.download":        "Download the report",
+		"web.restart":         "Start over",
+		"web.none":            "No payslip was recognized in these files. If they are text PDFs, the layout may be one cedolo does not read yet.",
+		"web.failed":          "cedolo could not start in this browser: %s",
+		"web.source":          "Source code",
+		"web.language":        "Language",
 		"ccnl.section":        "Your contract",
 		"ccnl.printed":        "Printed on the payslip: %s",
 		"ccnl.code":           "CNEL code",
@@ -228,6 +262,28 @@ var catalog = map[Lang]map[string]string{
 		"report.table":        "Mostra i numeri",
 		"unit.hours":          "ore",
 		"unit.days":           "gg",
+		"web.title":           "cedolo: capisci il tuo cedolino",
+		"web.heading":         "Capisci il tuo cedolino",
+		"web.lead":            "Aggiungi i PDF dei tuoi cedolini: cedolo controlla i totali, spiega ogni voce e mostra cosa cambia da un mese all'altro.",
+		"web.private.device":  "Tutto avviene su questo dispositivo.",
+		"web.private.network": "I tuoi cedolini non vengono mai caricati né inviati da nessuna parte.",
+		"web.private.storage": "Non viene salvato nulla: chiudendo la pagina si dimentica tutto.",
+		"web.drop":            "Trascina qui i PDF dei cedolini",
+		"web.choose":          "oppure scegli i file",
+		"web.drop.hint":       "Più mesi insieme danno il quadro migliore. Sono supportati solo PDF con testo, non scansioni o foto.",
+		"web.loading":         "Avvio di cedolo…",
+		"web.reading":         "Lettura %d di %d…",
+		"web.file.ok":         "cedolini letti: %d",
+		"web.file.none":       "nessun cedolino riconosciuto",
+		"web.file.notext":     "questo PDF non contiene testo: probabilmente è una scansione, non ancora supportata",
+		"web.file.error":      "impossibile aprirlo: %s",
+		"web.files":           "File",
+		"web.download":        "Scarica il report",
+		"web.restart":         "Ricomincia",
+		"web.none":            "In questi file non è stato riconosciuto nessun cedolino. Se sono PDF con testo, potrebbe essere un layout che cedolo non legge ancora.",
+		"web.failed":          "cedolo non è riuscito ad avviarsi in questo browser: %s",
+		"web.source":          "Codice sorgente",
+		"web.language":        "Lingua",
 		"ccnl.section":        "Il tuo contratto",
 		"ccnl.printed":        "Stampato sul cedolino: %s",
 		"ccnl.code":           "Codice CNEL",
