@@ -29,7 +29,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -38,9 +38,9 @@ jobs:
           (cd web && npm ci --omit=optional)
           go run ./cmd/webbuild -o dist/web -version "$(git describe --tags --always)"
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist/web
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
