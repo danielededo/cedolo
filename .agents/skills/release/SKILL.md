@@ -22,7 +22,9 @@ only sequences the steps and the checks.
 5. Commit as "chore(release): vX.Y.Z" on a topic branch and open a pull
    request against main. Do not tag yet.
 6. After the pull request is merged: create an annotated tag vX.Y.Z on the
-   merge commit, push the tag, and create the GitHub Release from it with
-   the changelog section as the notes. If you lack permission for tags or
+   merge commit and push it; the Release workflow then builds the binaries
+   and creates the GitHub Release with the changelog section as the notes.
+   Where tags cannot be pushed, run the Release workflow by hand on main
+   with the version instead: it creates the tag itself. If you lack permission for tags or
    releases, hand the exact commands to the user instead of skipping the
    step silently.
