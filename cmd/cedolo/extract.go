@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/danielededo/cedolo/internal/ccnl"
 	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/payslip"
 )
@@ -49,6 +50,9 @@ func printPayslip(out io.Writer, p payslip.Payslip) {
 	fmt.Fprintf(out, "%s (%s)", period, p.Kind)
 	if p.CCNL != "" {
 		fmt.Fprintf(out, ", CCNL %s", p.CCNL)
+	}
+	if c, ok := ccnl.Lookup(p.CCNLCode); ok {
+		fmt.Fprintf(out, " (CNEL %s: %s)", c.Code, c.Title)
 	}
 	if p.Level != "" {
 		fmt.Fprintf(out, ", level %s", p.Level)

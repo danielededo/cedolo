@@ -28,6 +28,13 @@ func checkAgainst(t *testing.T, got []payslip.Payslip, want synth.Payslip, s syn
 	if p.CCNL != want.CCNL || p.Level != want.Level {
 		t.Errorf("CCNL %q level %q, want %q %q", p.CCNL, p.Level, want.CCNL, want.Level)
 	}
+	wantCode := ""
+	if s == synth.StyleGrid {
+		wantCode = "H011"
+	}
+	if p.CCNLCode != wantCode {
+		t.Errorf("CCNL code %q, want %q", p.CCNLCode, wantCode)
+	}
 	if len(p.Items) != len(want.Items) {
 		t.Fatalf("got %d items, want %d: %+v", len(p.Items), len(want.Items), p.Items)
 	}

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/danielededo/cedolo/internal/ccnl"
 	"github.com/danielededo/cedolo/internal/layout"
 	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/payslip"
@@ -79,6 +80,9 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 		}
 	}
 	p.CCNL = textField(header, pages[0].Width, "ccnl", "contratto")
+	if c, ok := ccnl.FindCode(p.CCNL); ok {
+		p.CCNLCode = c.Code
+	}
 	p.Level = levelField(header, pages[0].Width)
 
 	// Totals usually close the payslip, so later pages are searched first.
@@ -211,27 +215,56 @@ func isHeaderLabel(s string) bool {
 func textField(lines []line, pageWidth float64, labels ...string) string {
 	for _, label := range labels {
 		for i, l := range lines {
-			first, last, ok := l.find(label)
-			if !ok {
-				continue
-			}
-			// Skip label words that only qualify the label ("CCNL applicato").
-			for last+1 < len(l.toks) && isHeaderLabel(l.toks[last+1].Text) && taxonomy.Normalize(l.toks[last+1].Text) == "applicato" {
-				last++
-			}
-			var parts []string
-			for _, t := range valueTokens(lines, i, first, last, pageWidth) {
-				if taxonomy.Normalize(t.Text) == "ccnl" {
-					continue
+			for _, o := range l.findAll(label) {
+				if s := textAt(lines, i, o, pageWidth); s != "" {
+					return s
 				}
-				parts = append(parts, t.Text)
-			}
-			if len(parts) > 0 {
-				return strings.Join(parts, " ")
 			}
 		}
 	}
 	return ""
+}
+
+// Words before "CCNL" that make it qualify another field, as in "ORE CCNL"
+// (contractual hours) or "MINIMO CCNL".
+var ccnlQualifiers = map[string]bool{
+	"ore": true, "orario": true, "minimo": true, "minimi": true, "paga": true, "retribuzione": true,
+	"tabellare": true, "gg": true, "giorni": true, "liv": true, "livello": true,
+}
+
+// textAt returns the text printed for one occurrence of a label, or ""
+// when the label only qualifies another field ("ORE CCNL").
+func textAt(lines []line, i int, o occurrence, pageWidth float64) string {
+	l := lines[i]
+	for k, w := range l.words {
+		if w.tok == o.first && k > 0 && ccnlQualifiers[l.words[k-1].text] && l.continues(l.words[k-1].tok, o.first) {
+			return ""
+		}
+	}
+	// The qualifier may also sit right above, in a label on two lines
+	// ("GG." over "CCNL").
+	if i > 0 && l.y-lines[i-1].y <= 1.6*l.h {
+		tok := l.toks[o.first]
+		for _, w := range lines[i-1].words {
+			above := lines[i-1].toks[w.tok]
+			if ccnlQualifiers[w.text] && above.X < tok.Right()+5 && above.Right() > tok.X-5 {
+				return ""
+			}
+		}
+	}
+	last := o.last
+	// Skip label words that only qualify the label ("CCNL applicato").
+	for last+1 < len(l.toks) && taxonomy.Normalize(l.toks[last+1].Text) == "applicato" {
+		last++
+	}
+	var parts []string
+	for _, t := range valueTokens(lines, i, o.first, last, pageWidth) {
+		if taxonomy.Normalize(t.Text) == "ccnl" {
+			continue
+		}
+		parts = append(parts, t.Text)
+	}
+	return strings.Join(parts, " ")
 }
 
 var levelPattern = regexp.MustCompile(`^([0-9]{1,2}[A-Za-z]?|[A-Za-z][0-9]?|Q)[°^]?$`)

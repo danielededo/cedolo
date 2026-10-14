@@ -6,10 +6,13 @@ package report
 
 import (
 	_ "embed"
+	"fmt"
 	"html/template"
 	"io"
 	"slices"
+	"strings"
 
+	"github.com/danielededo/cedolo/internal/ccnl"
 	"github.com/danielededo/cedolo/internal/i18n"
 	"github.com/danielededo/cedolo/internal/insights"
 	"github.com/danielededo/cedolo/internal/money"
@@ -61,6 +64,16 @@ type ItemRow struct {
 	Months              int
 }
 
+// Contract describes the contract of the latest payslip that names one.
+type Contract struct {
+	Printed string // as printed on the payslip
+	Code    string
+	Title   string
+	Rows    [][2]string // label, value
+	Note    string      // expiry, or why the code is unknown
+	Source  string
+}
+
 // Data is everything the page shows; Render builds it with Build.
 type Data struct {
 	Lang     string
@@ -73,6 +86,7 @@ type Data struct {
 	Rows     []Row
 	Changed  bool
 	Leave    []LeaveRow
+	Contract *Contract
 	Items    []ItemRow
 	Version  string
 }
@@ -172,6 +186,8 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 			break
 		}
 	}
+
+	d.Contract = contract(l, slips)
 
 	months := map[string]int{}
 	for _, p := range slips {
@@ -292,4 +308,47 @@ func taxes(p payslip.Payslip) int64 {
 		sum += s
 	}
 	return sum
+}
+
+// contract describes the contract of the latest payslip that names one.
+func contract(l i18n.Lang, slips []payslip.Payslip) *Contract {
+	for _, p := range slices.Backward(slips) {
+		if p.CCNL == "" && p.CCNLCode == "" {
+			continue
+		}
+		out := &Contract{Source: i18n.T(l, "ccnl.source", ccnl.Source, i18n.Date(l, ccnl.AsOf()))}
+		if p.CCNL != "" {
+			out.Printed = i18n.T(l, "ccnl.printed", p.CCNL)
+		}
+		c, ok := ccnl.Lookup(p.CCNLCode)
+		if !ok {
+			out.Note = i18n.T(l, "ccnl.no_code")
+			return out
+		}
+		out.Code, out.Title = c.Code, c.Title
+		period := ""
+		switch {
+		case c.From != "" && c.Until != "":
+			period = i18n.T(l, "ccnl.from_until", i18n.Date(l, c.From), i18n.Date(l, c.Until))
+		case c.From != "":
+			period = i18n.T(l, "ccnl.from", i18n.Date(l, c.From))
+		}
+		for _, r := range [][2]string{
+			{i18n.T(l, "ccnl.code"), c.Code},
+			{i18n.T(l, "ccnl.sectors"), strings.Join(c.Sectors, ", ")},
+			{i18n.T(l, "ccnl.period"), period},
+			{i18n.T(l, "ccnl.employers"), strings.Join(c.Employers, ", ")},
+			{i18n.T(l, "ccnl.unions"), strings.Join(c.Unions, ", ")},
+		} {
+			if r[1] != "" {
+				out.Rows = append(out.Rows, r)
+			}
+		}
+		// Expired before the payslip's month.
+		if c.Until != "" && p.Month != 0 && c.Until < fmt.Sprintf("%04d-%02d-01", p.Year, p.Month) {
+			out.Note = i18n.T(l, "ccnl.expired", i18n.Date(l, c.Until))
+		}
+		return out
+	}
+	return nil
 }

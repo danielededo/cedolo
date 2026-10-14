@@ -384,3 +384,54 @@ func TestLeaveColumns(t *testing.T) {
 		}
 	}
 }
+
+// TestContractFields covers a contract printed with its CNEL code, and an
+// "ORE CCNL" column (contractual hours) that is not the contract.
+func TestContractFields(t *testing.T) {
+	pg := page(
+		[]string{"40:PERIODO DI RETRIBUZIONE", "460:MARZO 2026"},
+		[]string{"25:CCNL APPLICATO", "120:H011 COMMERCIO TERZIARIO", "300:LIVELLO 4"},
+		[]string{},
+		[]string{"29:VOCE", "108:DESCRIZIONE", "303:COMPETENZE", "352:TRATTENUTE"},
+		[]string{"26:0001", "50:RETRIBUZIONE ORDINARIA", "345>2.000,00"},
+		[]string{"341:TOTALE COMPETENZE", "345>2.000,00"},
+		[]string{"341:NETTO DEL MESE", "345>2.000,00"},
+	)
+	got := Document(layout.Document{Pages: []layout.Page{pg}})
+	if len(got) != 1 {
+		t.Fatalf("got %d payslips", len(got))
+	}
+	if got[0].CCNLCode != "H011" || !strings.Contains(got[0].CCNL, "COMMERCIO") {
+		t.Errorf("CCNL = %q, code %q", got[0].CCNL, got[0].CCNLCode)
+	}
+
+	hours := page(
+		[]string{"40:PERIODO DI RETRIBUZIONE", "460:MARZO 2026"},
+		[]string{"25:LIVELLO", "80:ORE CCNL", "140:GG."},
+		[]string{"25:4", "80:40,00", "140:26"},
+		[]string{},
+		[]string{"29:VOCE", "108:DESCRIZIONE", "303:COMPETENZE", "352:TRATTENUTE"},
+		[]string{"26:0001", "50:RETRIBUZIONE ORDINARIA", "345>2.000,00"},
+		[]string{"341:NETTO DEL MESE", "345>2.000,00"},
+	)
+	got = Document(layout.Document{Pages: []layout.Page{hours}})
+	if len(got) != 1 || got[0].CCNL != "" || got[0].CCNLCode != "" {
+		t.Errorf("ORE CCNL read as the contract: %+v", got)
+	}
+
+	// The same with the qualifier on the line above the label.
+	stacked := page(
+		[]string{"40:PERIODO DI RETRIBUZIONE", "460:MARZO 2026"},
+		[]string{"25:LIVELLO", "140:GG."},
+		[]string{"140:CCNL"},
+		[]string{"25:4", "140:26"},
+		[]string{},
+		[]string{"29:VOCE", "108:DESCRIZIONE", "303:COMPETENZE", "352:TRATTENUTE"},
+		[]string{"26:0001", "50:RETRIBUZIONE ORDINARIA", "345>2.000,00"},
+		[]string{"341:NETTO DEL MESE", "345>2.000,00"},
+	)
+	got = Document(layout.Document{Pages: []layout.Page{stacked}})
+	if len(got) != 1 || got[0].CCNL != "" {
+		t.Errorf("GG. CCNL read as the contract: %q", got[0].CCNL)
+	}
+}

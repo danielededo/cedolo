@@ -119,3 +119,26 @@ func TestCompact(t *testing.T) {
 		}
 	}
 }
+
+func TestContract(t *testing.T) {
+	slips := months(t, 2)
+	slips[1].CCNL = "H011 COMMERCIO TERZIARIO"
+	slips[1].CCNLCode = "H011"
+	slips[1].Year = 2030 // after the agreement in the list expires
+	d := Build(i18n.EN, slips, "")
+	c := d.Contract
+	if c == nil || c.Code != "H011" || c.Title == "" || len(c.Rows) < 3 {
+		t.Fatalf("contract = %+v", c)
+	}
+	if !strings.Contains(c.Note, "expired") {
+		t.Errorf("note = %q", c.Note)
+	}
+
+	slips = months(t, 1)
+	slips[0].CCNL = "COMMERCIO"
+	slips[0].CCNLCode = ""
+	c = Build(i18n.IT, slips, "").Contract
+	if c == nil || c.Code != "" || !strings.Contains(c.Note, "cedolo ccnl -search") {
+		t.Errorf("contract without code = %+v", c)
+	}
+}

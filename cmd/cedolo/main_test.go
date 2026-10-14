@@ -205,3 +205,23 @@ func TestReportCommand(t *testing.T) {
 		t.Error("no files accepted")
 	}
 }
+
+func TestCCNLCommand(t *testing.T) {
+	var out bytes.Buffer
+	if err := runCCNL([]string{"-lang", "en", "h011"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "H011") || !strings.Contains(out.String(), "CNEL") {
+		t.Errorf("unexpected output:\n%s", out.String())
+	}
+	out.Reset()
+	if err := runCCNL([]string{"-search", "studi", "professionali"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "non sono univoci") {
+		t.Errorf("search output lacks the warning:\n%s", out.String())
+	}
+	if err := runCCNL(nil, &out); err == nil {
+		t.Error("no arguments accepted")
+	}
+}

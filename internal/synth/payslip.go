@@ -102,6 +102,8 @@ func ExampleFor(s Style) Payslip {
 		p.Leave[0].Kind, p.Leave[1].Kind, p.Leave[1].Key = "Ferie", "Permessi", "permits"
 	}
 	if s == StyleGrid {
+		// This style prints the CNEL code of the contract before its name.
+		p.CCNL = "H011 TERZIARIO DISTRIBUZIONE SERVIZI"
 		p.Leave[1].Kind, p.Leave[1].Key = "PERMESSI", "permits"
 		p.Leave = append(p.Leave, Leave{Kind: "EX FEST.", Key: "former_holidays", Previous: "8,00", Accrued: "2,67", Used: "0,00", Remaining: "10,67"})
 		// This style rounds the net pay up to whole euros with an earnings

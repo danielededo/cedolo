@@ -26,6 +26,11 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
 ## Layout
 
 - `cmd/cedolo`: the CLI. `cmd/piiscan`: the CI scanner for personal identifiers.
+  `cmd/ccnlgen`: regenerates `internal/ccnl/ccnl.tsv` from a CNEL open data
+  export (ADR 0007); never edit the table by hand.
+- `internal/ccnl`: the embedded list of national collective agreements by
+  CNEL code. A contract is identified only from a printed code, never from
+  its name.
 - `internal/layout`: the positioned-text model, the boundary between text
   layers and the core (ADR 0004).
 - `internal/pdftext`: PDF readers producing a layout (PDFium in WebAssembly,
