@@ -92,7 +92,13 @@ func main() {
 	}
 }
 
+// buildVersion is set by the release build (-ldflags "-X main.buildVersion=v1.2.3").
+var buildVersion string
+
 func version() string {
+	if buildVersion != "" {
+		return buildVersion
+	}
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
 		return info.Main.Version
 	}
