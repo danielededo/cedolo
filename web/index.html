@@ -3,9 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Nothing leaves the page: scripts, workers and requests are limited to
-     this site, and the report frame only runs its own known script. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' {{REPORT_SCRIPT_HASH}}; worker-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-src 'self' blob:; base-uri 'none'; form-action 'none'">
+<!-- Nothing leaves the page: scripts and requests are limited to this site,
+     no worker, font, frame source or plugin is allowed, and the report frame
+     (srcdoc, sandboxed) only runs its own script, allowed by its hash. See
+     docs/design/web-security.md. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' {{REPORT_SCRIPT_HASH}}; worker-src 'none'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'none'; frame-src 'none'; object-src 'none'; manifest-src 'none'; media-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="x-dns-prefetch-control" content="off">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Capisci il tuo cedolino: cedolo legge i PDF sul tuo dispositivo, controlla i totali e spiega ogni voce.">
 <title>cedolo</title>

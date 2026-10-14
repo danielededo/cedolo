@@ -27,6 +27,19 @@ How to use this file:
   `go run ./cmd/webbuild`, attached to each release and publishable with
   GitHub Pages.
 
+### Security
+
+- The web app parses PDFs in the page instead of a Web Worker, so its
+  Content-Security-Policy also covers pdf.js: a worker loaded from a file
+  does not inherit a policy set by a `<meta>` tag. The policy now also
+  forbids workers, fonts, frames, plugins and media, and DNS prefetching is
+  off. pdf.js hands no fonts to the browser and ignores forms and system
+  fonts. Files over 20 MB or 50 pages are refused, and an internal error no
+  longer stops the core. See `docs/design/web-security.md`.
+- GitHub Actions are pinned to commit hashes, checkouts keep no credentials
+  where none are needed, and npm packages are installed without running
+  their install scripts.
+
 ### Fixed
 
 - The synthetic "grid" payslip printed the contract name past the edge of

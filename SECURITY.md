@@ -49,6 +49,10 @@ branch) receive security fixes.
 - cedolo processes payslips on the user's device. Any code path that sends
   document content, extracted values, or file names over the network is a
   security issue and in scope.
+- The web app's protections and their known limits are described in
+  [docs/design/web-security.md](docs/design/web-security.md). A way around
+  them (data reaching another origin, script running from a PDF, data kept
+  after the page is closed) is in scope.
 
 - Vulnerabilities in third-party dependencies should be reported upstream first;
   a report here is still welcome if this project needs to update or mitigate.

@@ -1,7 +1,7 @@
 // Command webbuild assembles the cedolo web app as static files: the Go core
 // compiled to WebAssembly, the pages in web/ and pdf.js from web/node_modules
-// (run "npm ci" in web/ first). Serve the output directory with any static
-// file server.
+// (run "npm ci --omit=optional --ignore-scripts" in web/ first). Serve the
+// output directory with any static file server.
 //
 //	go run ./cmd/webbuild -o dist/web -version v0.2.0
 package main
@@ -33,7 +33,7 @@ func main() {
 func build(out, version string) error {
 	pdfjs := filepath.Join("web", "node_modules", "pdfjs-dist")
 	if _, err := os.Stat(pdfjs); err != nil {
-		return errors.New("pdf.js is missing: run \"npm ci\" in web/ first")
+		return errors.New("pdf.js is missing: run \"npm ci --omit=optional --ignore-scripts\" in web/ first")
 	}
 	if err := os.RemoveAll(out); err != nil {
 		return err

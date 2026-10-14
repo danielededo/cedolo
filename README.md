@@ -57,14 +57,15 @@ With Go installed you can also run it from source: `go run ./cmd/cedolo`.
 The same engine runs in the browser: drop your payslip PDFs in the page and
 read the report. Everything happens on your device; the files are never
 uploaded and nothing is saved. Each release has `cedolo-web_<version>.zip`,
-static files you can serve with any web server (for example
-`python3 -m http.server` in the unpacked folder); browsers do not run it from
-a file opened directly.
+static files you can serve with any web server, for example
+`python3 -m http.server --bind 127.0.0.1` in the unpacked folder, then open
+http://127.0.0.1:8000 (without `--bind` the server is reachable from your
+whole network). Browsers do not run it from a file opened directly.
 
 To build it from source, with Go and Node.js installed:
 
 ```
-(cd web && npm ci --omit=optional)
+(cd web && npm ci --omit=optional --ignore-scripts)
 go run ./cmd/webbuild -o dist/web
 (cd web && npm test)        # the web app must read payslips as the CLI does
 ```
