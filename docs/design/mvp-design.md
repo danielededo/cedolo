@@ -99,7 +99,7 @@ Could, later:
 
 ### First realistic release
 
-v0.1 is a Go command-line tool that reads the maintainer's own payslips from
+v0.1 is a Go command-line tool that reads real payslips from
 one vendor and produces a correct, validated data set plus an HTML report. It
 is deliberately unimpressive to outsiders and deliberately correct. v0.2 is the
 first public release: an offline-capable web app running entirely in the
@@ -432,8 +432,8 @@ payslips or screenshots to issues to report a wrong extraction. Mitigations:
   synthetic fixtures folder, and a pre-commit hook doing the same check.
 - A CI PII scanner over fixtures: valid codici fiscali (with checksum), IBANs
   (with checksum), and Italian phone numbers and email addresses fail the build.
-- The maintainer's own payslips and their ground truth live in a git-ignored
-  local folder; the corresponding tests run only when that folder exists.
+- Real payslips used for local checks, and their ground truth, live in a
+  git-ignored local folder; the corresponding tests run only when that folder exists.
 - Screenshots in documentation use synthetic data only.
 
 ### Contributing templates without personal data
@@ -615,7 +615,7 @@ Phase 0, foundation (2 to 3 weeks). Initialize the repository from the
 template, accept or amend ADRs 0002 to 0005, set up the Go module, CI, the
 .gitignore guard and the PII scanner, and run the PDF spike. Exit criteria: CI
 green on main; ADRs accepted; the spike recovers text with positions from all
-of the maintainer's payslips, or a fallback reader is chosen.
+of the real payslips available, or a fallback reader is chosen.
 
 Phase 1, v0.1 "for me" (8 to 10 weeks). CLI import, one vendor template,
 canonical taxonomy for that vendor's items, cross-checks, JSON storage,
@@ -684,7 +684,7 @@ Open questions for the maintainer:
 - Whether templates should stay under AGPL-3.0-or-later (ADR 0002) or get a
   separate data license.
 - Confirm the Go core boundary and PDF strategy (ADR 0004) after the spike.
-- Which payroll software produces the maintainer's payslips, and which public
-  samples are available, to choose templates two and three.
+- Which payroll software produces the first real payslips available, and
+  which public samples exist, to choose templates two and three.
 - Static web app or local binary for v0.2 (section 4), to be decided after v0.1.
 - Whether the public app should be hosted on GitHub Pages or a project domain.
