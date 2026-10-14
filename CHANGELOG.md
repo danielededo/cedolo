@@ -57,6 +57,13 @@ How to use this file:
   a month-by-month table with the outcome of the checks, what changed, leave
   balances and a glossary of the items found, in Italian or English, with a
   light and a dark theme.
+- The list of national collective agreements in force, from the CNEL open
+  data (Italian Open Data License v2.0), is built into cedolo. When a
+  payslip prints the contract's CNEL code, `extract` and the report show its
+  official title, sector, latest agreement and signatories, and the report
+  says when the agreement has expired. `cedolo ccnl CODE` shows a contract;
+  `cedolo ccnl -search WORDS` suggests contracts by name, warning that names
+  are not unique. `cmd/ccnlgen` regenerates the list from a new export.
 - `cedolo anonymize` prints a payslip's layout with everything but known
   payroll labels masked (names, companies, identifiers, every digit, and
   words revealing health, union membership, family or debts), so a layout
@@ -64,6 +71,9 @@ How to use this file:
 
 ### Fixed
 
+- Header labels where "CCNL" qualifies another field, such as "ORE CCNL"
+  (contractual hours) or "GG." printed above "CCNL", are no longer read as
+  the contract.
 - Item table values are assigned to columns by zone, from each header to the
   next, so right-aligned amounts that extend past a narrow header are no
   longer taken for the next column.

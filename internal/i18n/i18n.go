@@ -57,6 +57,16 @@ func Month(l Lang, m int) string {
 	return time.Month(m).String()
 }
 
+// Date renders an ISO date (YYYY-MM-DD) as 31/03/2027 in Italian and
+// 2027-03-31 in English; anything else is returned unchanged.
+func Date(l Lang, iso string) string {
+	t, err := time.Parse(time.DateOnly, iso)
+	if err != nil || l != IT {
+		return iso
+	}
+	return t.Format("02/01/2006")
+}
+
 // ItemLabel returns the label of a taxonomy key.
 func ItemLabel(l Lang, key string) string {
 	e, ok := taxonomy.Lookup(key)
@@ -136,6 +146,21 @@ var catalog = map[Lang]map[string]string{
 		"report.table":        "Show the numbers",
 		"unit.hours":          "h",
 		"unit.days":           "d",
+		"ccnl.section":        "Your contract",
+		"ccnl.printed":        "Printed on the payslip: %s",
+		"ccnl.code":           "CNEL code",
+		"ccnl.sectors":        "Sector",
+		"ccnl.period":         "Latest agreement",
+		"ccnl.from_until":     "from %s to %s",
+		"ccnl.from":           "from %s",
+		"ccnl.employers":      "Signed by employers",
+		"ccnl.unions":         "Signed by unions",
+		"ccnl.expired":        "The latest agreement expired on %s. A contract usually keeps applying until it is renewed: ask your union or payroll office whether a renewal is under way.",
+		"ccnl.no_code":        "The payslip does not print the CNEL code of the contract. Contract names are not unique, so cedolo does not guess it: look it up with \"cedolo ccnl -search\" or ask your payroll office.",
+		"ccnl.source":         "Contract data: %s, list of %s.",
+		"ccnl.not_found":      "No contract with code %s in the list of %s.",
+		"ccnl.no_results":     "No contract matches.",
+		"ccnl.suggestions":    "Contracts with similar names; names are not unique, so check the code with your payroll office:",
 	},
 	IT: {
 		"period":           "%s %d",
@@ -203,6 +228,21 @@ var catalog = map[Lang]map[string]string{
 		"report.table":        "Mostra i numeri",
 		"unit.hours":          "ore",
 		"unit.days":           "gg",
+		"ccnl.section":        "Il tuo contratto",
+		"ccnl.printed":        "Stampato sul cedolino: %s",
+		"ccnl.code":           "Codice CNEL",
+		"ccnl.sectors":        "Settore",
+		"ccnl.period":         "Ultimo accordo",
+		"ccnl.from_until":     "dal %s al %s",
+		"ccnl.from":           "dal %s",
+		"ccnl.employers":      "Firmato dalle parti datoriali",
+		"ccnl.unions":         "Firmato dai sindacati",
+		"ccnl.expired":        "L'ultimo accordo è scaduto il %s. Di solito il contratto continua ad applicarsi finché non viene rinnovato: chiedi al sindacato o all'ufficio paghe se è in corso un rinnovo.",
+		"ccnl.no_code":        "Il cedolino non stampa il codice CNEL del contratto. I nomi dei contratti non sono univoci, quindi cedolo non lo indovina: cercalo con \"cedolo ccnl -search\" o chiedi all'ufficio paghe.",
+		"ccnl.source":         "Dati sui contratti: %s, elenco del %s.",
+		"ccnl.not_found":      "Nessun contratto con codice %s nell'elenco del %s.",
+		"ccnl.no_results":     "Nessun contratto corrisponde.",
+		"ccnl.suggestions":    "Contratti con nomi simili; i nomi non sono univoci, quindi verifica il codice con l'ufficio paghe:",
 	},
 }
 

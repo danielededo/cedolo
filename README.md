@@ -50,6 +50,7 @@ go run ./cmd/cedolo inspect synthetic.pdf       # check that a PDF has a readabl
 go run ./cmd/cedolo extract synthetic.pdf       # read it: items, totals, cross-checks
 go run ./cmd/cedolo compare jan.pdf feb.pdf     # what changed from one month to the next
 go run ./cmd/cedolo report -o report.html *.pdf  # an offline HTML report with charts
+go run ./cmd/cedolo ccnl -search metalmeccanici  # look up a collective agreement (CCNL)
 ```
 
 `cedolo extract` does not need to know which payroll software produced the
@@ -96,7 +97,8 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 ├── go.mod, go.sum            # Go module
 ├── cmd/
 │   ├── cedolo/               # the command-line tool
-│   └── piiscan/              # CI check for codici fiscali and IBANs
+│   ├── piiscan/              # CI check for codici fiscali and IBANs
+│   └── ccnlgen/              # regenerates the CCNL list from the CNEL open data
 ├── internal/
 │   ├── layout/               # positioned text: the boundary between PDF readers and the core
 │   ├── pdftext/              # PDF readers (PDFium in WebAssembly, poppler)
@@ -108,6 +110,7 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 │   ├── anonymize/            # allowlist anonymizer for sharing layouts
 │   ├── insights/             # month-to-month comparison
 │   ├── report/               # self-contained HTML report with charts
+│   ├── ccnl/                 # national collective agreements by CNEL code (embedded data)
 │   ├── i18n/                 # user-facing texts in Italian and English
 │   └── synth/                # synthetic payslips for tests, in several styles
 ├── docs/
@@ -121,6 +124,15 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 ├── .claude/skills/           # symlinks to .agents/skills
 └── .github/                  # CI workflow, issue and pull request templates, Dependabot
 ```
+
+## Data sources
+
+cedolo embeds the list of national collective agreements in force published
+by the CNEL (Consiglio nazionale dell'economia e del lavoro), Archivio
+nazionale dei contratti e degli accordi collettivi di lavoro, as open data
+under the [Italian Open Data License v2.0](https://www.dati.gov.it/iodl/2.0/).
+The list is in `internal/ccnl/ccnl.tsv`, with the date of the export it was
+built from; see [ADR 0007](docs/adr/0007-embed-cnel-contract-list.md).
 
 ## License
 

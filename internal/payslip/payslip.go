@@ -129,7 +129,9 @@ type Payslip struct {
 	Month int    `json:"month,omitempty"`
 	Kind  Kind   `json:"kind"`
 	CCNL  string `json:"ccnl,omitempty"`
-	Level string `json:"level,omitempty"`
+	// CCNLCode is the CNEL code of the contract, when the payslip prints it.
+	CCNLCode string `json:"ccnl_code,omitempty"`
+	Level    string `json:"level,omitempty"`
 
 	Items []Item `json:"items"`
 
