@@ -14,6 +14,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"syscall/js"
 
@@ -32,7 +33,14 @@ func failure(err error) any { return map[string]any{"error": err.Error()} }
 // analyze extracts the payslips of every document and renders the report.
 // It also returns how many payslips each document held, so the page can
 // say which file held none.
-func analyze(_ js.Value, args []js.Value) any {
+func analyze(_ js.Value, args []js.Value) (result any) {
+	// A panic would stop the Go program and leave the page without a core;
+	// report it as an error instead.
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": fmt.Sprint("internal error: ", r)}
+		}
+	}()
 	if len(args) != 2 {
 		return map[string]any{"error": "analyze(layoutsJSON, lang)"}
 	}

@@ -4,7 +4,16 @@
 import * as pdfjs from './pdfjs/pdf.min.mjs';
 import { layoutOf, hasText } from './layout.js';
 
-pdfjs.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.min.mjs';
+// pdf.js parses PDFs in the page itself, not in a Web Worker: a worker
+// loaded from a file does not inherit the page's Content-Security-Policy
+// (it is set by a <meta> tag, as static hosting allows), so a flaw in the
+// parser exploited by a crafted PDF could reach the network from there.
+// worker-src 'none' in the policy keeps it that way.
+globalThis.pdfjsWorker = await import('./pdfjs/pdf.worker.min.mjs');
+
+// Limits that keep a huge or hostile file from freezing the page.
+const MAX_BYTES = 20 * 1024 * 1024;
+const MAX_PAGES = 50;
 
 const $ = (id) => document.getElementById(id);
 const state = {
@@ -50,17 +59,32 @@ async function start() {
 }
 
 async function readFile(file) {
-  const entry = { name: file.name, layout: null, error: '', count: 0 };
+  const entry = { name: file.name, layout: null, error: '', refused: null, count: 0 };
+  if (file.size > MAX_BYTES) {
+    entry.refused = ['web.file.too_big', MAX_BYTES / 1024 / 1024];
+    return entry;
+  }
   try {
     const task = pdfjs.getDocument({
       data: new Uint8Array(await file.arrayBuffer()),
-      isEvalSupported: false,
+      // Only text is read: no fonts handed to the browser, no system fonts,
+      // no forms or scripts, no canvas.
+      disableFontFace: true,
+      useSystemFonts: false,
+      enableXfa: false,
+      isOffscreenCanvasSupported: false,
       standardFontDataUrl: './pdfjs/standard_fonts/',
       cMapUrl: './pdfjs/cmaps/',
       cMapPacked: true,
+      verbosity: 0,
     });
     try {
-      entry.layout = await layoutOf(await task.promise);
+      const doc = await task.promise;
+      if (doc.numPages > MAX_PAGES) {
+        entry.refused = ['web.file.too_long', MAX_PAGES];
+      } else {
+        entry.layout = await layoutOf(doc);
+      }
     } finally {
       await task.destroy();
     }
@@ -83,7 +107,8 @@ function render() {
   list.replaceChildren();
   for (const f of state.files) {
     let cls, icon, note;
-    if (f.error) [cls, icon, note] = ['bad', '!', t('web.file.error', f.error)];
+    if (f.refused) [cls, icon, note] = ['bad', '!', t(...f.refused)];
+    else if (f.error) [cls, icon, note] = ['bad', '!', t('web.file.error', f.error)];
     else if (!hasText(f.layout)) [cls, icon, note] = ['warn', '~', t('web.file.notext')];
     else if (f.count === 0) [cls, icon, note] = ['warn', '~', t('web.file.none')];
     else [cls, icon, note] = ['ok', '✓', t('web.file.ok', f.count)];
@@ -102,7 +127,7 @@ function render() {
     list.append(li);
   }
   const any = state.report !== '';
-  $('files-box').open = !any || state.files.some((f) => f.error || f.count === 0);
+  $('files-box').open = !any || state.files.some((f) => f.error || f.refused || f.count === 0);
   $('none').hidden = any;
   $('download').hidden = !any;
   $('report').hidden = !any;
