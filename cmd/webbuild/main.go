@@ -69,13 +69,16 @@ func build(out, version string) error {
 	if err := os.WriteFile(filepath.Join(out, "index.html"), page, 0o644); err != nil {
 		return err
 	}
-	for _, name := range []string{"app.js", "layout.js", "style.css"} {
+	for _, name := range []string{"app.js", "boot.js", "layout.js", "style.css"} {
 		if err := copyFile(filepath.Join("web", name), filepath.Join(out, name)); err != nil {
 			return err
 		}
 	}
 
-	for _, name := range []string{"build/pdf.min.mjs", "build/pdf.worker.min.mjs", "LICENSE"} {
+	// The legacy build carries the polyfills that recent pdf.js needs on
+	// browsers a few versions old (protected PDFs fail there otherwise),
+	// for about 35 KB more once compressed.
+	for _, name := range []string{"legacy/build/pdf.min.mjs", "legacy/build/pdf.worker.min.mjs", "LICENSE"} {
 		if err := copyFile(filepath.Join(pdfjs, name), filepath.Join(out, "pdfjs", filepath.Base(name))); err != nil {
 			return err
 		}

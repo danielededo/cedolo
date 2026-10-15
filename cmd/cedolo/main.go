@@ -50,10 +50,14 @@ Usage:
   cedolo layout [-reader pdfium|poppler] [-redact] FILE
       Print the positioned text of a PDF as JSON. Without -redact the output
       contains personal data: keep it on your machine.
-  cedolo synth [-style classic|signed|grid] [-o FILE]
+  cedolo synth [-style classic|signed|grid] [-password PW] [-rotate 90] [-o FILE]
       Write a synthetic payslip PDF with invented data (default: synthetic.pdf).
   cedolo version
       Print the version.
+
+Payslips protected by a password are opened after asking for it in the
+terminal, or with the password in the CEDOLO_PDF_PASSWORD environment
+variable. A file that cannot be read is reported and skipped.
 `
 
 func main() {
@@ -201,11 +205,11 @@ func runLayout(args []string, out, warn io.Writer) error {
 	if fs.NArg() != 1 {
 		return errors.New("layout: exactly one file expected")
 	}
-	r, err := pdftext.ByName(*readerName)
+	o, err := newOpener(*readerName)
 	if err != nil {
 		return err
 	}
-	doc, err := r.ReadFile(fs.Arg(0))
+	doc, err := o.read(fs.Arg(0))
 	if err != nil {
 		return err
 	}
@@ -223,6 +227,8 @@ func runSynth(args []string) error {
 	fs := flag.NewFlagSet("synth", flag.ContinueOnError)
 	outPath := fs.String("o", "synthetic.pdf", "output file")
 	styleName := fs.String("style", "classic", "layout style: classic, signed, or grid")
+	password := fs.String("password", "", "protect the PDF with this password")
+	rotate := fs.Int("rotate", 0, "turn the page by 90, 180 or 270 degrees")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -234,7 +240,8 @@ func runSynth(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := synth.WritePDF(f, synth.ExampleFor(style), style); err != nil {
+	opts := synth.Options{Password: *password, Rotate: *rotate}
+	if err := synth.WritePDFWith(f, synth.ExampleFor(style), style, opts); err != nil {
 		f.Close()
 		return err
 	}

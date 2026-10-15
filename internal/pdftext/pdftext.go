@@ -6,6 +6,7 @@
 package pdftext
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -16,7 +17,16 @@ import (
 type Reader interface {
 	Name() string
 	ReadFile(path string) (layout.Document, error)
+	// ReadFileWithPassword opens a PDF protected by a password.
+	ReadFileWithPassword(path, password string) (layout.Document, error)
 }
+
+var (
+	// ErrPassword means the PDF needs a password, or the one given is wrong.
+	ErrPassword = errors.New("the PDF is protected by a password")
+	// ErrDamaged means the file is not a PDF or is damaged.
+	ErrDamaged = errors.New("the file is not a PDF or is damaged")
+)
 
 var readers = map[string]Reader{
 	"pdfium":  PDFium{},

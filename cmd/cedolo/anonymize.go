@@ -8,7 +8,6 @@ import (
 	"io"
 
 	"github.com/danielededo/cedolo/internal/anonymize"
-	"github.com/danielededo/cedolo/internal/pdftext"
 	"github.com/danielededo/cedolo/internal/pii"
 )
 
@@ -21,11 +20,11 @@ func runAnonymize(args []string, out, info io.Writer) error {
 	if fs.NArg() != 1 {
 		return errors.New("anonymize: exactly one file expected")
 	}
-	r, err := pdftext.ByName(*readerName)
+	o, err := newOpener(*readerName)
 	if err != nil {
 		return err
 	}
-	doc, err := r.ReadFile(fs.Arg(0))
+	doc, err := o.read(fs.Arg(0))
 	if err != nil {
 		return err
 	}

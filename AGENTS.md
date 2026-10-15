@@ -38,6 +38,10 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   Its security limits are in `docs/design/web-security.md` and guarded by
   `web/test/security.test.mjs`: never add a worker, a remote source, storage
   or a relaxation of the policy without updating both.
+  `web/test/e2e.test.mjs` drives the built app in Chromium (`npm run
+  test:e2e`; `CHROMIUM_PATH` points it to an installed browser): every
+  style and rotation, damaged, oversized, repeated and protected files, and
+  the security limits.
 - `internal/ccnl`: the embedded list of national collective agreements by
   CNEL code. A contract is identified only from a printed code, never from
   its name.

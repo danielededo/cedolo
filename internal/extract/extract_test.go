@@ -218,3 +218,35 @@ func TestNumericPeriod(t *testing.T) {
 		t.Errorf("period = %d/%d, want 9/2026", m, y)
 	}
 }
+
+// Two complete payslips of the same month in one file, as when the same
+// month is issued twice or two employers' payslips are joined, stay two;
+// a payslip continued on a second page stays one.
+func TestSamePeriodPayslipsInOneFile(t *testing.T) {
+	a := synth.Layout(synth.ExampleFor(synth.StyleClassic), synth.StyleClassic)
+	b := synth.Layout(synth.ExampleFor(synth.StyleGrid), synth.StyleGrid)
+	b.Pages[0].Number = 2
+	got := Document(layout.Document{Pages: []layout.Page{a.Pages[0], b.Pages[0]}})
+	if len(got) != 2 {
+		t.Fatalf("got %d payslips, want 2", len(got))
+	}
+	for _, p := range got {
+		if p.Net.Status != payslip.Verified {
+			t.Errorf("page %v: net %s", p.Pages, p.Net.Status)
+		}
+	}
+
+	// The first page without its totals, the second with them only.
+	first, second := a.Pages[0], a.Pages[0]
+	second.Number = 2
+	first.Tokens, second.Tokens = nil, nil
+	for _, tok := range a.Pages[0].Tokens {
+		if tok.Y < 290 { // above the net pay line
+			first.Tokens = append(first.Tokens, tok)
+		}
+	}
+	second.Tokens = append(second.Tokens, a.Pages[0].Tokens...)
+	if got := Document(layout.Document{Pages: []layout.Page{first, second}}); len(got) != 1 {
+		t.Errorf("continuation page split off: %d payslips", len(got))
+	}
+}

@@ -7,29 +7,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/danielededo/cedolo/internal/extract"
 	"github.com/danielededo/cedolo/internal/i18n"
 	"github.com/danielededo/cedolo/internal/insights"
-	"github.com/danielededo/cedolo/internal/payslip"
-	"github.com/danielededo/cedolo/internal/pdftext"
 )
-
-// readAll extracts every payslip from the given files.
-func readAll(readerName string, paths []string) ([]payslip.Payslip, error) {
-	r, err := pdftext.ByName(readerName)
-	if err != nil {
-		return nil, err
-	}
-	var all []payslip.Payslip
-	for _, path := range paths {
-		doc, err := r.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", path, err)
-		}
-		all = append(all, extract.Document(doc)...)
-	}
-	return all, nil
-}
 
 func runCompare(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("compare", flag.ContinueOnError)
@@ -50,6 +30,7 @@ func runCompare(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
+	slips = dedupe(slips)
 	periods := insights.Compare(l, slips)
 	if *asJSON {
 		enc := json.NewEncoder(out)

@@ -11,7 +11,9 @@ export async function layoutOf(doc) {
   const pages = [];
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
-    const vp = page.getViewport({ scale: 1 });
+    // Unrotated, as PDFium in the CLI reads it: a page stored turned for
+    // display keeps the coordinates its text was written in.
+    const vp = page.getViewport({ scale: 1, rotation: 0 });
     const content = await page.getTextContent();
     const tokens = [];
     for (const item of content.items) {

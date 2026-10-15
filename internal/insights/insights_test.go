@@ -133,3 +133,17 @@ func TestCCNLChangeSuggestsDifferentEmployers(t *testing.T) {
 		t.Errorf("changes = %+v", got[1].Changes)
 	}
 }
+
+func TestDedupe(t *testing.T) {
+	oct := read(t, synth.Example())
+	nov := synth.Example()
+	nov.Month = time.November
+	slips := []payslip.Payslip{oct, read(t, nov), oct}
+	got, dropped := Dedupe(slips)
+	if dropped != 1 || len(got) != 2 || got[1].Month != 11 {
+		t.Errorf("Dedupe = %d payslips, %d dropped", len(got), dropped)
+	}
+	if len(slips) != 3 {
+		t.Error("Dedupe changed its input")
+	}
+}

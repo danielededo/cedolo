@@ -44,10 +44,13 @@ function summary(p) {
 const core = await startCore();
 const dir = mkdtempSync(join(tmpdir(), 'cedolo-web-'));
 
-for (const style of ['classic', 'signed', 'grid']) {
-  test(`pdf.js and PDFium agree on the ${style} style`, async () => {
-    const pdf = join(dir, `${style}.pdf`);
-    cli('synth', '-style', style, '-o', pdf);
+const cases = ['classic', 'signed', 'grid'].map((style) => ({ style, rotate: 0 }))
+  .concat([90, 180, 270].map((rotate) => ({ style: 'grid', rotate })));
+
+for (const { style, rotate } of cases) {
+  test(`pdf.js and PDFium agree on the ${style} style, turned ${rotate}°`, async () => {
+    const pdf = join(dir, `${style}-${rotate}.pdf`);
+    cli('synth', '-style', style, '-rotate', String(rotate), '-o', pdf);
     const want = JSON.parse(cli('extract', '-json', pdf));
 
     const task = pdfjs.getDocument({ data: new Uint8Array(readFileSync(pdf)), isEvalSupported: false, standardFontDataUrl: fonts });
@@ -55,7 +58,7 @@ for (const style of ['classic', 'signed', 'grid']) {
     await task.destroy();
     const got = core.analyze(JSON.stringify([layout]), 'en');
     assert.equal(got.error, undefined);
-    assert.deepEqual(got.perDocument, [want.length]);
+    assert.deepEqual(got.perDocument, [{ read: want.length, repeated: 0 }]);
     assert.deepEqual(JSON.parse(got.payslips).map(summary), want.map(summary));
     assert.match(got.report, /<svg id="trend"/);
   });

@@ -71,3 +71,11 @@ jobs:
       - name: Test that the web app reads payslips as the CLI does
         run: npm test
         working-directory: web
+
+      - name: Install Chromium for the browser tests
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+
+      - name: Test the web app in a browser
+        run: npm run test:e2e
+        working-directory: web

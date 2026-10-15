@@ -5,9 +5,13 @@
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test test/agreement.test.mjs test/security.test.mjs",
+    "test:e2e": "node --test --test-concurrency=1 test/e2e.test.mjs"
   },
   "dependencies": {
     "pdfjs-dist": "6.3.289"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
   }
 }
