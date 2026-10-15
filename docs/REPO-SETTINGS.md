@@ -32,8 +32,8 @@ Even solo, a minimal ruleset on `main` prevents accidents:
       solo maintainer; the point is blocking direct pushes, not self-review
       theater).
 - [ ] Block force pushes and deletions.
-- [ ] Require status checks to pass, once the project has CI. [TO BE FILLED IN:
-      check names]
+- [ ] Require status checks to pass: `test` and `web` (the jobs of the CI
+      workflow).
 - [ ] Optional: **require signed commits**, only if you have GPG/SSH signing
       configured everywhere you commit from (including remote/CI environments),
       otherwise it will block your own workflow.
@@ -52,6 +52,23 @@ Even solo, a minimal ruleset on `main` prevents accidents:
       reduce surface and confusion. Enable **Discussions** only if you want
       Q&A separated from issues (then link it in
       `.github/ISSUE_TEMPLATE/config.yml`).
+
+### Before making the repository public
+
+- [ ] Check that nothing personal is in the history (commits, pull request
+      descriptions and their edit history, force-pushed commits linked from
+      pull requests): what becomes public includes all of it.
+- [ ] Actions (Settings > Actions > General): workflow permissions
+      **read-only by default**, and do not allow Actions to create or approve
+      pull requests; workflows that need more ask for it themselves.
+- [ ] Private vulnerability reporting and secret scanning with push
+      protection enabled (see Security above).
+
+### GitHub Pages (the web app)
+
+- [ ] Settings > Pages > Source: **GitHub Actions**; then run the "Web app"
+      workflow from the Actions tab.
+- [ ] **Enforce HTTPS** enabled (see `docs/design/web-security.md`).
 
 ### Optional / public projects
 
