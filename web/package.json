@@ -9,7 +9,7 @@
     "test:e2e": "node --test --test-concurrency=1 test/e2e.test.mjs"
   },
   "dependencies": {
-    "pdfjs-dist": "6.3.289"
+    "pdfjs-dist": "6.4.299"
   },
   "devDependencies": {
     "playwright": "1.63.0"
