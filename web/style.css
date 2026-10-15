@@ -28,6 +28,8 @@
   }
 }
 * { box-sizing: border-box; }
+/* An element hidden by the app stays hidden whatever display its rules set. */
+[hidden] { display: none !important; }
 body {
   margin: 0;
   background: var(--surface);

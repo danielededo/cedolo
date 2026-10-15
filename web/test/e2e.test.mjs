@@ -1,6 +1,7 @@
-// End-to-end checks of the built web app in Chromium: real files, the ways
-// they go wrong, and the security limits. Run after "go run ./cmd/webbuild";
-// set CHROMIUM_PATH to use an installed Chromium instead of Playwright's.
+// End-to-end checks of the built web app in a browser: real files, the ways
+// they go wrong, and the security limits. Run after "go run ./cmd/webbuild".
+// E2E_BROWSER picks chromium (default) or webkit, Safari's engine;
+// CHROMIUM_PATH uses an installed Chromium instead of Playwright's.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -8,7 +9,7 @@ import { createServer } from 'node:http';
 import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 
 const root = new URL('../../', import.meta.url).pathname;
 const dist = join(root, 'dist', 'web');
@@ -49,7 +50,9 @@ before(async () => {
   await Promise.all([site, outside].map((s) => new Promise((ok) => s.on('listening', ok))));
   base = `http://127.0.0.1:${site.address().port}/`;
   other = `http://127.0.0.1:${outside.address().port}/leak`;
-  browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  browser = process.env.E2E_BROWSER === 'webkit'
+    ? await webkit.launch()
+    : await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 });
 
 after(async () => {
@@ -58,8 +61,9 @@ after(async () => {
   outside?.close();
 });
 
-// open loads the app and records what should never happen.
-async function open() {
+// open loads the app and records what should never happen; before runs in
+// the page ahead of the app, to change what the browser offers.
+async function open({ before } = {}) {
   const page = await browser.newPage({ locale: 'en-US' });
   const seen = { requests: [], errors: [], dialogs: 0, missing: [] };
   page.on('request', (r) => seen.requests.push(r.url()));
@@ -69,6 +73,7 @@ async function open() {
   await page.addInitScript(() => {
     document.addEventListener('securitypolicyviolation', (e) => (window.__violations ||= []).push(e.violatedDirective));
   });
+  if (before) await page.addInitScript(before);
   await page.goto(base);
   await page.waitForFunction(() => window.cedoloReady === true, null, { timeout: 30000 });
   return { page, seen };
@@ -142,6 +147,29 @@ test('handles damaged, oversized, repeated and protected files', async () => {
   ]);
   assert.deepEqual(seen.errors, []);
   onlyThisSite(seen);
+  await page.close();
+});
+
+// Safari cannot iterate a ReadableStream with "for await", which pdf.js
+// uses; compat.js fills it in. Removing it reproduces Safari in any engine.
+test('works where streams cannot be iterated, as in Safari', async () => {
+  const { page, seen } = await open({ before: () => {
+    delete ReadableStream.prototype[Symbol.asyncIterator];
+    delete ReadableStream.prototype.values;
+  } });
+  await page.setInputFiles('#files', [synth('safari.pdf')]);
+  assert.deepEqual(await statuses(page), ['ok: — 1 payslip(s) read']);
+  assert.deepEqual(seen.errors, []);
+  await page.close();
+});
+
+test('a hidden report frame takes no space', async () => {
+  const damaged = join(dir, 'only-damaged.pdf');
+  writeFileSync(damaged, 'not a pdf');
+  const { page } = await open();
+  await page.setInputFiles('#files', [damaged]);
+  await statuses(page);
+  assert.equal(await page.$eval('#report', (f) => getComputedStyle(f).display), 'none');
   await page.close();
 });
 

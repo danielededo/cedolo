@@ -72,10 +72,16 @@ jobs:
         run: npm test
         working-directory: web
 
-      - name: Install Chromium for the browser tests
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium and WebKit for the browser tests
+        run: npx playwright install --with-deps chromium webkit
         working-directory: web
 
-      - name: Test the web app in a browser
+      - name: Test the web app in Chromium
         run: npm run test:e2e
         working-directory: web
+
+      - name: Test the web app in WebKit (Safari's engine)
+        run: npm run test:e2e
+        working-directory: web
+        env:
+          E2E_BROWSER: webkit

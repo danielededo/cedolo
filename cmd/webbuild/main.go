@@ -69,7 +69,7 @@ func build(out, version string) error {
 	if err := os.WriteFile(filepath.Join(out, "index.html"), page, 0o644); err != nil {
 		return err
 	}
-	for _, name := range []string{"app.js", "boot.js", "layout.js", "style.css"} {
+	for _, name := range []string{"app.js", "boot.js", "compat.js", "layout.js", "style.css"} {
 		if err := copyFile(filepath.Join("web", name), filepath.Join(out, name)); err != nil {
 			return err
 		}

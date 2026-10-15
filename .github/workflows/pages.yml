@@ -1,10 +1,11 @@
 name: Web app
 
-# Builds the web app and publishes it with GitHub Pages. Run it by hand once
-# Pages is enabled for the repository (Settings > Pages > Source: GitHub
-# Actions).
+# Builds the web app and publishes it with GitHub Pages (Settings > Pages >
+# Source: GitHub Actions) whenever main changes, or when run by hand.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

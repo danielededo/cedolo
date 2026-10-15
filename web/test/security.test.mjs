@@ -37,6 +37,7 @@ test('nothing can be fetched, framed or run from elsewhere', () => {
 });
 
 test('the page loads nothing from other sites', () => {
+  assert.match(app, /^import '\.\/compat\.js';/m, 'compat.js comes before pdf.js');
   for (const m of page.matchAll(/(?:src|href)="([^"]+)"/g)) {
     assert.match(m[1], /^(?!\/\/)(?![a-z]+:)|^data:image\/svg|^https:\/\/github\.com\/danielededo\/cedolo$/, m[1]);
   }

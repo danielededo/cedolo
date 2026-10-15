@@ -1,6 +1,7 @@
 // cedolo web app: reads payslip PDFs with pdf.js and analyzes them with the
 // Go core compiled to WebAssembly. Files are read in memory and never sent;
 // nothing is stored, not even the chosen language or a password.
+import './compat.js';
 import * as pdfjs from './pdfjs/pdf.min.mjs';
 import { layoutOf, hasText } from './layout.js';
 
