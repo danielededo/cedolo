@@ -50,6 +50,10 @@ How to use this file:
 
 ### Fixed
 
+- The web app opens payslips in Safari (iPhone, iPad, Mac): pdf.js reads
+  text with a feature Safari lacks, now filled in, and the browser tests run
+  in WebKit too. An empty white frame no longer shows when no payslip is
+  read.
 - Two complete payslips of the same month in one file are read as two, not
   merged into one that does not add up.
 - A file that cannot be read no longer stops the others: the CLI and the web
