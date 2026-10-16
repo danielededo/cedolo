@@ -339,11 +339,15 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
       seg.addEventListener("blur", function () { tip.hidden = true; });
     });
   });
-  // Inside the web app the report sits in a frame: tell it the height.
+  // Inside the web app the report sits in a frame: tell it the height of
+  // the content. Not the document's scroll height: that is never less than
+  // the frame, so each resize of the frame would ask for a larger one.
   if (window.parent !== window) {
-    var tell = function () { window.parent.postMessage({ cedoloHeight: document.documentElement.scrollHeight }, "*"); };
+    var tell = function () { window.parent.postMessage({ cedoloHeight: document.body.getBoundingClientRect().height }, "*"); };
     window.addEventListener("load", tell);
     window.addEventListener("resize", tell);
+    // Content can also change height later, as text reflows with a late font.
+    if (window.ResizeObserver) new ResizeObserver(tell).observe(document.body);
   }
 })();
 </script>

@@ -63,8 +63,8 @@ after(async () => {
 
 // open loads the app and records what should never happen; before runs in
 // the page ahead of the app, to change what the browser offers.
-async function open({ before } = {}) {
-  const page = await browser.newPage({ locale: 'en-US' });
+async function open({ before, viewport } = {}) {
+  const page = await browser.newPage({ locale: 'en-US', ...(viewport && { viewport }) });
   const seen = { requests: [], errors: [], dialogs: 0, missing: [] };
   page.on('request', (r) => seen.requests.push(r.url()));
   page.on('response', (r) => { if (r.status() >= 400) seen.missing.push(r.url()); });
@@ -170,6 +170,27 @@ test('a hidden report frame takes no space', async () => {
   await page.setInputFiles('#files', [damaged]);
   await statuses(page);
   assert.equal(await page.$eval('#report', (f) => getComputedStyle(f).display), 'none');
+  await page.close();
+});
+
+test('the report frame fits its content on a phone', async () => {
+  // The frame once grew without end: the report measured the document,
+  // which is never shorter than the frame, so each resize asked for more.
+  const { page } = await open({ viewport: { width: 390, height: 800 } });
+  await page.setInputFiles('#files', [synth('phone.pdf')]);
+  await statuses(page);
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  await frame.waitForSelector('svg#trend');
+  const height = () => page.$eval('#report', (f) => parseInt(f.style.height, 10) || 0);
+  await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 1000);
+  const first = await height();
+  await page.waitForTimeout(1500);
+  assert.equal(await height(), first, 'the frame keeps its height');
+  const content = await frame.evaluate(() => document.body.getBoundingClientRect().height);
+  assert.ok(Math.abs(first - content) <= 4, `frame ${first}px for ${content}px of content`);
+  // Content that grows later, such as text reflowed by a late font, gets room.
+  await frame.evaluate(() => { document.querySelector('main').style.paddingBottom = '600px'; });
+  await page.waitForFunction((h) => parseInt(document.getElementById('report').style.height, 10) > h, first);
   await page.close();
 });
 
