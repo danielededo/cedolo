@@ -40,8 +40,9 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   or a relaxation of the policy without updating both.
   `web/test/e2e.test.mjs` drives the built app in Chromium (`npm run
   test:e2e`; `CHROMIUM_PATH` points it to an installed browser): every
-  style and rotation, damaged, oversized, repeated and protected files, and
-  the security limits.
+  style and rotation, damaged, oversized, repeated and protected files, the
+  anonymized copy, and the security limits. The report frame runs in
+  another process: click controls with its `press` helper.
 - `internal/ccnl`: the embedded list of national collective agreements by
   CNEL code. A contract is identified only from a printed code, never from
   its name.
