@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added
 
 - A glossary: the report explains every kind of item found in your
@@ -141,5 +143,6 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/danielededo/cedolo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielededo/cedolo/releases/tag/v0.1.0
