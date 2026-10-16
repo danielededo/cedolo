@@ -46,10 +46,13 @@ Usage:
       Show a national collective agreement by its CNEL code (sector,
       latest agreement, signatories), or search contracts by name. The list
       of contracts is built into cedolo: nothing is sent anywhere.
-  cedolo anonymize [-reader pdfium|poppler] FILE
-      Print the positioned text of a payslip with everything but known payroll
-      labels masked: names, companies, identifiers and every digit. Use it to
-      report a payslip layout that cedolo reads badly. Review it before sharing.
+  cedolo anonymize [-reader pdfium|poppler] [-amounts keep|mask] [-o FILE.pdf] FILE
+      Make a copy of a payslip to report a layout that cedolo reads badly.
+      Everything but known payroll labels is masked: names, companies,
+      addresses, identifiers, dates and codes. Amounts are kept unless
+      -amounts mask. With -o it writes a new PDF rebuilt from that text,
+      holding nothing of the original file; otherwise it prints the text as
+      JSON. Review it before sharing.
   cedolo layout [-reader pdfium|poppler] [-redact] FILE
       Print the positioned text of a PDF as JSON. Without -redact the output
       contains personal data: keep it on your machine.

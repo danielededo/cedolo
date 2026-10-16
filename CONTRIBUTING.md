@@ -12,17 +12,22 @@ codice fiscale or IBAN, but that check is a safety net, not a permission.
 
 ## Reporting a payslip layout
 
-When cedolo misreads a payslip, the most useful report is its anonymized
-layout, never the payslip itself:
+When cedolo misreads a payslip, the most useful report is an anonymized
+copy, never the payslip itself:
 
-1. Run `cedolo anonymize payslip.pdf > layout.json` on your own machine.
-2. Open `layout.json` and read every `"text"` value. Only payroll labels
-   should be readable; anything else (a name, a street, a company) should
-   appear as `Xxxx` and every number as `0`. If something personal survived,
+1. Run `cedolo anonymize -o anonymized.pdf payslip.pdf` on your own machine.
+   It writes a new PDF rebuilt from the payslip's text; nothing else of the
+   original file is copied.
+2. Open `anonymized.pdf` and read all of it. Only payroll labels and amounts
+   should be readable. Anything else (a name, a street, a company, a date, a
+   code) should appear as `Xxxx` or `0000`. If something personal survived,
    do not share the file and report that instead, since it is a bug.
-3. Attach `layout.json` to an issue, with a description in words of what
-   cedolo got wrong (for example "the net pay is read from the wrong cell").
-   Do not include the amounts from your payslip.
+3. The amounts are kept so that errors in the totals can be reproduced.
+   Together they can identify you to someone who knows your pay, such as a
+   payroll office or a colleague. If that matters, add `-amounts mask`:
+   most layout problems can still be found.
+4. Attach the file to an issue, with a description in words of what cedolo
+   got wrong (for example "the net pay is read from the wrong cell").
 
 ## Ways to contribute
 

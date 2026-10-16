@@ -96,11 +96,15 @@ arithmetic), extracted, inferred, inconsistent or missing, so a misreading
 shows up instead of hiding behind a plausible number. It works on text PDFs
 only; scanned payslips are not supported yet.
 
-If cedolo reads your payslip badly, `cedolo anonymize payslip.pdf > layout.json`
-produces a version you can share: only known payroll labels are kept, while
-names, companies, identifiers and every digit are masked, together with words
-that would reveal health, union membership, family situation or debts. Read
-it before sharing it; see [CONTRIBUTING.md](CONTRIBUTING.md#reporting-a-payslip-layout).
+If cedolo reads your payslip badly, `cedolo anonymize -o anonymized.pdf payslip.pdf`
+writes a copy you can share. It is a new PDF rebuilt from the payslip's
+text, holding nothing else from the original file. Only known payroll labels
+and the amounts are kept. Names, companies, addresses, identifiers, dates and
+codes are masked, together with words that would reveal health, union
+membership, family situation or debts. Add `-amounts mask` to mask the
+amounts too. Read it before sharing it; see
+[CONTRIBUTING.md](CONTRIBUTING.md#reporting-a-payslip-layout) and
+[ADR 0008](docs/adr/0008-rebuild-anonymized-payslips.md).
 
 `cedolo inspect` prints counts only, never names, amounts or file names, so
 its output is safe to share when reporting that a payslip format is not read
