@@ -38,6 +38,9 @@ Usage:
       over time, what changed, leave balances and a glossary of the items.
       It opens offline in any browser. It contains your payslip data: keep
       it private.
+  cedolo glossary [-lang it|en] [WORDS...]
+      Explain the items printed on payslips and the words around them, such
+      as imponibile or conguaglio; with words, only the matching entries.
   cedolo ccnl [-lang it|en] CODE...
   cedolo ccnl [-lang it|en] -search WORDS...
       Show a national collective agreement by its CNEL code (sector,
@@ -75,6 +78,8 @@ func main() {
 		err = runCompare(args, os.Stdout)
 	case "report":
 		err = runReport(args, os.Stderr)
+	case "glossary":
+		err = runGlossary(args, os.Stdout)
 	case "ccnl":
 		err = runCCNL(args, os.Stdout)
 	case "anonymize":

@@ -20,6 +20,12 @@ How to use this file:
 
 ### Added
 
+- A glossary: the report explains every kind of item found in your
+  payslips (IRPEF, addizionali, TFR, ratei and so on) and the words around
+  them, such as imponibile and conguaglio, in Italian or English.
+  `cedolo glossary` prints it in the terminal, or only the entries matching
+  some words.
+
 - Payslips protected by a password open in the CLI, which asks for it in
   the terminal without showing it (or reads `CEDOLO_PDF_PASSWORD`), and in
   the web app, which asks in the page. A password that worked is tried first

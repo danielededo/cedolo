@@ -1,6 +1,6 @@
 // Package report renders payslips as one self-contained HTML page: a summary
 // of the latest month, charts over time, the changes worth a look, leave
-// balances and a glossary of the items found. The page loads nothing from
+// balances and a glossary of the items found and of the words around them. The page loads nothing from
 // the network and runs no code but a small inline hover layer.
 package report
 
@@ -61,10 +61,16 @@ type LeaveRow struct {
 	Label, Previous, Accrued, Used, Remaining string
 }
 
-// ItemRow is one taxonomy key found in the payslips.
+// ItemRow is one taxonomy key found in the payslips, with its explanation.
 type ItemRow struct {
-	Key, Label, LabelIT string
-	Months              int
+	Key, Label, LabelIT, Text string
+	Months                    int
+	Found                     string // in how many payslips, as text
+}
+
+// Term is a glossary word printed around the items.
+type Term struct {
+	Label, Text string
 }
 
 // Contract describes the contract of the latest payslip that names one.
@@ -91,6 +97,7 @@ type Data struct {
 	Leave    []LeaveRow
 	Contract *Contract
 	Items    []ItemRow
+	Terms    []Term
 	Version  string
 }
 
@@ -218,7 +225,12 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		}
 	}
 	for key, n := range months {
-		d.Items = append(d.Items, ItemRow{Key: key, Label: i18n.ItemLabel(l, key), LabelIT: i18n.ItemLabel(i18n.IT, key), Months: n})
+		found := i18n.T(l, "glossary.months", n)
+		if n == 1 {
+			found = i18n.T(l, "glossary.months.one")
+		}
+		d.Items = append(d.Items, ItemRow{Key: key, Label: i18n.ItemLabel(l, key), LabelIT: i18n.ItemLabel(i18n.IT, key),
+			Text: i18n.ItemText(l, key), Months: n, Found: found})
 	}
 	slices.SortFunc(d.Items, func(a, b ItemRow) int {
 		if a.Months != b.Months {
@@ -232,6 +244,9 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		}
 		return 0
 	})
+	for _, term := range i18n.Terms {
+		d.Terms = append(d.Terms, Term{Label: i18n.T(l, "term."+term), Text: i18n.T(l, "term."+term+".text")})
+	}
 	return d
 }
 

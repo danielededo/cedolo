@@ -128,6 +128,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .changes ul { margin: 0; padding-left: 20px; }
 .changes .why { color: var(--ink-2); font-size: 14px; }
 .contract-note { margin-top: 12px; }
+.glossary { margin: 12px 0 0; }
+.glossary dt { font-weight: 600; margin-top: 14px; }
+.glossary dt .it, .glossary dt .found { font-weight: 400; color: var(--ink-2); }
+.glossary dt .found { font-size: 13px; white-space: nowrap; }
+.glossary dt .found::before { content: "· "; }
+.glossary dd { margin: 4px 0 0; font-size: 15px; color: var(--ink-2); max-width: 70ch; }
 footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
 @media (max-width: 520px) {
   .chart .tick { font-size: 22px; }
@@ -260,19 +266,17 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
 
 {{if .Items}}
 <section>
-<h2>{{index .T "report.items"}}</h2>
-<div class="scroll">
-<table>
-<thead><tr>
-<th>{{index .T "report.col.item"}}</th>
-{{if ne .Lang "it"}}<th>{{index .T "report.col.label_it"}}</th>{{end}}
-<th class="num">{{index .T "report.col.months"}}</th>
-</tr></thead>
-<tbody>
-{{$lang := .Lang}}{{range .Items}}<tr><td>{{.Label}}</td>{{if ne $lang "it"}}<td>{{.LabelIT}}</td>{{end}}<td class="num">{{.Months}}</td></tr>
-{{end}}</tbody>
-</table>
-</div>
+<h2>{{index .T "glossary.title"}}</h2>
+<p class="note">{{index .T "glossary.intro"}}</p>
+<dl class="glossary">
+{{$lang := .Lang}}{{range .Items}}<dt>{{.Label}}{{if ne $lang "it"}} <span class="it" lang="it">({{.LabelIT}})</span>{{end}} <span class="found">{{.Found}}</span></dt>
+<dd>{{.Text}}</dd>
+{{end}}</dl>
+<h3>{{index .T "glossary.terms"}}</h3>
+<dl class="glossary">
+{{range .Terms}}<dt>{{.Label}}</dt>
+<dd>{{.Text}}</dd>
+{{end}}</dl>
 </section>
 {{end}}
 

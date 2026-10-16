@@ -27,6 +27,9 @@ Italian, is in progress; see the roadmap in
 - Compares months and explains what changed, such as surcharge instalments,
   the thirteenth month or the year-end tax adjustment.
 - Writes an offline HTML report with charts over time, in Italian or English.
+- Explains in plain words every kind of item it finds and the terms around
+  them, such as imponibile and conguaglio, in the report and with
+  `cedolo glossary`.
 - Identifies the collective agreement (CCNL) from its CNEL code and shows its
   sector, latest agreement and signatories.
 
