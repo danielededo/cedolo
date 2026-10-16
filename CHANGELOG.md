@@ -26,6 +26,9 @@ How to use this file:
   so errors in the totals can be reproduced; `-amounts mask` masks them as
   before. Dates and other numbers stay masked. Before writing, cedolo
   checks that no masked word, codice fiscale or IBAN survived.
+- The web app makes the same anonymized copy: "Anonymized copy" next to a
+  file shows all the text the copy contains, with or without amounts, and
+  downloads it under a fixed name.
 
 ## [0.2.0] - 2026-10-16
 

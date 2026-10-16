@@ -84,6 +84,16 @@ async function statuses(page) {
   return page.$$eval('#file-list li', (ls) => ls.map((l) => `${l.className}: ${l.querySelector('.note').textContent}`));
 }
 
+// press clicks a control of the page. The report frame runs in another
+// process, and headless Chromium routes a click by where frames were last
+// drawn, which can be before the latest layout change or scroll: bring the
+// control into view and let a frame be drawn first.
+async function press(page, selector) {
+  await page.$eval(selector, (e) => e.scrollIntoView({ block: 'center' }));
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.click(selector);
+}
+
 function onlyThisSite(seen) {
   const elsewhere = seen.requests.filter((u) => !u.startsWith(base) && !u.startsWith('data:') && !u.startsWith('about:'));
   assert.deepEqual(elsewhere, []);
@@ -191,6 +201,51 @@ test('the report frame fits its content on a phone', async () => {
   // Content that grows later, such as text reflowed by a late font, gets room.
   await frame.evaluate(() => { document.querySelector('main').style.paddingBottom = '600px'; });
   await page.waitForFunction((h) => parseInt(document.getElementById('report').style.height, 10) > h, first);
+  await page.close();
+});
+
+test('makes an anonymized copy that reads as the same payslip', async () => {
+  const { page, seen } = await open();
+  await page.setInputFiles('#files', [synth('BIANCHI_ANNA_10-2026.pdf')]);
+  await statuses(page);
+  await page.$eval('#files-box', (d) => { d.open = true; });
+  await press(page, '.anon-open');
+  await page.waitForSelector('#anon:not([hidden])');
+  const text = await page.$eval('#anon-text', (e) => e.textContent);
+  for (const secret of ['BIANCHI', 'ANNA', 'ESEMPIO', 'SINTETICO', '000042']) {
+    assert.ok(!text.includes(secret), `the preview shows ${secret}`);
+  }
+  assert.match(text, /TOTALE/);
+  assert.match(text, /1\.667,40/, 'amounts are kept by default');
+  assert.equal(await page.$eval('#anon-title', (e) => e.textContent), 'Anonymized copy of BIANCHI_ANNA_10-2026.pdf');
+
+  // The rebuilt PDF has a fixed name and nothing personal, and the app reads
+  // it back as the same payslip.
+  const [file] = await Promise.all([page.waitForEvent('download'), press(page, '#anon-download')]);
+  assert.equal(file.suggestedFilename(), 'anonymized-payslip.pdf');
+  const copy = join(dir, 'copy.pdf');
+  await file.saveAs(copy);
+  const bytes = readFileSync(copy, 'latin1');
+  assert.ok(bytes.startsWith('%PDF-'));
+  for (const secret of ['BIANCHI', 'ANNA', 'ESEMPIO', '000042', '/Info', '/Image']) {
+    assert.ok(!bytes.includes(secret), `the copy contains ${secret}`);
+  }
+
+  // Without amounts, no amount is left.
+  await press(page, '#anon-amounts');
+  assert.doesNotMatch(await page.$eval('#anon-text', (e) => e.textContent), /1\.667,40/);
+  assert.equal(await page.$eval('#anon-warning', (e) => e.hidden), true);
+  await press(page, '#anon-close');
+  assert.equal(await page.$eval('#anon', (e) => e.hidden), true);
+
+  await press(page, '#restart');
+  await page.setInputFiles('#files', [copy]);
+  assert.deepEqual(await statuses(page), ['ok: — 1 payslip(s) read']);
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  await frame.waitForSelector('svg#trend');
+  assert.match(await frame.content(), /1\.667,40/);
+  assert.deepEqual(seen.errors, []);
+  onlyThisSite(seen);
   await page.close();
 });
 
