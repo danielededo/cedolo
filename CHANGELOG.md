@@ -54,6 +54,9 @@ How to use this file:
   text with a feature Safari lacks, now filled in, and the browser tests run
   in WebKit too. An empty white frame no longer shows when no payslip is
   read.
+- In the web app the report no longer grows without end, which left a
+  large empty space below it on phones: it now takes the height of its
+  content.
 - Two complete payslips of the same month in one file are read as two, not
   merged into one that does not add up.
 - A file that cannot be read no longer stops the others: the CLI and the web
