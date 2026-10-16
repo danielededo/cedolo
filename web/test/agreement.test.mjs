@@ -60,7 +60,7 @@ for (const { style, rotate } of cases) {
     assert.equal(got.error, undefined);
     assert.deepEqual(got.perDocument, [{ read: want.length, repeated: 0 }]);
     assert.deepEqual(JSON.parse(got.payslips).map(summary), want.map(summary));
-    assert.match(got.report, /<svg id="trend"/);
+    assert.match(got.report, /<section class="month"/);
   });
 }
 

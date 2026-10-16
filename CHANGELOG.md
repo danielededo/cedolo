@@ -18,6 +18,15 @@ How to use this file:
 
 ## [Unreleased]
 
+### Changed
+
+- The report is simpler and interactive. It shows one payslip at a time,
+  the latest first, with a picker for the others: the net pay in large
+  type, a bar of where the gross pay goes (net, contributions, taxes,
+  other deductions), and every printed item with its explanation one tap
+  away. Pay over time appears from two months on; the month table, leave,
+  the contract and the payslip's words are closed until opened.
+
 ### Added
 
 - `cedolo anonymize -o anonymized.pdf` writes a copy of a payslip to share

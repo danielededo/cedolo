@@ -111,8 +111,17 @@ test('reads payslips in every style and rotation and shows the report', async ()
     'ok: — 1 payslip(s) read',
   ]);
   const frame = page.frames().find((f) => f !== page.mainFrame());
-  await frame.waitForSelector('svg#trend');
-  await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 1000);
+  await frame.waitForSelector('section.month:not([hidden]) .bar');
+  await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 600);
+  // One payslip at a time: the picker switches, and a segment of the bar
+  // opens its explanation.
+  const shown = () => frame.$$eval('section.month', (ms) => ms.filter((m) => !m.hidden).map((m) => m.dataset.month));
+  assert.deepEqual(await shown(), ['1']);
+  await frame.click('.picker button[data-month="0"]');
+  assert.deepEqual(await shown(), ['0']);
+  await frame.click('section.month:not([hidden]) .bar .seg.part-taxes');
+  assert.equal(await frame.$eval('section.month:not([hidden]) details.part-taxes', (d) => d.open), true);
+  assert.match(await frame.$eval('section.month:not([hidden]) details.part-taxes', (d) => d.textContent), /IRPEF/);
   assert.deepEqual(seen.errors, []);
   assert.deepEqual(seen.missing, [], 'every file of the app is served');
   assert.equal(seen.dialogs, 0);
@@ -190,7 +199,7 @@ test('the report frame fits its content on a phone', async () => {
   await page.setInputFiles('#files', [synth('phone.pdf')]);
   await statuses(page);
   const frame = page.frames().find((f) => f !== page.mainFrame());
-  await frame.waitForSelector('svg#trend');
+  await frame.waitForSelector('section.month:not([hidden]) .bar');
   const height = () => page.$eval('#report', (f) => parseInt(f.style.height, 10) || 0);
   await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 1000);
   const first = await height();
@@ -242,7 +251,7 @@ test('makes an anonymized copy that reads as the same payslip', async () => {
   await page.setInputFiles('#files', [copy]);
   assert.deepEqual(await statuses(page), ['ok: — 1 payslip(s) read']);
   const frame = page.frames().find((f) => f !== page.mainFrame());
-  await frame.waitForSelector('svg#trend');
+  await frame.waitForSelector('section.month:not([hidden]) .bar');
   assert.match(await frame.content(), /1\.667,40/);
   assert.deepEqual(seen.errors, []);
   onlyThisSite(seen);

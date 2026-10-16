@@ -75,14 +75,6 @@ func (p plot) x(i int) float64 {
 	return padLeft + inner*float64(i)/float64(n-1)
 }
 
-func (p plot) band() float64 {
-	return (chartW - padLeft - padRight) / float64(max(len(p.labels), 1))
-}
-
-func (p plot) xBand(i int) float64 {
-	return padLeft + p.band()*(float64(i)+0.5)
-}
-
 func (p plot) y(v int64) float64 {
 	return padTop + (chartH-padTop-padBottom)*(1-float64(v)/float64(p.top))
 }
@@ -159,63 +151,6 @@ func lineChart(id string, labels []string, ss []series) string {
 	}
 	fmt.Fprintf(&b, `<line class="crosshair" x1="0" x2="0" y1="%.1f" y2="%.1f" visibility="hidden"/>`, padTop, chartH-padBottom)
 	fmt.Fprintf(&b, `<rect class="hit" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="transparent"/>`, padLeft-20, padTop, chartW-padLeft-padRight+40, chartH-padTop-padBottom)
-	b.WriteString(`</svg>`)
-	return b.String()
-}
-
-// stackedBars draws one column per month, its segments stacked in series
-// order and separated by a surface gap, with a rounded top.
-func stackedBars(id string, labels []string, ss []series) string {
-	var maxV int64
-	for i := range labels {
-		var total int64
-		for _, s := range ss {
-			total += s.Values[i]
-		}
-		maxV = max(maxV, total)
-	}
-	top, step := niceMax(maxV)
-	p := plot{labels: labels, top: top, step: step}
-	w := math.Min(barMaxWidth, p.band()*0.6)
-	var b strings.Builder
-	fmt.Fprintf(&b, `<svg id="%s" class="chart bars" viewBox="0 0 %.0f %.0f" role="img" aria-labelledby="%s-title">`, id, chartW, chartH, id)
-	p.axes(&b, p.xBand)
-	for i := range labels {
-		x := p.xBand(i) - w/2
-		var acc int64
-		// The topmost non-empty segment gets the rounded end.
-		topSeg := -1
-		for si, s := range ss {
-			if s.Values[i] > 0 {
-				topSeg = si
-			}
-		}
-		for si, s := range ss {
-			v := s.Values[i]
-			if v <= 0 {
-				continue
-			}
-			y0, y1 := p.y(acc), p.y(acc+v)
-			acc += v
-			h := y0 - y1
-			if si != topSeg {
-				h -= surfaceGap // the gap above each segment but the last
-			}
-			if h <= 0 {
-				continue
-			}
-			data := fmt.Sprintf(`data-month="%s" data-series="%s" data-value="%s"`,
-				html.EscapeString(labels[i]), html.EscapeString(s.Name), money.Format(v)+" €")
-			if si == topSeg {
-				r := math.Min(4, h)
-				fmt.Fprintf(&b, `<path class="seg" tabindex="0" style="fill:%s" %s d="M%.1f %.1f V%.1f Q%.1f %.1f %.1f %.1f H%.1f Q%.1f %.1f %.1f %.1f V%.1f Z"/>`,
-					s.Color, data, x, y0, y1+r, x, y1, x+r, y1, x+w-r, x+w, y1, x+w, y1+r, y0)
-			} else {
-				fmt.Fprintf(&b, `<rect class="seg" tabindex="0" style="fill:%s" %s x="%.1f" y="%.1f" width="%.1f" height="%.1f"/>`,
-					s.Color, data, x, y0-h, w, h)
-			}
-		}
-	}
 	b.WriteString(`</svg>`)
 	return b.String()
 }

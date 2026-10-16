@@ -46,22 +46,45 @@ func TestBuild(t *testing.T) {
 			t.Errorf("%s: status %s", r.Period, r.Status)
 		}
 	}
-	if len(d.Tiles) != 3 || d.Tiles[0].Delta == "" {
-		t.Errorf("tiles = %+v", d.Tiles)
+	if len(d.Months) != 3 || d.Selected != 2 || !strings.HasPrefix(d.Months[2].Label, "March") {
+		t.Fatalf("months = %+v, selected %d", d.Months, d.Selected)
 	}
-	if !strings.HasPrefix(d.Tiles[1].Delta, "+") {
-		t.Errorf("gross grew, delta = %q", d.Tiles[1].Delta)
+	m := d.Months[2]
+	if m.Net == "–" || !strings.HasPrefix(m.Gross, "out of ") || !strings.Contains(m.Delta, "+") || m.Short != "Mar 26" {
+		t.Errorf("latest month = %+v", m)
+	}
+	if d.Months[0].Delta != "" {
+		t.Errorf("first month has a delta: %q", d.Months[0].Delta)
+	}
+	if d.Trend == "" {
+		t.Error("no trend for three months")
+	}
+	var width float64
+	keys := map[string]bool{}
+	for _, p := range m.Parts {
+		width += p.Width
+		keys[p.Key] = true
+		if p.Text == "" || p.Amount == "" {
+			t.Errorf("part %+v", p)
+		}
+	}
+	if !keys["net"] || !keys["contrib"] || !keys["taxes"] || width < 99.9 || width > 100.1 {
+		t.Errorf("parts %+v sum to %.2f%%", m.Parts, width)
+	}
+	lines := len(m.Earnings) + len(m.SetAside)
+	for _, p := range m.Parts {
+		lines += len(p.Lines)
+	}
+	if lines != len(slips[2].Items) {
+		t.Errorf("%d lines for %d items", lines, len(slips[2].Items))
+	}
+	for _, l := range m.Earnings {
+		if l.Description == "" || l.Text == "" || l.Label == "" {
+			t.Errorf("line %+v", l)
+		}
 	}
 	if len(d.Leave) == 0 {
 		t.Error("no leave rows")
-	}
-	if len(d.Items) == 0 || d.Items[0].Months != 3 {
-		t.Errorf("items = %+v", d.Items)
-	}
-	for _, it := range d.Items {
-		if it.Text == "" || it.Found != "in 3 payslips" {
-			t.Errorf("glossary item %+v", it)
-		}
 	}
 	if len(d.Terms) != len(i18n.Terms) || d.Terms[0].Text == "" {
 		t.Errorf("terms = %+v", d.Terms)
@@ -79,17 +102,21 @@ func TestRender(t *testing.T) {
 			`<html lang="` + string(l) + `">`,
 			"Content-Security-Policy",
 			`<svg id="trend"`,
-			`<svg id="withheld"`,
+			`<section class="month" data-month="3">`,
+			`data-month="0" hidden>`,
 			`class="status verified"`,
 			html.EscapeString(i18n.T(l, "report.privacy")),
 			html.EscapeString(i18n.T(l, "report.disclaimer")),
-			html.EscapeString(i18n.T(l, "glossary.title")),
+			html.EscapeString(i18n.T(l, "report.where")),
 			html.EscapeString(i18n.ItemText(l, "tax.irpef")),
 			html.EscapeString(i18n.T(l, "term.year_end.text")),
 		} {
 			if !strings.Contains(page, want) {
 				t.Errorf("%s: page lacks %q", l, want)
 			}
+		}
+		if strings.Count(page, `aria-pressed="true">`) != 1 || strings.Count(page, `<section class="month"`) != 4 {
+			t.Errorf("%s: the picker must select exactly one of four months", l)
 		}
 		// Self-contained: nothing is fetched from anywhere.
 		for _, bad := range []string{"http://", "https://", "src=", "@import", "url("} {

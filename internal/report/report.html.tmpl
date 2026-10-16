@@ -20,6 +20,7 @@
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
+  --series-4: #8a63d2;
   --good: #1a7f4e;
   --warn: #a35a00;
   --bad: #b3261e;
@@ -36,6 +37,7 @@
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
+    --series-4: #9b7be0;
     --good: #5cc48e;
     --warn: #e0a24a;
     --bad: #f08a80;
@@ -52,6 +54,7 @@
   --series-1: #3987e5;
   --series-2: #d95926;
   --series-3: #199e70;
+  --series-4: #9b7be0;
   --good: #5cc48e;
   --warn: #e0a24a;
   --bad: #f08a80;
@@ -69,19 +72,51 @@ h2 { font-size: 20px; margin: 40px 0 8px; }
 p { margin: 0 0 12px; }
 .sub, .note, small { color: var(--ink-2); }
 .note { font-size: 14px; }
-.privacy {
-  border: 1px solid var(--grid);
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin: 16px 0 0;
-  font-size: 14px;
-  color: var(--ink-2);
-}
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
-.tile { background: var(--raised); border: 1px solid var(--grid); border-radius: 8px; padding: 12px 16px; }
-.tile .label { font-size: 14px; color: var(--ink-2); }
-.tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.tile .delta { font-size: 13px; color: var(--muted); }
+[hidden] { display: none !important; }
+.picker { display: flex; gap: 6px; overflow-x: auto; margin: 20px -16px 0; padding: 2px 16px 6px; scrollbar-width: none; }
+.picker button { flex: none; font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); cursor: pointer; }
+.picker button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.month { margin-top: 24px; }
+.when { color: var(--ink-2); margin: 0; }
+.when .status { font-size: 14px; margin-left: 8px; }
+.net { margin: 4px 0 0; display: flex; flex-direction: column; }
+.net .label { font-size: 14px; color: var(--ink-2); }
+.net .big { font-size: 44px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bar { display: flex; gap: 2px; height: 28px; margin: 12px 0 6px; }
+.bar .seg { border: 0; padding: 0; min-width: 4px; cursor: pointer; }
+.bar .seg:first-child { border-radius: 6px 0 0 6px; }
+.bar .seg:last-child { border-radius: 0 6px 6px 0; }
+.bar .seg:hover, .bar .seg:focus-visible { opacity: .8; }
+.hint { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+.part-net { --c: var(--series-1); } .part-contrib { --c: var(--series-2); } .part-taxes { --c: var(--series-3); } .part-other { --c: var(--series-4); }
+.part-gross, .part-aside { --c: transparent; }
+.bar .seg { background: var(--c); }
+.parts { border-top: 1px solid var(--grid); }
+.part { margin: 0; border-bottom: 1px solid var(--grid); }
+.part > summary { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--ink); font-size: 16px; list-style: none; }
+.part > summary::-webkit-details-marker { display: none; }
+.part > summary .key { flex: none; width: 12px; height: 12px; border-radius: 3px; background: var(--c); border: 1px solid var(--c); }
+.part-gross > summary .key, .part-aside > summary .key { border-color: var(--baseline); }
+.part > summary .name { flex: 1; }
+.part > summary .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+.part > summary::after { content: "›"; color: var(--muted); transition: transform .15s; }
+.part[open] > summary::after { transform: rotate(90deg); }
+.part .body { padding: 0 0 12px 22px; }
+.explain { font-size: 15px; color: var(--ink-2); margin: 0 0 8px; max-width: 70ch; }
+.lines { list-style: none; padding: 0; margin: 0; }
+.lines details { margin: 0; }
+.lines summary { display: flex; gap: 12px; padding: 6px 0; color: var(--ink); font-size: 15px; }
+.lines summary .desc { flex: 1; }
+.lines summary .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lines summary { list-style: none; cursor: pointer; }
+.lines summary::-webkit-details-marker { display: none; }
+.lines summary::after { content: "›"; color: var(--muted); width: 8px; transition: transform .15s; }
+.lines details[open] summary::after { transform: rotate(90deg); }
+.lines .explain { font-size: 14px; padding: 0 0 6px; }
+.more { margin-top: 32px; border-top: 1px solid var(--grid); }
+.more > details { margin: 0; border-bottom: 1px solid var(--grid); }
+.more > details > summary { padding: 14px 0; color: var(--ink); font-size: 16px; font-weight: 600; }
+.more > details > :not(summary) { margin-bottom: 14px; }
 figure { margin: 0; position: relative; }
 .chart { width: 100%; height: auto; display: block; overflow: visible; }
 .chart .grid { stroke: var(--grid); stroke-width: 1; }
@@ -122,27 +157,22 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .status.unverified::before { content: "~"; }
 .status.inconsistent { color: var(--bad); }
 .status.inconsistent::before { content: "!"; }
-.changes { list-style: none; padding: 0; margin: 0; }
-.changes > li { padding: 12px 0; border-bottom: 1px solid var(--grid); }
-.changes h3 { font-size: 16px; margin: 0 0 4px; }
-.changes ul { margin: 0; padding-left: 20px; }
+.changes { margin: 0; padding-left: 20px; }
+.changes > li { padding: 4px 0; }
 .changes .why { color: var(--ink-2); font-size: 14px; }
 .contract-note { margin-top: 12px; }
 .glossary { margin: 12px 0 0; }
 .glossary dt { font-weight: 600; margin-top: 14px; }
-.glossary dt .it, .glossary dt .found { font-weight: 400; color: var(--ink-2); }
-.glossary dt .found { font-size: 13px; white-space: nowrap; }
-.glossary dt .found::before { content: "· "; }
 .glossary dd { margin: 4px 0 0; font-size: 15px; color: var(--ink-2); max-width: 70ch; }
-footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
+footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 @media (max-width: 520px) {
   .chart .tick { font-size: 22px; }
   .chart .end-label { display: none; }
   .chart .tick.thin { display: none; }
 }
 @media print {
-  .tooltip, details > summary { display: none; }
-  details { display: block; }
+  .tooltip, .picker, .hint { display: none; }
+  .month[hidden] { display: block !important; break-before: page; }
 }
 </style>
 </head>
@@ -151,41 +181,67 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
 <header>
 <h1>{{index .T "report.title"}}</h1>
 {{with .Range}}<p class="sub">{{.}}</p>{{end}}
-<p class="privacy">{{index .T "report.privacy"}}</p>
 </header>
 
-{{if .Tiles}}
-<section>
-<h2>{{.Latest}}</h2>
-<div class="tiles">
-{{range .Tiles}}<div class="tile"><div class="label">{{.Label}}</div><div class="value">{{.Value}}</div>{{with .Delta}}<div class="delta">{{.}}</div>{{end}}</div>
-{{end}}</div>
-</section>
+{{if gt (len .Months) 1}}
+<nav class="picker" aria-label="{{index .T "report.pick"}}">
+{{range $i, $m := .Months}}<button type="button" data-month="{{$i}}" aria-pressed="{{if eq $i $.Selected}}true{{else}}false{{end}}">{{$m.Short}}</button>
+{{end}}</nav>
+{{end}}
 
+{{range $i, $m := .Months}}
+<section class="month" data-month="{{$i}}"{{if ne $i $.Selected}} hidden{{end}}>
+<p class="when">{{$m.Label}} <span class="status {{$m.Status}}">{{$m.StatusText}}</span></p>
+<p class="net"><span class="label">{{index $.T "report.net"}}</span><span class="big">{{$m.Net}}</span></p>
+{{if or $m.Gross $m.Delta}}<p class="sub">{{$m.Gross}}{{if and $m.Gross $m.Delta}} · {{end}}{{$m.Delta}}</p>{{end}}
+
+{{if $m.Parts}}
+<h2>{{index $.T "report.where"}}</h2>
+<div class="bar">{{range $m.Parts}}<button type="button" class="seg part-{{.Key}}" style="width:{{printf "%.2f" .Width}}%" data-part="{{.Key}}" aria-label="{{.Label}} {{.Amount}}"></button>{{end}}</div>
+<p class="hint">{{index $.T "report.tap"}}</p>
+<div class="parts">
+{{range $m.Parts}}<details class="part part-{{.Key}}" data-part="{{.Key}}">
+<summary><span class="key"></span><span class="name">{{.Label}}</span><span class="amount">{{.Amount}}</span></summary>
+<div class="body"><p class="explain">{{.Text}}</p>
+{{if .Lines}}<ul class="lines">{{range .Lines}}{{template "line" .}}{{end}}</ul>{{end}}</div>
+</details>
+{{end}}{{if $m.Earnings}}<details class="part part-gross">
+<summary><span class="key"></span><span class="name">{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></summary>
+<div class="body"><p class="explain">{{index $.T "report.earnings.text"}}</p>
+<ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul></div>
+</details>
+{{end}}{{if $m.SetAside}}<details class="part part-aside">
+<summary><span class="key"></span><span class="name">{{index $.T "report.aside"}}</span><span class="amount">{{$m.AsideTotal}}</span></summary>
+<div class="body"><p class="explain">{{index $.T "report.aside.text"}}</p>
+<ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul></div>
+</details>
+{{end}}</div>
+{{end}}
+
+{{if $m.Changes}}
+<h2>{{index $.T "report.changes"}}</h2>
+<ul class="changes">
+{{range $m.Changes}}<li>{{.Text}}{{range .Why}}<div class="why">{{.}}</div>{{end}}</li>
+{{end}}</ul>
+{{end}}
+</section>
+{{end}}
+
+{{if .Trend}}
 <section>
-<h2 id="trend-title">{{index .T "report.trend"}}</h2>
+<h2>{{index .T "report.trend"}}</h2>
 <ul class="legend">
 <li><span class="key line" style="background:var(--series-1)"></span>{{index .T "report.gross"}}</li>
 <li><span class="key line" style="background:var(--series-2)"></span>{{index .T "report.net"}}</li>
 </ul>
 <figure>{{.Trend}}<div class="tooltip" hidden></div></figure>
-<p class="note">{{index .T "report.trend.note"}} {{index .T "report.amounts"}}</p>
-</section>
-
-<section>
-<h2 id="withheld-title">{{index .T "report.composition"}}</h2>
-<ul class="legend">
-<li><span class="key" style="background:var(--series-1)"></span>{{index .T "report.contrib"}}</li>
-<li><span class="key" style="background:var(--series-2)"></span>{{index .T "report.taxes"}}</li>
-<li><span class="key" style="background:var(--series-3)"></span>{{index .T "report.other"}}</li>
-</ul>
-<figure>{{.Withheld}}<div class="tooltip" hidden></div></figure>
 </section>
 {{end}}
 
 {{if .Rows}}
-<section>
-<h2>{{index .T "report.months"}}</h2>
+<section class="more">
+{{if gt (len .Rows) 1}}<details>
+<summary>{{index .T "report.months"}}</summary>
 <div class="scroll">
 <table>
 <thead><tr>
@@ -210,43 +266,10 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
 {{end}}</tbody>
 </table>
 </div>
-</section>
+</details>{{end}}
 
-<section>
-<h2>{{index .T "report.changes"}}</h2>
-{{if .Changed}}
-<ul class="changes">
-{{range .Rows}}{{if .Changes}}<li>
-<h3>{{.Period}}</h3>
-<ul>
-{{range .Changes}}<li>{{.Text}}{{range .Why}}<div class="why">{{.}}</div>{{end}}</li>
-{{end}}</ul>
-</li>
-{{end}}{{end}}</ul>
-{{else}}
-<p>{{index .T "report.no_changes"}}</p>
-{{end}}
-</section>
-{{end}}
-
-{{with .Contract}}
-<section>
-<h2>{{index $.T "ccnl.section"}}</h2>
-{{with .Title}}<p><strong>{{.}}</strong></p>{{end}}
-{{with .Printed}}<p class="note">{{.}}</p>{{end}}
-{{if .Rows}}<div class="scroll"><table>
-<tbody>
-{{range .Rows}}<tr><th scope="row">{{index . 0}}</th><td>{{index . 1}}</td></tr>
-{{end}}</tbody>
-</table></div>{{end}}
-{{with .Note}}<p class="note contract-note">{{.}}</p>{{end}}
-<p class="note">{{.Source}}</p>
-</section>
-{{end}}
-
-{{if .Leave}}
-<section>
-<h2>{{index .T "report.leave"}}</h2>
+{{if .Leave}}<details>
+<summary>{{index .T "report.leave"}}</summary>
 <div class="scroll">
 <table>
 <thead><tr>
@@ -261,26 +284,33 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
 {{end}}</tbody>
 </table>
 </div>
-</section>
-{{end}}
+</details>{{end}}
 
-{{if .Items}}
-<section>
-<h2>{{index .T "glossary.title"}}</h2>
-<p class="note">{{index .T "glossary.intro"}}</p>
-<dl class="glossary">
-{{$lang := .Lang}}{{range .Items}}<dt>{{.Label}}{{if ne $lang "it"}} <span class="it" lang="it">({{.LabelIT}})</span>{{end}} <span class="found">{{.Found}}</span></dt>
-<dd>{{.Text}}</dd>
-{{end}}</dl>
-<h3>{{index .T "glossary.terms"}}</h3>
+{{with .Contract}}<details>
+<summary>{{index $.T "ccnl.section"}}</summary>
+{{with .Title}}<p><strong>{{.}}</strong></p>{{end}}
+{{with .Printed}}<p class="note">{{.}}</p>{{end}}
+{{if .Rows}}<div class="scroll"><table>
+<tbody>
+{{range .Rows}}<tr><th scope="row">{{index . 0}}</th><td>{{index . 1}}</td></tr>
+{{end}}</tbody>
+</table></div>{{end}}
+{{with .Note}}<p class="note contract-note">{{.}}</p>{{end}}
+<p class="note">{{.Source}}</p>
+</details>{{end}}
+
+<details>
+<summary>{{index .T "glossary.terms"}}</summary>
 <dl class="glossary">
 {{range .Terms}}<dt>{{.Label}}</dt>
 <dd>{{.Text}}</dd>
 {{end}}</dl>
+</details>
 </section>
 {{end}}
 
 <footer>
+<p>{{index .T "report.privacy"}}</p>
 <p>{{index .T "report.disclaimer"}}</p>
 <p>{{index .T "report.generated"}}{{with .Version}} {{.}}{{end}}</p>
 </footer>
@@ -321,23 +351,25 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
     hit.addEventListener("pointermove", move);
     hit.addEventListener("pointerleave", function () { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   });
-  document.querySelectorAll("svg.chart.bars").forEach(function (svg) {
-    var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
-    function show(seg, x, y) {
-      tip.replaceChildren(head(seg.dataset.month), row(seg.style.fill, seg.dataset.series, seg.dataset.value));
-      tip.hidden = false; place(tip, fig, x, y);
-    }
-    svg.querySelectorAll(".seg").forEach(function (seg) {
-      seg.addEventListener("pointermove", function (ev) {
-        var box = fig.getBoundingClientRect(); show(seg, ev.clientX - box.left, ev.clientY - box.top);
-      });
-      seg.addEventListener("focus", function () {
-        var b = seg.getBoundingClientRect(), box = fig.getBoundingClientRect();
-        show(seg, b.left - box.left, b.top - box.top);
-      });
-      seg.addEventListener("pointerleave", function () { tip.hidden = true; });
-      seg.addEventListener("blur", function () { tip.hidden = true; });
+  // The month picker shows one payslip at a time.
+  var picks = document.querySelectorAll(".picker button");
+  picks.forEach(function (b) {
+    b.addEventListener("click", function () {
+      picks.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+      document.querySelectorAll("section.month").forEach(function (m) { m.hidden = m.dataset.month !== b.dataset.month; });
     });
+  });
+  // A segment of the bar opens its line below.
+  document.querySelectorAll(".bar .seg").forEach(function (seg) {
+    seg.addEventListener("click", function () {
+      var month = seg.closest("section.month");
+      month.querySelectorAll("details.part").forEach(function (d) { d.open = d.dataset.part === seg.dataset.part; });
+      month.querySelector('details.part[data-part="' + seg.dataset.part + '"]').scrollIntoView({ block: "nearest" });
+    });
+  });
+  // Printing shows everything.
+  window.addEventListener("beforeprint", function () {
+    document.querySelectorAll("details").forEach(function (d) { d.open = true; });
   });
   // Inside the web app the report sits in a frame: tell it the height of
   // the content. Not the document's scroll height: that is never less than
@@ -353,3 +385,4 @@ footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
 </script>
 </body>
 </html>
+{{define "line"}}<li><details><summary><span class="desc">{{.Description}}</span><span class="amount">{{.Amount}}</span></summary><p class="explain"><strong>{{.Label}}</strong> · {{.Text}}</p></details></li>{{end}}
