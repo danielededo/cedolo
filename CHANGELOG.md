@@ -18,6 +18,15 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- `cedolo anonymize -o anonymized.pdf` writes a copy of a payslip to share
+  when cedolo reads it badly. It is a new PDF rebuilt from the masked text,
+  with nothing else from the original file. Amounts are now kept by default
+  so errors in the totals can be reproduced; `-amounts mask` masks them as
+  before. Dates and other numbers stay masked. Before writing, cedolo
+  checks that no masked word, codice fiscale or IBAN survived.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added

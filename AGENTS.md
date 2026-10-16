@@ -56,7 +56,9 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
 - `internal/payslip`: the normalized payslip model with value statuses.
 - `internal/taxonomy`: canonical item keys, bilingual labels, and the
   description keywords that classify items independently of the vendor.
-- `internal/anonymize`: allowlist anonymizer for sharing real layouts.
+- `internal/anonymize`: allowlist anonymizer for sharing real layouts, and
+  the writer of the rebuilt PDF (ADR 0008). Never copy anything from the
+  original file into its output.
 - `internal/insights`: month-to-month comparison with explanations.
 - `internal/report`: the self-contained HTML report; it must never load
   anything from the network (a Content-Security-Policy forbids it and a test

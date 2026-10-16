@@ -131,18 +131,44 @@ func TestExtractEveryStyle(t *testing.T) {
 func TestAnonymizeCommand(t *testing.T) {
 	path := synthFile(t, "anon.pdf")
 	var out, info bytes.Buffer
-	if err := runAnonymize([]string{path}, &out, &info); err != nil {
+	if err := runAnonymize([]string{"-amounts", "mask", path}, &out, &info); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(out.String(), "BIANCHI") || strings.Contains(out.String(), "1.667,40") {
 		t.Error("anonymized output leaks personal data")
 	}
-	if !strings.Contains(out.String(), "TOTALE") || !strings.Contains(info.String(), "Review the output") {
+	if !strings.Contains(out.String(), "TOTALE") || !strings.Contains(info.String(), "Review it") || strings.Contains(info.String(), "amounts are kept") {
 		t.Errorf("unexpected output; info: %s", info.String())
 	}
 	var doc layout.Document
 	if err := json.Unmarshal(out.Bytes(), &doc); err != nil || doc.TokenCount() == 0 {
 		t.Errorf("output is not a layout: %v", err)
+	}
+
+	// A rebuilt PDF keeps the amounts by default and reads as the same payslip.
+	pdf := filepath.Join(t.TempDir(), "shared.pdf")
+	out.Reset()
+	info.Reset()
+	if err := runAnonymize([]string{"-o", pdf, path}, &out, &info); err != nil {
+		t.Fatal(err)
+	}
+	if out.Len() != 0 || !strings.Contains(info.String(), "amounts are kept") {
+		t.Errorf("stdout %q, info %q", out.String(), info.String())
+	}
+	data, err := os.ReadFile(pdf)
+	if err != nil || bytes.Contains(data, []byte("BIANCHI")) || !bytes.Contains(data, []byte("1.667,40")) {
+		t.Fatalf("rebuilt PDF: %v", err)
+	}
+	out.Reset()
+	if err := runExtract([]string{pdf}, &out); err != nil || !strings.Contains(out.String(), "1.667,40") {
+		t.Errorf("rebuilt PDF does not extract: %v\n%s", err, out.String())
+	}
+
+	if err := runAnonymize([]string{"-o", path, path}, &out, &info); err == nil {
+		t.Error("overwrote the payslip")
+	}
+	if err := runAnonymize([]string{"-amounts", "some", path}, &out, &info); err == nil {
+		t.Error("accepted -amounts some")
 	}
 }
 

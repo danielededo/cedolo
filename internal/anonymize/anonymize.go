@@ -1,20 +1,23 @@
 // Package anonymize turns the text layout of a real payslip into one that can
-// be shared to report a layout cedolo reads badly. It works by allowlist: a
-// token is kept only when every word in it is known payroll vocabulary and it
-// contains no digit; every other token is masked character by character
-// (letters become x or X, digits 0), keeping its position and shape. Names,
-// companies, addresses, identifiers and all amounts are therefore masked
+// be shared to report a layout cedolo reads badly (ADR 0008). It works by
+// allowlist: a token is kept only when every word in it is known payroll
+// vocabulary and it contains no digit; every other token is masked character
+// by character (letters become x or X, digits 0), keeping its position and
+// shape. Names, companies, addresses and identifiers are therefore masked
 // without having to recognize them. Words that would reveal special
 // categories of personal data (health, union membership, family situation,
-// debts) are masked even though they are known vocabulary.
+// debts) are masked even though they are known vocabulary. Amounts are masked
+// too unless Options.KeepAmounts is set.
 package anonymize
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/danielededo/cedolo/internal/extract"
 	"github.com/danielededo/cedolo/internal/layout"
+	"github.com/danielededo/cedolo/internal/pii"
 	"github.com/danielededo/cedolo/internal/taxonomy"
 )
 
@@ -23,8 +26,17 @@ type Stats struct {
 	Kept, Masked int
 }
 
+// Options choose what survives besides payroll vocabulary.
+type Options struct {
+	// KeepAmounts keeps amounts and quantities written with decimals
+	// (1.234,56, 168,00, 9,19%), years and month/year periods, so the
+	// arithmetic cross-checks can be reproduced. Dates, codes and other
+	// numbers stay masked.
+	KeepAmounts bool
+}
+
 // Layout returns an anonymized copy of doc. The input is not modified.
-func Layout(doc layout.Document) (layout.Document, Stats) {
+func Layout(doc layout.Document, o Options) (layout.Document, Stats) {
 	vocab := vocabulary()
 	var st Stats
 	out := layout.Document{Pages: make([]layout.Page, len(doc.Pages))}
@@ -32,7 +44,7 @@ func Layout(doc layout.Document) (layout.Document, Stats) {
 		np := p
 		np.Tokens = make([]layout.Token, len(p.Tokens))
 		for j, t := range p.Tokens {
-			if keep(t.Text, vocab) {
+			if keep(t.Text, vocab) || (o.KeepAmounts && number(t.Text)) {
 				st.Kept++
 			} else {
 				t.Text = mask(t.Text)
@@ -59,6 +71,67 @@ func keep(text string, vocab map[string]bool) bool {
 		}
 	}
 	return true
+}
+
+var (
+	decimal = regexp.MustCompile(`^[-+]?(?:\d{1,3}(?:\.\d{3})+|\d+),\d{1,6}[-+]?%?$`)
+	year    = regexp.MustCompile(`^(?:19|20)\d\d$`)
+	period  = regexp.MustCompile(`^(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d\d$`)
+)
+
+// number tells whether a token is an amount, a quantity, a year or a
+// month/year period: values a payslip's arithmetic needs and that identify
+// no one by themselves. Full dates, which can be a birth or hiring date, are
+// not numbers here.
+func number(s string) bool {
+	return decimal.MatchString(s) || year.MatchString(s) || period.MatchString(s)
+}
+
+// Leaks returns the masked words of the original, four letters or longer,
+// that still appear in the anonymized document, and the personal identifiers
+// it contains. Anything it returns means the output must not be shared.
+func Leaks(original, anonymized layout.Document) []string {
+	out := map[string]bool{}
+	for _, p := range anonymized.Pages {
+		for _, t := range p.Tokens {
+			for _, w := range words(t.Text) {
+				out[w] = true
+			}
+		}
+	}
+	// Payroll vocabulary is public: a masked "INPS-2025" leaks nothing when
+	// "INPS" is kept elsewhere.
+	vocab := vocabulary()
+	var leaks []string
+	seen := map[string]bool{}
+	for i, p := range original.Pages {
+		for j, t := range p.Tokens {
+			if i >= len(anonymized.Pages) || j >= len(anonymized.Pages[i].Tokens) || anonymized.Pages[i].Tokens[j].Text == t.Text {
+				continue // kept on purpose
+			}
+			for _, w := range words(t.Text) {
+				if len([]rune(w)) >= 4 && out[w] && !seen[w] && (!vocab[taxonomy.Normalize(w)] || sensitive[taxonomy.Normalize(w)]) {
+					seen[w] = true
+					leaks = append(leaks, w)
+				}
+			}
+		}
+	}
+	var all strings.Builder
+	for _, p := range anonymized.Pages {
+		for _, t := range p.Tokens {
+			all.WriteString(t.Text + " ")
+		}
+	}
+	for _, m := range pii.Find(all.String()) {
+		leaks = append(leaks, string(m.Kind))
+	}
+	return leaks
+}
+
+// words splits s into lowercase runs of letters.
+func words(s string) []string {
+	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool { return !unicode.IsLetter(r) })
 }
 
 func mask(s string) string {

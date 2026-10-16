@@ -25,7 +25,7 @@ func TestPersonalDataIsMasked(t *testing.T) {
 	for _, s := range synth.Styles() {
 		p := synth.ExampleFor(s)
 		in := synth.Layout(p, s)
-		out, st := Layout(in)
+		out, st := Layout(in, Options{})
 		all := texts(out)
 		for _, secret := range []string{"BIANCHI", "ANNA", "ESEMPIO", "SINTETICO", "000042", "2.194,50", "1.667,40", "2026"} {
 			if strings.Contains(all, secret) {
@@ -51,7 +51,7 @@ func TestStructureSurvives(t *testing.T) {
 	for _, s := range synth.Styles() {
 		p := synth.ExampleFor(s)
 		in := synth.Layout(p, s)
-		out, _ := Layout(in)
+		out, _ := Layout(in, Options{})
 		want := extract.Document(in)[0]
 		got := extract.Document(out)
 		if len(got) != 1 {
@@ -81,7 +81,7 @@ func TestSensitiveWordsAndIdentifiersAreMasked(t *testing.T) {
 		{Text: "MALATTIA"}, {Text: "INPS"}, {Text: "Trattenuta"}, {Text: "sindacale"},
 		{Text: "Pignoramento"}, {Text: "Via"}, {Text: "Roma"}, {Text: cf}, {Text: iban}, {Text: "Netto"}, {Text: "a"}, {Text: "pagare"},
 	}}}}
-	out, _ := Layout(in)
+	out, _ := Layout(in, Options{})
 	all := texts(out)
 	for _, leak := range []string{"MALATTIA", "sindacale", "Pignoramento", "Via", "Roma"} {
 		if strings.Contains(all, leak) {
