@@ -8,6 +8,9 @@
 //
 //	analyze(layoutsJSON, lang) -> {payslips, perDocument, report} or {error};
 //	    perDocument has, for each document, {read, repeated} or {error}
+//	anonymize(layoutJSON, keepAmounts) -> {text, pdf} or {error}: an
+//	    anonymized copy of one document (ADR 0008), its text for review and
+//	    the rebuilt PDF as a Uint8Array
 //	texts(lang) -> JSON object of the web app's texts
 //	version -> string
 package main
@@ -19,6 +22,7 @@ import (
 	"strings"
 	"syscall/js"
 
+	"github.com/danielededo/cedolo/internal/anonymize"
 	"github.com/danielededo/cedolo/internal/extract"
 	"github.com/danielededo/cedolo/internal/i18n"
 	"github.com/danielededo/cedolo/internal/insights"
@@ -93,6 +97,41 @@ func extractOne(d layout.Document) (slips []payslip.Payslip, err error) {
 	return extract.Document(d), nil
 }
 
+// anonymizeOne makes the anonymized copy of one document. Nothing is
+// returned when a masked word or an identifier would survive.
+func anonymizeOne(_ js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": fmt.Sprint("internal error: ", r)}
+		}
+	}()
+	if len(args) != 2 {
+		return map[string]any{"error": "anonymize(layoutJSON, keepAmounts)"}
+	}
+	var doc layout.Document
+	if err := json.Unmarshal([]byte(args[0].String()), &doc); err != nil {
+		return failure(err)
+	}
+	anon, _ := anonymize.Layout(doc, anonymize.Options{KeepAmounts: args[1].Truthy()})
+	if leaks := anonymize.Leaks(doc, anon); len(leaks) > 0 {
+		return map[string]any{"error": "leak"}
+	}
+	var pdf bytes.Buffer
+	if err := anonymize.WritePDF(&pdf, anon); err != nil {
+		return failure(err)
+	}
+	var text []string
+	for _, p := range anon.Pages {
+		for _, l := range p.Lines(2) {
+			text = append(text, l.Text())
+		}
+		text = append(text, "")
+	}
+	data := js.Global().Get("Uint8Array").New(pdf.Len())
+	js.CopyBytesToJS(data, pdf.Bytes())
+	return map[string]any{"text": strings.TrimSpace(strings.Join(text, "\n")), "pdf": data}
+}
+
 // texts returns the web app's texts and the report texts it reuses.
 func texts(_ js.Value, args []js.Value) any {
 	l := i18n.IT
@@ -113,9 +152,10 @@ func texts(_ js.Value, args []js.Value) any {
 
 func main() {
 	js.Global().Set("cedolo", js.ValueOf(map[string]any{
-		"analyze": js.FuncOf(analyze),
-		"texts":   js.FuncOf(texts),
-		"version": version,
+		"analyze":   js.FuncOf(analyze),
+		"anonymize": js.FuncOf(anonymizeOne),
+		"texts":     js.FuncOf(texts),
+		"version":   version,
 	}))
 	select {}
 }

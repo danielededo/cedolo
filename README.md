@@ -65,6 +65,10 @@ static files you can serve with any web server, for example
 http://127.0.0.1:8000 (without `--bind` the server is reachable from your
 whole network). Browsers do not run it from a file opened directly.
 
+If a payslip is read badly, "Anonymized copy" next to its name makes the
+same copy as `cedolo anonymize -o`, shows all of its text for review and
+lets you download it to attach to an issue.
+
 To build it from source, with Go and Node.js installed:
 
 ```

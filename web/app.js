@@ -25,6 +25,9 @@ const state = {
   files: [],
   tooMany: false,
   report: '',
+  // The file whose anonymized copy is open, and the copy's PDF bytes.
+  anon: null,
+  anonPDF: null,
   // Passwords that opened a file, tried first on the next protected one;
   // payslips from one employer usually share one. Memory only.
   passwords: [],
@@ -194,6 +197,14 @@ function render() {
     n.className = 'note';
     n.textContent = `— ${note}`;
     li.append(i, name, n);
+    if (f.layout && hasText(f.layout)) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'anon-open';
+      b.textContent = t('web.anon.button');
+      b.addEventListener('click', () => openAnon(f));
+      li.append(b);
+    }
     list.append(li);
   }
   const any = state.report !== '';
@@ -229,7 +240,39 @@ async function handle(fileList) {
   }
 }
 
+// openAnon shows the anonymized copy of a file (ADR 0008): the text it
+// contains, for review, and the rebuilt PDF to download.
+function openAnon(f) {
+  state.anon = f;
+  const keep = $('anon-amounts').checked;
+  const result = globalThis.cedolo.anonymize(JSON.stringify(f.layout), keep);
+  state.anonPDF = result.error ? null : result.pdf;
+  $('anon-title').textContent = t('web.anon.title', f.name);
+  $('anon-text').textContent = result.error ? '' : result.text;
+  $('anon-text').hidden = Boolean(result.error);
+  $('anon-error').hidden = !result.error;
+  if (result.error && result.error !== 'leak') $('anon-error').textContent = t('web.failed', result.error);
+  $('anon-warning').hidden = !keep;
+  $('anon-download').disabled = Boolean(result.error);
+  $('anon').hidden = false;
+  $('anon').scrollIntoView({ block: 'nearest' });
+}
+
+function closeAnon() {
+  state.anon = null;
+  state.anonPDF = null;
+  $('anon-text').textContent = '';
+  $('anon').hidden = true;
+}
+
+function downloadAnon() {
+  if (!state.anonPDF) return;
+  // A fixed name: the original's file name often holds a person's name.
+  save(new Blob([state.anonPDF], { type: 'application/pdf' }), t('web.anon.file'));
+}
+
 function restart() {
+  closeAnon();
   state.files = [];
   state.report = '';
   state.tooMany = false;
@@ -241,13 +284,16 @@ function restart() {
   status('');
 }
 
-function download() {
-  const blob = new Blob([state.report], { type: 'text/html' });
+function save(blob, name) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = state.lang === 'it' ? 'report-cedolini.html' : 'payslip-report.html';
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function download() {
+  save(new Blob([state.report], { type: 'text/html' }), state.lang === 'it' ? 'report-cedolini.html' : 'payslip-report.html');
 }
 
 // The report frame tells its height, so the page scrolls as one.
@@ -268,6 +314,9 @@ drop.addEventListener('drop', (ev) => {
 });
 $('restart').addEventListener('click', restart);
 $('download').addEventListener('click', download);
+$('anon-amounts').addEventListener('change', () => { if (state.anon) openAnon(state.anon); });
+$('anon-download').addEventListener('click', downloadAnon);
+$('anon-close').addEventListener('click', closeAnon);
 for (const b of document.querySelectorAll('[data-lang]')) {
   b.addEventListener('click', () => {
     if (!globalThis.cedolo) return;
@@ -277,6 +326,7 @@ for (const b of document.querySelectorAll('[data-lang]')) {
       try {
         analyze();
         render();
+        if (state.anon) openAnon(state.anon);
       } catch (err) {
         status(t('web.failed', err.message), true);
       }

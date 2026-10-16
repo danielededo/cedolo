@@ -69,6 +69,19 @@
       <summary data-t="web.files"></summary>
       <ul id="file-list"></ul>
     </details>
+    <section class="anon" id="anon" hidden aria-labelledby="anon-title">
+      <h2 id="anon-title"></h2>
+      <p data-t="web.anon.lead"></p>
+      <label class="check"><input type="checkbox" id="anon-amounts" checked> <span data-t="web.anon.amounts"></span></label>
+      <p class="anon-warning" id="anon-warning" data-t="web.anon.warning"></p>
+      <p class="anon-review" data-t="web.anon.review"></p>
+      <pre id="anon-text" tabindex="0"></pre>
+      <p class="anon-error" id="anon-error" role="alert" hidden data-t="web.anon.leak"></p>
+      <div class="toolbar">
+        <button type="button" class="primary" id="anon-download" data-t="web.anon.download"></button>
+        <button type="button" id="anon-close" data-t="web.anon.close"></button>
+      </div>
+    </section>
     <p class="notice" id="none" hidden data-t="web.none"></p>
     <p class="notice" id="too-many" hidden></p>
     <iframe id="report" title="Report" sandbox="allow-scripts" hidden></iframe>
