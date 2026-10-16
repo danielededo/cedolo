@@ -192,6 +192,7 @@ function render() {
     i.textContent = icon;
     i.setAttribute('aria-hidden', 'true');
     const name = document.createElement('span');
+    name.className = 'name';
     name.textContent = f.name;
     const n = document.createElement('span');
     n.className = 'note';

@@ -272,7 +272,7 @@ test('file names and contents never run as code', async () => {
   const { page, seen } = await open();
   await page.setInputFiles('#files', [hostile]);
   await statuses(page);
-  assert.equal(await page.$eval('#file-list li span:nth-child(2)', (s) => s.textContent), '<img src=x onerror=alert(1)>.pdf');
+  assert.equal(await page.$eval('#file-list li .name', (s) => s.textContent), '<img src=x onerror=alert(1)>.pdf');
   assert.equal(await page.$$eval('[onerror],[onload]', (els) => els.length), 0);
   assert.equal(seen.dialogs, 0);
   await page.close();
