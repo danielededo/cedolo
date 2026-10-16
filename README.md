@@ -26,7 +26,8 @@ Italian, is in progress; see the roadmap in
   as verified, extracted, inferred, inconsistent or missing.
 - Compares months and explains what changed, such as surcharge instalments,
   the thirteenth month or the year-end tax adjustment.
-- Writes an offline HTML report with charts over time, in Italian or English.
+- Writes an offline, interactive HTML report in Italian or English: one
+  payslip at a time, where the gross pay goes, and pay over time.
 - Explains in plain words every kind of item it finds and the terms around
   them, such as imponibile and conguaglio, in the report and with
   `cedolo glossary`.

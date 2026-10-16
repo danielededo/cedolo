@@ -28,14 +28,9 @@ func init() {
 
 var glossary = map[Lang]map[string]string{
 	EN: {
-		"glossary.title":      "What the items mean",
-		"glossary.intro":      "General explanations: what each item usually is. Your collective agreement, your company's agreements and the rules of each year decide the details.",
-		"glossary.terms":      "Words around the items",
-		"glossary.months":     "in %d payslips",
-		"glossary.months.one": "in 1 payslip",
-		"glossary.no_match":   "No item or term matches.",
-		"glossary.items":      "Items",
-		"glossary.italian":    "Italian name",
+		"glossary.intro":    "General explanations: what each item usually is. Your collective agreement, your company's agreements and the rules of each year decide the details.",
+		"glossary.terms":    "Payslip words",
+		"glossary.no_match": "No item or term matches.",
 
 		"item.tfr.accrued":                  "TFR (trattamento di fine rapporto) is severance pay that builds up every month, a little less than one thirteenth of your yearly pay, and is paid when the employment ends. It is not paid now: the employer keeps it (in larger companies it goes to an INPS fund), or sends it to your supplementary pension fund if you chose one. The amount kept is revalued every year.",
 		"item.pension_fund.contribution":    "Money paid into your supplementary pension fund that does not come out of this month's net pay, such as the employer's contribution or your TFR sent to the fund. It is shown for information.",
@@ -88,14 +83,9 @@ var glossary = map[Lang]map[string]string{
 		"term.level.text":          "Your grade under the collective agreement. It depends on your tasks and sets your minimum pay.",
 	},
 	IT: {
-		"glossary.title":      "Cosa significano le voci",
-		"glossary.intro":      "Spiegazioni generali: cosa è di solito ogni voce. I dettagli dipendono dal tuo contratto collettivo, dagli accordi aziendali e dalle regole di ogni anno.",
-		"glossary.terms":      "Le parole intorno alle voci",
-		"glossary.months":     "in %d cedolini",
-		"glossary.months.one": "in 1 cedolino",
-		"glossary.no_match":   "Nessuna voce o parola corrisponde.",
-		"glossary.items":      "Voci",
-		"glossary.italian":    "Nome in italiano",
+		"glossary.intro":    "Spiegazioni generali: cosa è di solito ogni voce. I dettagli dipendono dal tuo contratto collettivo, dagli accordi aziendali e dalle regole di ogni anno.",
+		"glossary.terms":    "Le parole del cedolino",
+		"glossary.no_match": "Nessuna voce o parola corrisponde.",
 
 		"item.tfr.accrued":                  "Il TFR (trattamento di fine rapporto) è una somma che matura ogni mese, poco meno di un tredicesimo della retribuzione dell'anno, e viene pagata quando il rapporto di lavoro finisce. Non viene pagato ora: lo accantona l'azienda (in quelle più grandi va a un fondo dell'INPS) oppure va al tuo fondo pensione, se l'hai scelto. La parte accantonata viene rivalutata ogni anno.",
 		"item.pension_fund.contribution":    "Somme versate al tuo fondo pensione che non escono dal netto di questo mese, come il contributo dell'azienda o il TFR destinato al fondo. Sono indicate per informazione.",

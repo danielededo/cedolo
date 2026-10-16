@@ -49,9 +49,8 @@ body {
 .intro { padding: 40px 0 8px; }
 h1 { font-size: 32px; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.02em; }
 .lead { font-size: 18px; color: var(--ink-2); margin: 0 0 16px; }
-.promises { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
-.promises li { padding-left: 26px; position: relative; color: var(--ink-2); }
-.promises li::before {
+.private { padding-left: 26px; position: relative; color: var(--ink-2); margin: 0; }
+.private::before {
   content: "✓"; position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin-top: 3px;
   border-radius: 50%; background: var(--good); color: var(--surface);
   font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
@@ -88,13 +87,14 @@ h1 { font-size: 32px; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.02
 .files { margin: 0 0 16px; }
 .files summary { cursor: pointer; color: var(--ink-2); }
 .files ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; font-size: 14px; }
-.files li { display: flex; gap: 8px; overflow-wrap: anywhere; }
+.files li { display: flex; gap: 8px; align-items: flex-start; }
+.files .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .files .icon { flex: none; width: 1.2em; font-weight: 700; }
 .files .ok .icon { color: var(--good); }
 .files .warn .icon { color: var(--warn); }
 .files .bad .icon { color: var(--bad); }
 .files .note { color: var(--muted); }
-.files .anon-open { flex: none; margin-left: auto; font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--line); background: var(--raised); color: var(--ink); }
+.files .anon-open { flex: none; white-space: nowrap; font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--line); background: var(--raised); color: var(--ink); }
 .anon { margin: 0 0 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
 .anon h2 { font-size: 18px; margin: 0 0 8px; overflow-wrap: anywhere; }
 .anon p { margin: 0 0 12px; color: var(--ink-2); }

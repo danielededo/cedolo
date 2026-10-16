@@ -1,7 +1,9 @@
-// Package report renders payslips as one self-contained HTML page: a summary
-// of the latest month, charts over time, the changes worth a look, leave
-// balances and a glossary of the items found and of the words around them. The page loads nothing from
-// the network and runs no code but a small inline hover layer.
+// Package report renders payslips as one self-contained HTML page. It shows
+// one payslip at a time, the latest first: the net pay, where the gross pay
+// goes, the printed items with their explanation one tap away, and what
+// changed. Pay over time, the month table, leave, the contract and the
+// payslip's vocabulary follow, closed until opened. The page loads nothing
+// from the network and runs no code but a small inline script.
 package report
 
 import (
@@ -36,11 +38,34 @@ const (
 	Inconsistent Status = "inconsistent"
 )
 
-// Tile is a headline number for the latest month.
-type Tile struct {
-	Label string
-	Value string
-	Delta string // change from the previous month, empty when unknown
+// Month is one payslip as the page shows it.
+type Month struct {
+	Label      string // "ottobre 2026"
+	Short      string // "ott 26", for the month picker
+	Status     Status
+	StatusText string
+	Net        string
+	Gross      string // "of 2.194,50 € gross pay"
+	Delta      string // change of the net from the previous month, empty when unknown
+	Parts      []Part // where the gross pay goes
+	Earnings   []Line // what makes up the gross pay
+	SetAside   []Line // TFR and other amounts that do not change this month's pay
+	GrossTotal string // the gross pay, next to Earnings
+	AsideTotal string // the sum of SetAside
+	Changes    []insights.Change
+}
+
+// Part is one share of the gross pay: the net or a kind of deduction.
+type Part struct {
+	Key, Label, Amount, Text string
+	Color                    string
+	Width                    float64 // percent of the bar
+	Lines                    []Line
+}
+
+// Line is one printed item with its explanation.
+type Line struct {
+	Description, Label, Amount, Text string
 }
 
 // Row is one payslip in the month-by-month table.
@@ -59,13 +84,6 @@ type Row struct {
 // LeaveRow is one leave balance.
 type LeaveRow struct {
 	Label, Previous, Accrued, Used, Remaining string
-}
-
-// ItemRow is one taxonomy key found in the payslips, with its explanation.
-type ItemRow struct {
-	Key, Label, LabelIT, Text string
-	Months                    int
-	Found                     string // in how many payslips, as text
 }
 
 // Term is a glossary word printed around the items.
@@ -88,15 +106,12 @@ type Data struct {
 	Lang     string
 	T        map[string]string
 	Range    string
-	Latest   string
-	Tiles    []Tile
+	Months   []Month
+	Selected int // index in Months of the month shown first
 	Trend    template.HTML
-	Withheld template.HTML
 	Rows     []Row
-	Changed  bool
 	Leave    []LeaveRow
 	Contract *Contract
-	Items    []ItemRow
 	Terms    []Term
 	Version  string
 }
@@ -128,13 +143,15 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 	if len(slips) == 0 {
 		return d
 	}
-	d.Range = i18n.T(l, "report.range", len(slips), periods[0].Label, periods[len(periods)-1].Label)
+	if len(slips) == 1 {
+		d.Range = i18n.T(l, "report.range.one", periods[0].Label)
+	} else {
+		d.Range = i18n.T(l, "report.range", len(slips), periods[0].Label, periods[len(periods)-1].Label)
+	}
 
 	var monthly []int
+	var prev *payslip.Payslip // previous ordinary month
 	for i, p := range slips {
-		if p.Kind == payslip.Monthly && p.Month != 0 {
-			monthly = append(monthly, i)
-		}
 		st := status(p)
 		d.Rows = append(d.Rows, Row{
 			Period:        periods[i].Label,
@@ -147,107 +164,135 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 			StatusText:    i18n.T(l, "report."+string(st)),
 			Changes:       periods[i].Changes,
 		})
-		if len(periods[i].Changes) > 0 {
-			d.Changed = true
+		m := month(l, p, periods[i])
+		if p.Kind == payslip.Monthly && p.Month != 0 {
+			if prev != nil && p.Net.Found() && prev.Net.Found() {
+				m.Delta = i18n.T(l, "report.vs_previous", signed(p.Net.Cents-prev.Net.Cents))
+			}
+			prev = &slips[i]
+			monthly = append(monthly, i)
+			d.Selected = i
 		}
+		d.Months = append(d.Months, m)
+	}
+	if len(monthly) == 0 {
+		d.Selected = len(slips) - 1
 	}
 
-	if len(monthly) > 0 {
-		cur := slips[monthly[len(monthly)-1]]
-		var prev *payslip.Payslip
-		if len(monthly) > 1 {
-			prev = &slips[monthly[len(monthly)-2]]
-		}
-		d.Latest = i18n.T(l, "report.latest", insights.Label(l, cur))
-		for _, t := range []struct {
-			key string
-			f   func(payslip.Payslip) payslip.Amount
-		}{
-			{"report.net", func(p payslip.Payslip) payslip.Amount { return p.Net }},
-			{"report.gross", func(p payslip.Payslip) payslip.Amount { return p.Gross }},
-			{"report.deductions", func(p payslip.Payslip) payslip.Amount { return p.Deductions }},
-		} {
-			a := t.f(cur)
-			tile := Tile{Label: i18n.T(l, t.key), Value: amount(a)}
-			if prev != nil && a.Found() && t.f(*prev).Found() {
-				tile.Delta = i18n.T(l, "report.vs_previous", signed(a.Cents-t.f(*prev).Cents))
-			}
-			d.Tiles = append(d.Tiles, tile)
-		}
-
+	if len(monthly) > 1 {
 		labels := make([]string, len(monthly))
 		gross := series{Name: i18n.T(l, "report.gross"), Color: "var(--series-1)"}
 		net := series{Name: i18n.T(l, "report.net"), Color: "var(--series-2)"}
-		contrib := series{Name: i18n.T(l, "report.contrib"), Color: "var(--series-1)"}
-		tax := series{Name: i18n.T(l, "report.taxes"), Color: "var(--series-2)"}
-		other := series{Name: i18n.T(l, "report.other"), Color: "var(--series-3)"}
 		for i, idx := range monthly {
 			p := slips[idx]
 			labels[i] = shortLabel(l, p)
 			gross.Values = append(gross.Values, p.Gross.Cents)
 			net.Values = append(net.Values, p.Net.Cents)
-			c, t := contributions(p), taxes(p)
-			contrib.Values = append(contrib.Values, max(c, 0))
-			tax.Values = append(tax.Values, max(t, 0))
-			other.Values = append(other.Values, max(p.Deductions.Cents-max(c, 0)-max(t, 0), 0))
 		}
 		d.Trend = template.HTML(lineChart("trend", labels, []series{gross, net}))
-		d.Withheld = template.HTML(stackedBars("withheld", labels, []series{contrib, tax, other}))
+	}
 
-		// Leave balances: the latest payslip that prints any.
-		for _, idx := range slices.Backward(monthly) {
-			if len(slips[idx].Leave) == 0 {
-				continue
-			}
-			for _, lv := range slips[idx].Leave {
-				d.Leave = append(d.Leave, LeaveRow{
-					Label:     lv.Label,
-					Previous:  quantity(lv.Previous, lv.Unit, l),
-					Accrued:   quantity(lv.Accrued, lv.Unit, l),
-					Used:      quantity(lv.Used, lv.Unit, l),
-					Remaining: quantity(lv.Remaining, lv.Unit, l),
-				})
-			}
-			break
+	// Leave balances: the latest payslip that prints any.
+	for _, idx := range slices.Backward(monthly) {
+		if len(slips[idx].Leave) == 0 {
+			continue
 		}
+		for _, lv := range slips[idx].Leave {
+			d.Leave = append(d.Leave, LeaveRow{
+				Label:     lv.Label,
+				Previous:  quantity(lv.Previous, lv.Unit, l),
+				Accrued:   quantity(lv.Accrued, lv.Unit, l),
+				Used:      quantity(lv.Used, lv.Unit, l),
+				Remaining: quantity(lv.Remaining, lv.Unit, l),
+			})
+		}
+		break
 	}
 
 	d.Contract = contract(l, slips)
-
-	months := map[string]int{}
-	for _, p := range slips {
-		seen := map[string]bool{}
-		for _, it := range p.Items {
-			if it.Key != "" && !seen[it.Key] {
-				seen[it.Key] = true
-				months[it.Key]++
-			}
-		}
-	}
-	for key, n := range months {
-		found := i18n.T(l, "glossary.months", n)
-		if n == 1 {
-			found = i18n.T(l, "glossary.months.one")
-		}
-		d.Items = append(d.Items, ItemRow{Key: key, Label: i18n.ItemLabel(l, key), LabelIT: i18n.ItemLabel(i18n.IT, key),
-			Text: i18n.ItemText(l, key), Months: n, Found: found})
-	}
-	slices.SortFunc(d.Items, func(a, b ItemRow) int {
-		if a.Months != b.Months {
-			return b.Months - a.Months
-		}
-		if a.Label < b.Label {
-			return -1
-		}
-		if a.Label > b.Label {
-			return 1
-		}
-		return 0
-	})
 	for _, term := range i18n.Terms {
 		d.Terms = append(d.Terms, Term{Label: i18n.T(l, "term."+term), Text: i18n.T(l, "term."+term+".text")})
 	}
 	return d
+}
+
+// month builds the view of one payslip.
+func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
+	st := status(p)
+	m := Month{
+		Label:      per.Label,
+		Short:      shortLabel(l, p),
+		Status:     st,
+		StatusText: i18n.T(l, "report."+string(st)),
+		Net:        amount(p.Net),
+		Changes:    per.Changes,
+	}
+	if p.Gross.Found() {
+		m.Gross = i18n.T(l, "report.of_gross", amount(p.Gross))
+		m.GrossTotal = amount(p.Gross)
+	}
+	line := func(it payslip.Item) Line {
+		return Line{Description: it.Description, Label: i18n.ItemLabel(l, it.Key), Amount: money.Format(it.Cents) + " €", Text: i18n.ItemText(l, it.Key)}
+	}
+	var contrib, tax, other []Line
+	for _, it := range p.Items {
+		switch {
+		case it.Side == payslip.Earning:
+			m.Earnings = append(m.Earnings, line(it))
+		case it.Side == payslip.Info:
+			m.SetAside = append(m.SetAside, line(it))
+		case it.Key == "deductions.inps":
+			contrib = append(contrib, line(it))
+		case strings.HasPrefix(it.Key, "tax.") && it.Key != "tax.credit":
+			tax = append(tax, line(it))
+		default:
+			other = append(other, line(it))
+		}
+	}
+	var aside int64
+	for _, it := range p.Items {
+		if it.Side == payslip.Info {
+			aside += it.Cents
+		}
+	}
+	if aside != 0 {
+		m.AsideTotal = money.Format(aside) + " €"
+	}
+	c, t := max(contributions(p), 0), max(taxes(p), 0)
+	o := max(p.Deductions.Cents-c-t, 0)
+	parts := []struct {
+		key   string
+		cents int64
+		color string
+		lines []Line
+	}{
+		{"net", max(p.Net.Cents, 0), "var(--series-1)", nil},
+		{"contrib", c, "var(--series-2)", contrib},
+		{"taxes", t, "var(--series-3)", tax},
+		{"other", o, "var(--series-4)", other},
+	}
+	var total int64
+	for _, pt := range parts {
+		total += pt.cents
+	}
+	if total == 0 {
+		return m
+	}
+	for _, pt := range parts {
+		if pt.cents == 0 && len(pt.lines) == 0 {
+			continue
+		}
+		m.Parts = append(m.Parts, Part{
+			Key:    pt.key,
+			Label:  i18n.T(l, "report.part."+pt.key),
+			Amount: money.Format(pt.cents) + " €",
+			Text:   i18n.T(l, "report.part."+pt.key+".text"),
+			Color:  pt.color,
+			Width:  float64(pt.cents) * 100 / float64(total),
+			Lines:  pt.lines,
+		})
+	}
+	return m
 }
 
 func texts(l i18n.Lang) map[string]string {
@@ -306,8 +351,16 @@ func quantity(q *int64, unit string, l i18n.Lang) string {
 	return s
 }
 
-// shortLabel names a month on a chart axis: "gen 25", "Jan 25".
+// shortLabel names a month on a chart axis or the month picker: "gen 25",
+// "Jan 25", and "13ª 25" or "13th 25" for an additional month.
 func shortLabel(l i18n.Lang, p payslip.Payslip) string {
+	switch p.Kind {
+	case payslip.Thirteenth, payslip.Fourteenth:
+		return i18n.T(l, "report.short."+string(p.Kind)) + " " + twoDigits(p.Year%100)
+	}
+	if p.Month == 0 {
+		return "?"
+	}
 	name := []rune(i18n.Month(l, p.Month))
 	if len(name) > 3 {
 		name = name[:3]
