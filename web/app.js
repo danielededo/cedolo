@@ -196,7 +196,10 @@ function render() {
     const n = document.createElement('span');
     n.className = 'note';
     n.textContent = `— ${note}`;
-    li.append(i, name, n);
+    const text = document.createElement('span');
+    text.className = 'text';
+    text.append(name, ' ', n);
+    li.append(i, text);
     if (f.layout && hasText(f.layout)) {
       const b = document.createElement('button');
       b.type = 'button';
@@ -215,6 +218,7 @@ function render() {
   $('download').hidden = !any;
   $('report').hidden = !any;
   if (any) $('report').srcdoc = state.report;
+  $('intro').hidden = true;
   $('pick').hidden = true;
   $('result').hidden = false;
 }
@@ -280,6 +284,7 @@ function restart() {
   $('report').removeAttribute('srcdoc');
   $('files').value = '';
   $('result').hidden = true;
+  $('intro').hidden = false;
   $('pick').hidden = false;
   status('');
 }

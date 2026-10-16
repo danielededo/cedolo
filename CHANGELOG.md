@@ -26,6 +26,8 @@ How to use this file:
   other deductions), and every printed item with its explanation one tap
   away. Pay over time appears from two months on; the month table, leave,
   the contract and the payslip's words are closed until opened.
+- The web app's start page is shorter, and once the payslips are read it
+  makes room for the report: the introduction is hidden until "Start over".
 
 ### Added
 
