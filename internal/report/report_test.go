@@ -58,6 +58,14 @@ func TestBuild(t *testing.T) {
 	if len(d.Items) == 0 || d.Items[0].Months != 3 {
 		t.Errorf("items = %+v", d.Items)
 	}
+	for _, it := range d.Items {
+		if it.Text == "" || it.Found != "in 3 payslips" {
+			t.Errorf("glossary item %+v", it)
+		}
+	}
+	if len(d.Terms) != len(i18n.Terms) || d.Terms[0].Text == "" {
+		t.Errorf("terms = %+v", d.Terms)
+	}
 }
 
 func TestRender(t *testing.T) {
@@ -75,6 +83,9 @@ func TestRender(t *testing.T) {
 			`class="status verified"`,
 			html.EscapeString(i18n.T(l, "report.privacy")),
 			html.EscapeString(i18n.T(l, "report.disclaimer")),
+			html.EscapeString(i18n.T(l, "glossary.title")),
+			html.EscapeString(i18n.ItemText(l, "tax.irpef")),
+			html.EscapeString(i18n.T(l, "term.year_end.text")),
 		} {
 			if !strings.Contains(page, want) {
 				t.Errorf("%s: page lacks %q", l, want)

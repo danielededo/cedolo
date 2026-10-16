@@ -62,7 +62,9 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   anything from the network (a Content-Security-Policy forbids it and a test
   checks the page).
 - `internal/i18n`: user-facing texts in Italian and English; every new text
-  goes into both catalogues.
+  goes into both catalogues. `glossary.go` explains every taxonomy key and
+  the payslip terms; a new taxonomy key needs its explanation (a test
+  checks), written as general guidance without yearly rates or limits.
 - `internal/extract`: the generic extractor and the arithmetic cross-checks
   (ADR 0006). New layout traits get a test in `foreign_test.go`.
 

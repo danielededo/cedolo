@@ -285,3 +285,40 @@ func TestReadingIsResilient(t *testing.T) {
 		t.Errorf("warnings: %q", warn.String())
 	}
 }
+
+func TestGlossaryCommand(t *testing.T) {
+	var out bytes.Buffer
+	if err := runGlossary(nil, &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"IRPEF\n", "Conguaglio\n", "Addizionale comunale\n"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("full glossary lacks %q", want)
+		}
+	}
+	out.Reset()
+	if err := runGlossary([]string{"-lang", "en", "addizionale"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "Regional income tax surcharge (Addizionale regionale)\n") ||
+		!strings.Contains(got, "Municipal income tax surcharge") || strings.Contains(got, "IRPEF)\n") {
+		t.Errorf("search for addizionale:\n%s", got)
+	}
+	for _, line := range strings.Split(got, "\n") {
+		if len([]rune(line)) > 78 {
+			t.Errorf("line longer than 78: %q", line)
+		}
+	}
+	out.Reset()
+	if err := runGlossary([]string{"imponibile", "fiscale"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(out.String(), "Imponibile fiscale\n") || strings.Contains(out.String(), "Imponibile previdenziale") {
+		t.Errorf("search for imponibile fiscale:\n%s", out.String())
+	}
+	out.Reset()
+	if err := runGlossary([]string{"xyz"}, &out); err != nil || !strings.Contains(out.String(), "Nessuna") {
+		t.Errorf("no match: %q, %v", out.String(), err)
+	}
+}
