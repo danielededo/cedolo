@@ -35,8 +35,9 @@ func TestPersonalDataIsMasked(t *testing.T) {
 		if strings.ContainsAny(all, "123456789") {
 			t.Errorf("%s: a non-zero digit survived", s)
 		}
-		if st.Kept == 0 || st.Masked == 0 || st.Kept+st.Masked != in.TokenCount() {
-			t.Errorf("%s: stats %+v for %d tokens", s, st, in.TokenCount())
+		// Stats count words: a letter-spaced page is rejoined first.
+		if st.Kept == 0 || st.Masked == 0 || st.Kept+st.Masked != out.TokenCount() {
+			t.Errorf("%s: stats %+v for %d tokens", s, st, out.TokenCount())
 		}
 		if in.Pages[0].Tokens[0] == out.Pages[0].Tokens[0] && !keep(in.Pages[0].Tokens[0].Text, vocabulary()) {
 			t.Errorf("%s: input modified or first token not masked", s)

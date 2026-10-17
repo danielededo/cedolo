@@ -24,6 +24,21 @@ func Layout(p Payslip, s Style) layout.Document {
 			page.Tokens = append(page.Tokens, upTokens(t)...)
 			continue
 		}
+		if t.tracking > 0 {
+			// Letter-spaced text: a PDF reader sees each character apart.
+			for _, g := range t.glyphs() {
+				if g.s != " " {
+					page.Tokens = append(page.Tokens, layout.Token{
+						Text: g.s,
+						X:    g.x,
+						Y:    pageHeight - t.y - ascent*t.size,
+						W:    textWidth(g.s, t.size),
+						H:    (ascent + descent) * t.size,
+					})
+				}
+			}
+			continue
+		}
 		x := t.x
 		space := textWidth(" ", t.size)
 		for i, word := range strings.Split(t.s, " ") {

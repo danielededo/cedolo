@@ -23,10 +23,16 @@ const (
 	// StyleGrid puts deductions before earnings, uses different column names,
 	// and prints totals and taxable bases in label cells with values below.
 	StyleGrid
+	// StyleSpaced places every character on its own with extra spacing, so
+	// that text layers report words a character at a time. Its totals sit
+	// under small labels, with a statistics column printed just beside them
+	// on another baseline and a row of year-to-date values below; the INPS
+	// contributions and the IRPEF appear only as totals.
+	StyleSpaced
 )
 
 // Styles lists every style.
-func Styles() []Style { return []Style{StyleClassic, StyleSigned, StyleGrid} }
+func Styles() []Style { return []Style{StyleClassic, StyleSigned, StyleGrid, StyleSpaced} }
 
 func (s Style) String() string {
 	switch s {
@@ -36,6 +42,8 @@ func (s Style) String() string {
 		return "signed"
 	case StyleGrid:
 		return "grid"
+	case StyleSpaced:
+		return "spaced"
 	}
 	return fmt.Sprintf("Style(%d)", int(s))
 }
@@ -60,6 +68,9 @@ func render(p Payslip, s Style) *canvas {
 		renderSigned(c, p)
 	case StyleGrid:
 		renderGrid(c, p)
+	case StyleSpaced:
+		c.tracking = 0.1
+		renderSpaced(c, p)
 	default:
 		renderClassic(c, p)
 	}
@@ -306,6 +317,106 @@ func renderGrid(c *canvas, p Payslip) {
 	}
 	for i, l := range p.Leave {
 		c.textUp(lefts[i]-4, y+6, 6, l.Kind)
+	}
+}
+
+func renderSpaced(c *canvas, p Payslip) {
+	const (
+		colCode, colDesc                 = 27.0, 60.0
+		colQty, colBase, colEarn, colDed = 250.0, 320.0, 400.0, 470.0
+		colTotals, colStats              = 359.0, 425.0
+	)
+	c.text(colCode, 805, 10, true, "CEDOLINO PAGA")
+	cells := func(y float64, labels, values []string) {
+		for i := range labels {
+			x := colCode + float64(i)*130
+			c.text(x, y, 5, false, labels[i])
+			c.text(x, y-10, 7, true, values[i])
+		}
+	}
+	cells(785, []string{"AZIENDA", "PERIODO DI RETRIBUZIONE", "LIVELLO", "CCNL"},
+		[]string{p.Employer, fmt.Sprintf("%s %d", italianMonths[p.Month], p.Year), p.Level, p.CCNL})
+	cells(760, []string{"COGNOME E NOME", "MATRICOLA", "QUALIFICA"},
+		[]string{p.Employee, p.EmployeeNumber, p.Qualification})
+
+	y := 725.0
+	c.text(colCode, y, 6, true, "COD.")
+	c.text(colDesc, y, 6, true, "DESCRIZIONE")
+	c.textRight(colQty, y, 6, true, "QUANTITÀ")
+	c.textRight(colBase, y, 6, true, "BASE")
+	c.textRight(colEarn, y, 6, true, "COMPETENZE")
+	c.textRight(colDed, y, 6, true, "TRATTENUTE")
+	y -= 14
+	for _, it := range p.Items {
+		c.text(colCode, y, 7, false, it.Code)
+		c.text(colDesc, y, 7, false, it.Description)
+		if it.Quantity != "" {
+			c.textRight(colQty, y, 7, false, it.Quantity)
+		}
+		if it.Base != "" {
+			c.textRight(colBase, y, 7, false, it.Base)
+		}
+		col := colEarn
+		if it.Deduction {
+			col = colDed
+		}
+		c.textRight(col, y, 7, false, money.Format(it.Amount))
+		y -= 12
+	}
+
+	// Totals: small labels with their values in the cell below, and on
+	// the right a statistics column whose numbers sit a little lower than
+	// the labels beside them.
+	gross, deductions, net := p.Totals()
+	y -= 24
+	c.text(colTotals, y+14, 5, false, "STATISTICHE")
+	c.text(colStats, y+14, 5, false, "ORE LAVORATE")
+	// The statistics number of a row sits either a little lower than its
+	// labels, on their line, or low enough to make a line of its own with
+	// its top just above the labels' bottom.
+	drop := 2.5
+	row := func(labels []string, xs []float64, values []string, stats string) {
+		for i := range labels {
+			c.text(xs[i], y, 5, false, labels[i])
+			c.text(xs[i]+15, y-14, 8, true, values[i])
+		}
+		c.text(colStats, y-drop, 8, false, stats)
+		c.text(colStats, y-14, 8, false, stats)
+		y -= 24
+	}
+	row([]string{"TOTALE LORDO", "IMPON. CONTR. SOC.", "TOT. CONTR. SOC."}, []float64{colCode, 110, colTotals},
+		[]string{money.Format(gross), money.Format(p.INPSBase), money.Format(p.Contributions)}, "8,00")
+	row([]string{"IMP. IRPEF", "TOT. TRAT. IRPEF"}, []float64{214, colTotals},
+		[]string{money.Format(p.IRPEFBase), money.Format(p.Tax)}, "7,50")
+	drop = 6.5
+	row([]string{"ARR. PREC.", "TOT. TRATTENUTE"}, []float64{273, colTotals},
+		[]string{"0,00", money.Format(deductions)}, "8,00")
+	row([]string{"ARR. ATTUALE", "NETTO BUSTA"}, []float64{273, colTotals},
+		[]string{"0,00", money.Format(net)}, "6,00")
+	row([]string{"TFR MESE"}, []float64{colTotals}, []string{money.Format(p.TFRAccrued)}, "8,00")
+
+	// Leave: one label per kind and measure, values right-aligned below.
+	x := colCode
+	for _, l := range p.Leave {
+		for _, m := range []struct{ label, value string }{
+			{"A.P.", l.Previous}, {"MAT.", l.Accrued}, {"GOD.", l.Used}, {"RES.", l.Remaining},
+		} {
+			c.text(x, y, 5, false, l.Kind+" "+m.label)
+			c.textRight(x+38, y-12, 7, false, m.value)
+			x += 42
+		}
+	}
+
+	// Year-to-date values, under the same headings as the month's.
+	y -= 34
+	for i, label := range []string{"IMPONIBILE INPS", "IMPONIBILE IRPEF", "IRPEF PAGATA"} {
+		c.text(110+float64(i)*100, y, 5, false, label)
+	}
+	c.text(colCode, y-6, 5, false, "PROGRES.")
+	// "ANNUI" ends the row label, its top aligned with the values'.
+	c.text(colCode, y-12+ascent*(8-5), 5, false, "ANNUI")
+	for i, v := range []int64{p.INPSBase * 10, p.IRPEFBase * 10, p.Tax * 10} {
+		c.text(120+float64(i)*100, y-12, 8, true, money.Format(v))
 	}
 }
 

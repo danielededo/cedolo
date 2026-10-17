@@ -43,6 +43,10 @@ type Payslip struct {
 	IRPEFBase      int64
 	TFRAccrued     int64
 	Leave          []Leave
+	// Contributions and Tax are withheld without an item of their own:
+	// some payslips print the INPS contributions and the IRPEF only in
+	// their totals, below the item table.
+	Contributions, Tax int64
 }
 
 // Totals returns gross pay, total deductions and net pay in cents.
@@ -54,6 +58,7 @@ func (p Payslip) Totals() (gross, deductions, net int64) {
 			gross += it.Amount
 		}
 	}
+	deductions += p.Contributions + p.Tax
 	return gross, deductions, gross - deductions
 }
 
@@ -113,6 +118,23 @@ func ExampleFor(s Style) Payslip {
 			p.Items = append(p.Items, Item{Code: "9990", Description: "ARROTONDAMENTO MESE CORRENTE", Amount: r, Key: "rounding"})
 		}
 	}
+	if s == StyleSpaced {
+		// This style prints the INPS contributions and the IRPEF only as
+		// totals, and its leave table names the reduced hours "ROL".
+		var items []Item
+		for _, it := range p.Items {
+			switch it.Key {
+			case "deductions.inps":
+				p.Contributions = it.Amount
+			case "tax.irpef":
+				p.Tax = it.Amount
+			default:
+				items = append(items, it)
+			}
+		}
+		p.Items = items
+		p.Leave[1].Kind = "ROL"
+	}
 	return p
 }
 
@@ -125,4 +147,6 @@ var descriptions = map[Style][7]string{
 		"Ritenute IRPEF", "Add.le regionale IRPEF", "Add.le comunale IRPEF"},
 	StyleGrid: {"PAGA BASE", "STRAORD. FERIALE 25%", "IND. FUNZIONE", "CTR. F.P.L.D. 9,19%",
 		"IRPEF NETTA", "ADD. REG. RATA", "ADD. COM. RATA"},
+	StyleSpaced: {"LAVORO ORDINARIO", "STRAORDINARIO 25%", "IND. FUNZIONE", "CONTR. IVS",
+		"RITENUTA IRPEF", "RATA ADDIZ. REGIONALE", "RATA ADDIZ. COMUNALE"},
 }

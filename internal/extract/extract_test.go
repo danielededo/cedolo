@@ -84,7 +84,9 @@ func checkAgainst(t *testing.T, got []payslip.Payslip, want synth.Payslip, s syn
 		g := p.Leave[i]
 		// Vertical labels of several words are read word by word, so the
 		// label may be the kind's last word only ("FEST." of "EX FEST.").
-		if string(g.Kind) != w.Key || !strings.Contains(w.Kind, g.Label) || g.Label == "" || g.Unit == "" {
+		// The spaced style, like the payslips it imitates, prints no unit.
+		unitless := s == synth.StyleSpaced
+		if string(g.Kind) != w.Key || !strings.Contains(w.Kind, g.Label) || g.Label == "" || (g.Unit == "") != unitless {
 			t.Errorf("leave %d = %s %q unit %q, want %s %q", i, g.Kind, g.Label, g.Unit, w.Key, w.Kind)
 		}
 		for name, pair := range map[string]struct {

@@ -42,6 +42,10 @@ func WritePDFWith(w io.Writer, p Payslip, s Style, o Options) error {
 type canvas struct {
 	content bytes.Buffer
 	texts   []drawnText
+	// tracking, as a fraction of the font size, places every character on
+	// its own with that much extra space after it, as some payroll software
+	// writes its PDFs.
+	tracking float64
 }
 
 // drawnText is one text run: its left edge, baseline and font size in PDF
@@ -51,6 +55,7 @@ type drawnText struct {
 	x, y, size float64
 	s          string
 	up         bool
+	tracking   float64
 }
 
 func (c *canvas) text(x, y, size float64, bold bool, s string) {
@@ -58,8 +63,54 @@ func (c *canvas) text(x, y, size float64, bold bool, s string) {
 	if bold {
 		font = "F2"
 	}
-	fmt.Fprintf(&c.content, "BT /%s %.1f Tf 1 0 0 1 %.2f %.2f Tm (%s) Tj ET\n", font, size, x, y, pdfString(s))
-	c.texts = append(c.texts, drawnText{x: x, y: y, size: size, s: s})
+	t := drawnText{x: x, y: y, size: size, s: s, tracking: c.tracking}
+	if c.tracking == 0 {
+		fmt.Fprintf(&c.content, "BT /%s %.1f Tf 1 0 0 1 %.2f %.2f Tm (%s) Tj ET\n", font, size, x, y, pdfString(s))
+	} else {
+		// One run with the extra space between characters as position
+		// adjustments, in thousandths of the font size.
+		fmt.Fprintf(&c.content, "BT /%s %.1f Tf 1 0 0 1 %.2f %.2f Tm [", font, size, x, y)
+		pen := x
+		for _, g := range t.glyphs() {
+			if g.s == " " {
+				continue
+			}
+			if g.x != pen {
+				fmt.Fprintf(&c.content, " %.0f", -(g.x-pen)/size*1000)
+			}
+			fmt.Fprintf(&c.content, " (%s)", pdfString(g.s))
+			pen = g.x + textWidth(g.s, size)
+		}
+		c.content.WriteString(" ] TJ ET\n")
+	}
+	c.texts = append(c.texts, t)
+}
+
+// glyph is one character of a letter-spaced run and its left edge.
+type glyph struct {
+	s string
+	x float64
+}
+
+// glyphs returns the characters of a letter-spaced run with their
+// positions.
+func (t drawnText) glyphs() []glyph {
+	var out []glyph
+	x := t.x
+	for _, r := range t.s {
+		out = append(out, glyph{string(r), x})
+		x += textWidth(string(r), t.size) + t.tracking*t.size
+	}
+	return out
+}
+
+// width returns the width of s as the canvas draws it.
+func (c *canvas) width(s string, size float64) float64 {
+	n := len([]rune(s))
+	if n == 0 {
+		return 0
+	}
+	return textWidth(s, size) + c.tracking*size*float64(n-1)
 }
 
 // textUp draws text rotated a quarter turn counterclockwise, starting at
@@ -70,7 +121,7 @@ func (c *canvas) textUp(x, y, size float64, s string) {
 }
 
 func (c *canvas) textRight(right, y, size float64, bold bool, s string) {
-	c.text(right-textWidth(s, size), y, size, bold, s)
+	c.text(right-c.width(s, size), y, size, bold, s)
 }
 
 func (c *canvas) rule(x1, y, x2 float64) {

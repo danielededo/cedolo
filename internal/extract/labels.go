@@ -8,17 +8,20 @@ import "strings"
 var (
 	grossLabels = []string{"totale competenze", "totale spettanze", "totale assegni", "totale lordo mensile",
 		"totale lordo", "retribuzione lorda", "lordo mensile", "totale compensi", "lordo"}
-	deductionLabels = []string{"totale trattenute", "totale ritenute", "totale trattenute e ritenute"}
-	netLabels       = []string{"netto del mese", "netto in busta", "netto a pagare", "netto da pagare",
+	deductionLabels = []string{"totale trattenute", "totale ritenute", "totale trattenute e ritenute",
+		"tot trattenute", "tot ritenute"}
+	netLabels = []string{"netto del mese", "netto in busta", "netto a pagare", "netto da pagare",
 		"netto busta", "netto mese", "netto"}
 	inpsBaseLabels = []string{"imponibile inps", "imponibile previdenziale", "imponibile contributivo",
 		"imponibile contributi sociali", "imponibile contributi", "imponibile f p l d", "imp le f p l d",
 		"impon contr soc", "imp contr soc", "imp le inps", "imp inps", "imp previdenziale"}
 	irpefBaseLabels = []string{"imponibile irpef", "imponibile fiscale", "imp irpef", "imp fiscale"}
 	socialLabels    = []string{"totale contributi sociali", "totale tratt sociali", "totale trattenute sociali",
-		"totale contributi previdenziali", "totale contributi"}
+		"totale contributi previdenziali", "totale contributi", "tot contr soc", "tot contributi sociali",
+		"tot contributi"}
 	taxLabels = []string{"totale trattenute irpef", "totale tratt fiscale", "totale trattenute fiscali",
-		"totale ritenute fiscali", "totale ritenute irpef", "totale irpef"}
+		"totale ritenute fiscali", "totale ritenute irpef", "totale irpef", "tot trattenute irpef",
+		"tot tratt irpef", "tot trat irpef", "tot irpef"}
 	inpsLabels = []string{"ctr f p l d", "contributo f p l d", "contributi f p l d", "contributo ivs",
 		"contributi ivs", "ctr ivs"}
 	roundingPreviousLabels = []string{"arrotondamento mese precedente", "arrotondamento precedente",
@@ -38,6 +41,11 @@ var labelContinuations = map[string]bool{
 	"irpef": true, "fiscale": true, "fiscali": true, "sociali": true, "sociale": true, "previdenziali": true,
 	"corpo": true, "t": true, "ts": true, "inail": true, "inps": true, "annuo": true, "annua": true,
 	"annue": true, "annui": true, "progressivi": true, "progr": true, "ap": true, "anno": true, "tassaz": true,
+}
+
+// Words that label a row of year-to-date values.
+var progressiveWords = map[string]bool{
+	"progressivi": true, "progressivo": true, "progres": true, "progr": true, "prog": true, "annui": true,
 }
 
 // Column header words of the item table, by column kind.
@@ -97,6 +105,9 @@ func Vocabulary() []string {
 		phrases = append(phrases, w)
 	}
 	for w := range headerLabelWords {
+		phrases = append(phrases, w)
+	}
+	for w := range progressiveWords {
 		phrases = append(phrases, w)
 	}
 	for w := range monthNames {

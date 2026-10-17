@@ -45,7 +45,7 @@ function summary(p) {
 const core = await startCore();
 const dir = mkdtempSync(join(tmpdir(), 'cedolo-web-'));
 
-const cases = ['classic', 'signed', 'grid'].map((style) => ({ style, rotate: 0 }))
+const cases = ['classic', 'signed', 'grid', 'spaced'].map((style) => ({ style, rotate: 0 }))
   .concat([90, 180, 270].map((rotate) => ({ style: 'grid', rotate })));
 
 for (const { style, rotate } of cases) {
