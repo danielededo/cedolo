@@ -18,6 +18,14 @@ How to use this file:
 
 ## [Unreleased]
 
+### Fixed
+
+- The anonymized copy reads back like the payslip in more layouts. Column
+  headings that mix known and unknown abbreviations, such as
+  "ORE/GG./NUM.", keep their known words, so the copy still has its
+  quantity and rate columns and their items. Text is placed so that labels
+  in two sizes stay on one line, so totals labeled that way are still found.
+
 ## [0.5.0] - 2026-10-17
 
 ### Added

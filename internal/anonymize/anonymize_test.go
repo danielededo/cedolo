@@ -99,3 +99,23 @@ func TestSensitiveWordsAndIdentifiersAreMasked(t *testing.T) {
 		t.Errorf("identifiers survived: %+v", m)
 	}
 }
+
+func TestKnownWordsOfATokenAreKept(t *testing.T) {
+	vocab := vocabulary()
+	for in, want := range map[string]string{
+		"ORE/GG./NUM.":         "ORE/GG./XXX.",
+		"VAL.UNIT./NEUTRA":     "XXX.UNIT./NEUTRA",
+		"ROSSI/INPS":           "XXXXX/INPS",
+		"Trattenuta/sindacale": "Trattenuta/xxxxxxxxx",
+	} {
+		if got := maskWords(in, vocab); got != want {
+			t.Errorf("maskWords(%q) = %q, want %q", in, got, want)
+		}
+	}
+	// A token with digits is masked whole: letters next to digits can be
+	// part of a code.
+	out, _ := Layout(layout.Document{Pages: []layout.Page{{Tokens: []layout.Token{{Text: "INPS-2025"}}}}}, Options{})
+	if got := out.Pages[0].Tokens[0].Text; got != "XXXX-0000" {
+		t.Errorf("INPS-2025 became %q", got)
+	}
+}

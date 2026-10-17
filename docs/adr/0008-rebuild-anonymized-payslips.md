@@ -27,10 +27,14 @@ trying every possible value.
 We will share payslips as new PDFs rebuilt from the anonymized text layout,
 never as modified originals.
 
-- **Allowlist.** A token is kept only when every word is known payroll
-  vocabulary and none reveals special categories of data. Everything else is
-  masked character by character: letters become x or X, digits 0, and length
-  and position are kept. Nothing is derived from the masked value.
+- **Allowlist.** A word is kept only when it is known payroll vocabulary
+  and does not reveal special categories of data. Everything else is masked
+  character by character: letters become x or X, digits 0, and length and
+  position are kept. Nothing is derived from the masked value. A token
+  without digits keeps its known words and masks the others, so a column
+  header such as "ORE/GG./NUM." still names its column as "ORE/GG./XXX.";
+  a token with digits (a code, a date) is masked whole unless it is an
+  amount.
 - **Amounts kept by default.** Tokens that are amounts or quantities with
   decimals (`1.234,56`, `168,00`, `9,19`), years, and month/year periods
   are kept, so the cross-checks can be reproduced. Other digits are

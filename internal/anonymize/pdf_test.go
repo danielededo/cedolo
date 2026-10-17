@@ -2,6 +2,7 @@ package anonymize
 
 import (
 	"bytes"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -120,5 +121,38 @@ func TestLeaks(t *testing.T) {
 	anon.Pages[0].Tokens[0].Text = "Rossi" // as if a mask had failed
 	if leaks := Leaks(in, anon); len(leaks) != 1 || leaks[0] != "rossi" {
 		t.Errorf("leaks = %v", leaks)
+	}
+}
+
+// TestRebuiltPDFKeepsBoxes checks that PDFium reads back each token's box,
+// whatever its height: labels in two sizes a couple of points apart must stay
+// on one line.
+func TestRebuiltPDFKeepsBoxes(t *testing.T) {
+	in := layout.Document{Pages: []layout.Page{{Number: 1, Width: 595, Height: 842, Tokens: []layout.Token{
+		{Text: "IMP.LE", X: 40, Y: 497.4, W: 19.7, H: 7},
+		{Text: "F.P.L.D.", X: 64, Y: 495.3, W: 57.5, H: 12.6},
+		{Text: "NETTO", X: 200, Y: 300, W: 40, H: 25},
+	}}}}
+	var pdf bytes.Buffer
+	if err := WritePDF(&pdf, in); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "boxes.pdf")
+	if err := os.WriteFile(path, pdf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := pdftext.PDFium{}.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := doc.Pages[0].Tokens
+	if len(got) != len(in.Pages[0].Tokens) {
+		t.Fatalf("read back %d tokens, want %d", len(got), len(in.Pages[0].Tokens))
+	}
+	for i, w := range in.Pages[0].Tokens {
+		g := got[i]
+		if g.Text != w.Text || math.Abs(g.X-w.X) > 0.1 || math.Abs(g.Y-w.Y) > 0.1 || math.Abs(g.W-w.W) > 0.1 || math.Abs(g.H-w.H) > 0.1 {
+			t.Errorf("token %d read back as %+v, want %+v", i, g, w)
+		}
 	}
 }

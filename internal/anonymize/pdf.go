@@ -10,11 +10,13 @@ import (
 	"github.com/danielededo/cedolo/internal/layout"
 )
 
-// Vertical extent of a glyph box as a fraction of the font size, as text
-// layers report it for the standard fonts; see internal/synth.
+// Vertical extent of a Courier glyph box as a fraction of the font size:
+// the font's bounding box, which PDFium reports for every glyph. Text is
+// sized and placed so that PDFium reads back the boxes it was given, and
+// pdf.js, which puts the top 0.8 of the size above the baseline, nearly so.
 const (
-	ascent  = 0.718
-	descent = 0.207
+	ascent  = 0.805
+	descent = 0.250
 	// Every Courier glyph is 600 thousandths of an em wide, so a token is
 	// scaled to its original width without a width table per glyph.
 	glyph = 0.6
