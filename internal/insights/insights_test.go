@@ -147,3 +147,20 @@ func TestDedupe(t *testing.T) {
 		t.Error("Dedupe changed its input")
 	}
 }
+
+func TestAdditionalMonthWithoutMonth(t *testing.T) {
+	fourteenth := payslip.Payslip{Year: 2025, Kind: payslip.Fourteenth, Net: payslip.Amount{Cents: 100, Status: payslip.Verified}}
+	if got := Label(i18n.IT, fourteenth); got != "Quattordicesima 2025" {
+		t.Errorf("label = %q", got)
+	}
+	june := payslip.Payslip{Year: 2025, Month: 6, Kind: payslip.Monthly}
+	august := payslip.Payslip{Year: 2025, Month: 8, Kind: payslip.Monthly}
+	slips := []payslip.Payslip{august, fourteenth, june}
+	Sort(slips)
+	if slips[0].Month != 6 || slips[1].Kind != payslip.Fourteenth || slips[2].Month != 8 {
+		t.Errorf("order = %+v", slips)
+	}
+	if kept, dropped := Dedupe([]payslip.Payslip{fourteenth, fourteenth}); len(kept) != 1 || dropped != 1 {
+		t.Errorf("the same fourteenth twice: kept %d, dropped %d", len(kept), dropped)
+	}
+}

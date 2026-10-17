@@ -61,9 +61,11 @@ var Entries = []Entry{
 	{Key: "deductions.inps", LabelEN: "Social security contributions (INPS)", LabelIT: "Contributi INPS",
 		Side: payslip.Deduction, Keywords: []string{"inps", "ivs", "f p l d", "fpld", "contributo previdenziale", "contributi previdenziali", "contrib previdenziali", "cigs", "c i g s", "naspi", "fis"}},
 	{Key: "earnings.thirteenth", LabelEN: "Thirteenth month", LabelIT: "Tredicesima",
-		Side: payslip.Earning, Keywords: []string{"tredicesima", "13ma", "13a mensilita", "gratifica natalizia", "rateo 13"}},
+		Side: payslip.Earning, Keywords: []string{"tredicesima", "13ma", "13esima", "13a mensilita", "13 mensilita", "13a mens", "13 mens",
+			"xiii mensilita", "gratifica natalizia", "rateo 13", "ratei 13"}},
 	{Key: "earnings.fourteenth", LabelEN: "Fourteenth month", LabelIT: "Quattordicesima",
-		Side: payslip.Earning, Keywords: []string{"quattordicesima", "14ma", "14a mensilita", "rateo 14"}},
+		Side: payslip.Earning, Keywords: []string{"quattordicesima", "14ma", "14esima", "14a mensilita", "14 mensilita", "14a mens", "14 mens",
+			"xiv mensilita", "rateo 14", "ratei 14"}},
 	{Key: "earnings.overtime", LabelEN: "Overtime", LabelIT: "Straordinario",
 		Side: payslip.Earning, Keywords: []string{"straordinario", "straordinari", "straord", "lavoro supplementare", "supplementare"}},
 	{Key: "earnings.seniority", LabelEN: "Seniority increments", LabelIT: "Scatti di anzianità",
@@ -136,11 +138,12 @@ func Lookup(key string) (Entry, bool) {
 
 // Normalize lowercases s, removes accents, and replaces every run of
 // characters that are not letters or digits with a single space, so that
-// "Add.le Reg." and "ADD LE REG" compare equal.
+// "Add.le Reg." and "ADD LE REG" compare equal. Compatibility characters
+// become their plain form first, so "13ª" reads as "13a".
 func Normalize(s string) string {
 	var b strings.Builder
 	space := true
-	for _, r := range norm.NFD.String(strings.ToLower(s)) {
+	for _, r := range norm.NFKD.String(strings.ToLower(s)) {
 		switch {
 		case unicode.Is(unicode.Mn, r):
 			// Combining accent: dropped.
