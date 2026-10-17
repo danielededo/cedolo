@@ -368,7 +368,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   var picks = document.querySelectorAll(".picker button");
   var picker = document.querySelector(".picker");
   // The page may lay the report out before showing it, or the phone may
-  // turn: scroll again whenever the width changes.
+  // turn: scroll again when the width changes. Not on every resize: inside
+  // the web app the frame grows or shrinks with each month shown, and the
+  // row must not jump under the finger that picked one.
   function toCurrent() {
     var current = document.querySelector('.picker button[aria-pressed="true"]');
     if (picker && current) {
@@ -376,11 +378,24 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     }
   }
   toCurrent();
-  window.addEventListener("resize", toCurrent);
+  if (picker && window.ResizeObserver) {
+    // Called after layout, before the row is painted at its new width.
+    var width = picker.clientWidth;
+    new ResizeObserver(function () {
+      if (picker.clientWidth !== width) { width = picker.clientWidth; toCurrent(); }
+    }).observe(picker);
+  }
+  // A month picked at the edge of the row slides fully into view.
+  function reveal(b) {
+    var left = b.offsetLeft - 16, right = b.offsetLeft + b.offsetWidth + 16 - picker.clientWidth;
+    var to = picker.scrollLeft < right ? right : picker.scrollLeft > left ? left : null;
+    if (to !== null) picker.scrollTo({ left: to, behavior: "smooth" });
+  }
   picks.forEach(function (b) {
     b.addEventListener("click", function () {
       picks.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
       document.querySelectorAll("section.month").forEach(function (m) { m.hidden = m.dataset.month !== b.dataset.month; });
+      reveal(b);
     });
   });
   // A segment of the bar opens its line below.
