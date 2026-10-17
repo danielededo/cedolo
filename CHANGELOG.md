@@ -18,6 +18,10 @@ How to use this file:
 
 ## [Unreleased]
 
+### Changed
+
+- The web app's Italian heading reads "Comprendi il tuo cedolino".
+
 ## [0.3.0] - 2026-10-17
 
 ### Changed
