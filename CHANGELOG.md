@@ -29,6 +29,9 @@ How to use this file:
 
 ### Fixed
 
+- The report opens on the latest payslip even when it is a thirteenth or
+  fourteenth month, highlighted in the month row. Before, it opened on the
+  last ordinary month.
 - The anonymized copy reads back like the payslip in more layouts. Column
   headings that mix known and unknown abbreviations, such as
   "ORE/GG./NUM.", keep their known words, so the copy still has its

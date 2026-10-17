@@ -109,7 +109,7 @@ type Data struct {
 	T        map[string]string
 	Range    string
 	Months   []Month
-	Selected int // index in Months of the month shown first
+	Selected int // index in Months of the month shown first: the latest
 	Trend    template.HTML
 	Rows     []Row
 	Leave    []LeaveRow
@@ -175,13 +175,11 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 			}
 			prev = &slips[i]
 			monthly = append(monthly, i)
-			d.Selected = i
 		}
 		d.Months = append(d.Months, m)
 	}
-	if len(monthly) == 0 {
-		d.Selected = len(slips) - 1
-	}
+	// The latest payslip opens first, a thirteenth or fourteenth month too.
+	d.Selected = len(slips) - 1
 
 	if len(monthly) > 1 {
 		labels := make([]string, len(monthly))
