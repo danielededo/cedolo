@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-17
+
 ### Added
 
 - Each month of the report opens with one sentence under the net pay: how
@@ -269,7 +271,8 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/danielededo/cedolo/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/danielededo/cedolo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/danielededo/cedolo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/danielededo/cedolo/compare/v0.2.0...v0.3.0
