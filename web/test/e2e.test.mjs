@@ -216,6 +216,31 @@ test('the report frame fits its content on a phone', async () => {
   await page.close();
 });
 
+test('shows the latest of many months first', async () => {
+  // Files picked in any order: the report opens on the latest month, the
+  // one its picker marks.
+  const files = [9, 1, 5, 3, 7, 2, 8, 4, 6].map((m) => synth(`month-${m}.pdf`, '-month', String(m)));
+  const { page, seen } = await open({ viewport: { width: 390, height: 800 } });
+  await page.setInputFiles('#files', files);
+  await statuses(page);
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  await frame.waitForSelector('section.month:not([hidden]) .bar');
+  const visible = await frame.$$eval('section.month', (ms) => ms.filter((m) => getComputedStyle(m).display !== 'none').map((m) => m.querySelector('.when').textContent));
+  assert.equal(visible.length, 1);
+  assert.match(visible[0], /^September 2026/);
+  assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Sep 26');
+  // On a phone the row of months is wider than the screen: it opens
+  // scrolled to the marked month, not to January.
+  const inView = await frame.$eval('.picker', (row) => {
+    const b = row.querySelector('[aria-pressed="true"]').getBoundingClientRect();
+    const r = row.getBoundingClientRect();
+    return row.scrollWidth > row.clientWidth && b.left >= r.left && b.right <= r.right;
+  });
+  assert.ok(inView, 'the marked month is in view');
+  assert.deepEqual(seen.errors, []);
+  await page.close();
+});
+
 test('makes an anonymized copy that reads as the same payslip', async () => {
   const { page, seen } = await open();
   await page.setInputFiles('#files', [synth('BIANCHI_ANNA_10-2026.pdf')]);

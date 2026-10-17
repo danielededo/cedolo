@@ -361,8 +361,20 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     hit.addEventListener("pointermove", move);
     hit.addEventListener("pointerleave", function () { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   });
-  // The month picker shows one payslip at a time.
+  // The month picker shows one payslip at a time. It opens on the latest
+  // month, at the end of the row: scroll the row so that it is in view.
   var picks = document.querySelectorAll(".picker button");
+  var picker = document.querySelector(".picker");
+  // The page may lay the report out before showing it, or the phone may
+  // turn: scroll again whenever the width changes.
+  function toCurrent() {
+    var current = document.querySelector('.picker button[aria-pressed="true"]');
+    if (picker && current) {
+      picker.scrollLeft = current.offsetLeft + current.offsetWidth - picker.clientWidth + 16;
+    }
+  }
+  toCurrent();
+  window.addEventListener("resize", toCurrent);
   picks.forEach(function (b) {
     b.addEventListener("click", function () {
       picks.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });

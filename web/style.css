@@ -79,7 +79,10 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .drop-icon { width: 40px; height: 40px; padding: 8px; border-radius: 12px; background: var(--accent-soft); fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 4px; }
 .drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); }
 .drop.over { background: color-mix(in srgb, var(--accent) 6%, var(--raised)); }
-.drop.busy { opacity: .6; pointer-events: none; }
+.drop.busy { pointer-events: none; border-style: solid; }
+.drop.busy .drop-icon { animation: bob 1s ease-in-out infinite; }
+.progress { display: block; width: min(320px, 80%); height: 6px; margin-top: 14px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; }
+.progress-bar { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .25s ease; }
 .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .drop-title { font-size: 18px; font-weight: 600; }
 .drop-choose { margin-top: 6px; padding: 8px 18px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 15px; }
@@ -127,6 +130,25 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .anon pre { max-height: 320px; overflow: auto; margin: 0 0 12px; padding: 12px; font-size: 12px; line-height: 1.4; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); white-space: pre; }
 .anon .toolbar { margin: 0; }
 .notice { padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-2); }
+/* Motion: short, eased, and none for people who ask for less. */
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes bob { 50% { transform: translateY(-3px); } }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.enter { animation: rise .4s cubic-bezier(.2, .7, .2, 1) both; }
+.leaving { opacity: 0; transform: translateY(-8px); transition: opacity .18s ease, transform .18s ease; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+#result { position: relative; }
+.skeleton { display: grid; gap: 12px; padding: 24px 0; }
+.sk { display: block; height: 14px; border-radius: 8px; background: linear-gradient(90deg, var(--line) 25%, var(--raised) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+.sk-title { width: 55%; height: 28px; }
+.sk-line { width: 40%; }
+.sk-big { width: 65%; height: 44px; margin-top: 12px; }
+.sk-bar { height: 28px; margin: 8px 0; }
+.sk-row { height: 20px; }
+/* A frame still loading keeps its width but takes no room and is not seen. */
+#report.pending { position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; }
 /* The report has its own side padding: let the frame reach the page edges. */
 #report { display: block; width: calc(100% + 32px); margin: 0 -16px; border: 0; min-height: 400px; background: var(--surface); }
 .foot { padding: 24px 0 40px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); margin-top: 24px; }

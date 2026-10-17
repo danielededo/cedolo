@@ -10,7 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' {{REPORT_SCRIPT_HASH}}; worker-src 'none'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'none'; frame-src 'none'; object-src 'none'; manifest-src 'none'; media-src 'none'; base-uri 'none'; form-action 'none'">
 <meta http-equiv="x-dns-prefetch-control" content="off">
 <meta name="referrer" content="no-referrer">
-<meta name="description" content="Capisci il tuo cedolino: cedolo legge i PDF sul tuo dispositivo, controlla i totali e spiega ogni voce.">
+<meta name="description" content="Comprendi il tuo cedolino: cedolo legge i PDF sul tuo dispositivo, controlla i totali e spiega ogni voce.">
 <title>cedolo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='3' width='17' height='23' rx='3' fill='%23dce8fb'/%3E%3Cpath d='M9 9h9M9 13h6' stroke='%232a6fd6' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='19' cy='19' r='6' fill='%23fff' stroke='%232a6fd6' stroke-width='2.6'/%3E%3Cpath d='m23.3 23.3 4.2 4.2' stroke='%232a6fd6' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
@@ -50,6 +50,7 @@
       <span class="drop-title" data-t="web.drop"></span>
       <span class="drop-choose" data-t="web.choose"></span>
       <span class="drop-hint" data-t="web.drop.hint"></span>
+      <span class="progress" id="progress" hidden><span class="progress-bar" id="progress-bar"></span></span>
     </label>
     <form class="password" id="pw-form" hidden>
       <p class="pw-title" id="pw-title"></p>
@@ -89,6 +90,11 @@
     </section>
     <p class="notice" id="none" hidden data-t="web.none"></p>
     <p class="notice" id="too-many" hidden></p>
+    <div class="skeleton" id="skeleton" hidden aria-hidden="true">
+      <span class="sk sk-title"></span><span class="sk sk-line"></span>
+      <span class="sk sk-big"></span><span class="sk sk-bar"></span>
+      <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
+    </div>
     <iframe id="report" title="Report" sandbox="allow-scripts" hidden></iframe>
   </section>
 </main>
