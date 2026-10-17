@@ -7,7 +7,9 @@ import { join } from 'node:path';
 
 const dist = new URL('../../dist/web/', import.meta.url).pathname;
 const page = readFileSync(join(dist, 'index.html'), 'utf8');
-const app = readFileSync(join(dist, 'app.js'), 'utf8');
+// The page loads everything else from a folder named after the build.
+const assets = page.match(/src="(a\/[0-9a-f]{12})\/app\.js"/)[1];
+const app = readFileSync(join(dist, assets, 'app.js'), 'utf8');
 
 function policy() {
   const m = page.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/);
@@ -34,6 +36,14 @@ test('nothing can be fetched, framed or run from elsewhere', () => {
       assert.doesNotMatch(s, /^(https?:|\*|'unsafe-eval'$)/, `${d} ${s}`);
     }
   }
+});
+
+test('every file but the page has an address of its own build', () => {
+  for (const m of page.matchAll(/(?:src|href)="([^"]+)"/g)) {
+    if (/^(https:|data:)/.test(m[1])) continue;
+    assert.ok(m[1].startsWith(assets + '/'), m[1]);
+  }
+  assert.match(app, /fetch\(new URL\('cedolo\.wasm', import\.meta\.url\)\)/);
 });
 
 test('the page loads nothing from other sites', () => {

@@ -29,7 +29,8 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   `cmd/ccnlgen`: regenerates `internal/ccnl/ccnl.tsv` from a CNEL open data
   export (ADR 0007); never edit the table by hand.
 - `cmd/cedolo-wasm`: the core as WebAssembly for the web app.
-  `cmd/webbuild`: assembles the web app into static files.
+  `cmd/webbuild`: assembles the web app into static files: `index.html` and
+  everything else under `a/<content hash>/`, so builds never mix in a cache.
 - `web/`: the web app. pdf.js reads the PDFs (`layout.js`), the core analyzes
   them; its texts come from `internal/i18n` (`web.*` keys). The page's
   Content-Security-Policy allows no request outside the site.

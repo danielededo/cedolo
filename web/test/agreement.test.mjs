@@ -15,7 +15,8 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { layoutOf } from '../layout.js';
 
 const root = new URL('../../', import.meta.url).pathname;
-const dist = join(root, 'dist', 'web');
+const site = join(root, 'dist', 'web');
+const dist = join(site, readFileSync(join(site, 'index.html'), 'utf8').match(/src="(a\/[0-9a-f]{12})\/app\.js"/)[1]);
 const fonts = new URL('../node_modules/pdfjs-dist/standard_fonts/', import.meta.url).pathname;
 
 async function startCore() {
