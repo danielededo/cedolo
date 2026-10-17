@@ -1,9 +1,10 @@
 // Package anonymize turns the text layout of a real payslip into one that can
 // be shared to report a layout cedolo reads badly (ADR 0008). It works by
 // allowlist: a token is kept only when every word in it is known payroll
-// vocabulary and it contains no digit; every other token is masked character
-// by character (letters become x or X, digits 0), keeping its position and
-// shape. Names, companies, addresses and identifiers are therefore masked
+// vocabulary and it contains no digit. In a token without digits, the words
+// that are not known are masked and the known ones kept; every other token is
+// masked whole. Masking goes character by character (letters become x or X,
+// digits 0), keeping position and shape. Names, companies, addresses and identifiers are therefore masked
 // without having to recognize them. Words that would reveal special
 // categories of personal data (health, union membership, family situation,
 // debts) are masked even though they are known vocabulary. Amounts are masked
@@ -47,9 +48,16 @@ func Layout(doc layout.Document, o Options) (layout.Document, Stats) {
 		np := p
 		np.Tokens = make([]layout.Token, len(p.Tokens))
 		for j, t := range p.Tokens {
-			if keep(t.Text, vocab) || (o.KeepAmounts && number(t.Text)) {
+			switch {
+			case keep(t.Text, vocab) || (o.KeepAmounts && number(t.Text)):
 				st.Kept++
-			} else {
+			case strings.IndexFunc(t.Text, unicode.IsDigit) < 0:
+				// Known words of a token keep their place ("ORE/GG./NUM."
+				// becomes "ORE/GG./XXX."), so a column header still names
+				// its column.
+				t.Text = maskWords(t.Text, vocab)
+				st.Masked++
+			default:
 				t.Text = mask(t.Text)
 				st.Masked++
 			}
@@ -136,6 +144,32 @@ func Leaks(original, anonymized layout.Document) []string {
 // words splits s into lowercase runs of letters.
 func words(s string) []string {
 	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool { return !unicode.IsLetter(r) })
+}
+
+// maskWords masks the runs of letters of s that are not known payroll
+// vocabulary, or that reveal special categories of data, and keeps the rest.
+func maskWords(s string, vocab map[string]bool) string {
+	var b strings.Builder
+	r := []rune(s)
+	for i := 0; i < len(r); {
+		if !unicode.IsLetter(r[i]) {
+			b.WriteRune(r[i])
+			i++
+			continue
+		}
+		j := i
+		for j < len(r) && unicode.IsLetter(r[j]) {
+			j++
+		}
+		w := string(r[i:j])
+		if n := taxonomy.Normalize(w); vocab[n] && !sensitive[n] {
+			b.WriteString(w)
+		} else {
+			b.WriteString(mask(w))
+		}
+		i = j
+	}
+	return b.String()
 }
 
 func mask(s string) string {
