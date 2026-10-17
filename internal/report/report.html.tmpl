@@ -129,6 +129,11 @@ figure { margin: 0; position: relative; }
 .chart .crosshair { stroke: var(--baseline); stroke-width: 1; }
 .chart .seg { outline: none; }
 .chart .seg:hover, .chart .seg:focus { opacity: .8; }
+.chart.stack .col-hit { cursor: pointer; }
+.chart .month.current { fill: var(--ink); font-weight: 600; }
+.minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 24px; margin-bottom: 12px; }
+.mini figcaption { font-size: 14px; color: var(--ink-2); }
+.mini figcaption strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 8px; font-size: 14px; color: var(--ink-2); padding: 0; list-style: none; }
 .legend .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
 .legend .key.line { height: 2px; width: 14px; vertical-align: middle; border-radius: 1px; }
@@ -143,6 +148,7 @@ figure { margin: 0; position: relative; }
 .tooltip .row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .tooltip .key { width: 8px; height: 8px; border-radius: 2px; }
 .tooltip .head { color: var(--ink-2); }
+.tooltip .total { font-weight: 600; }
 details { margin-top: 8px; }
 summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
 .scroll { overflow-x: auto; }
@@ -172,6 +178,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 .embedded main { padding-bottom: 8px; }
 @media (max-width: 520px) {
   .chart .tick { font-size: 22px; }
+  .mini .chart .tick { font-size: 12px; }
   .chart .end-label { display: none; }
   .chart .tick.thin { display: none; }
 }
@@ -243,10 +250,13 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <section>
 <h2>{{index .T "report.trend"}}</h2>
 <ul class="legend">
-<li><span class="key line" style="background:var(--series-1)"></span>{{index .T "report.gross"}}</li>
-<li><span class="key line" style="background:var(--series-2)"></span>{{index .T "report.net"}}</li>
+<li><span class="key" style="background:var(--series-1)"></span>{{index .T "report.part.net"}}</li>
+<li><span class="key" style="background:var(--series-2)"></span>{{index .T "report.part.contrib"}}</li>
+<li><span class="key" style="background:var(--series-3)"></span>{{index .T "report.part.taxes"}}</li>
+<li><span class="key" style="background:var(--series-4)"></span>{{index .T "report.part.other"}}</li>
 </ul>
 <figure>{{.Trend}}<div class="tooltip" hidden></div></figure>
+<p class="hint">{{index .T "report.trend.tap"}}</p>
 </section>
 {{end}}
 
@@ -282,6 +292,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 
 {{if .Leave}}<details>
 <summary>{{index .T "report.leave"}}</summary>
+{{if .LeaveCharts}}<p class="note">{{index .T "report.leave.trend"}}</p>
+<div class="minis">{{range .LeaveCharts}}<figure class="mini"><figcaption>{{.Label}} <strong>{{.Now}}</strong></figcaption>{{.SVG}}<div class="tooltip" hidden></div></figure>
+{{end}}</div>{{end}}
 <div class="scroll">
 <table>
 <thead><tr>
@@ -396,6 +409,45 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       picks.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
       document.querySelectorAll("section.month").forEach(function (m) { m.hidden = m.dataset.month !== b.dataset.month; });
       reveal(b);
+    });
+  });
+  // The columns of the trend follow the month shown: its label stands out,
+  // a column tells its amounts under the pointer and opens its month.
+  function mark(i) {
+    document.querySelectorAll(".chart.stack .month, .chart.stack .col").forEach(function (e) {
+      e.classList.toggle("current", e.dataset.i === String(i));
+    });
+  }
+  var shown = document.querySelector("section.month:not([hidden])");
+  if (shown) mark(shown.dataset.month);
+  picks.forEach(function (b) { b.addEventListener("click", function () { mark(b.dataset.month); }); });
+  // Bring the month shown to the top: inside the web app the page around
+  // the frame scrolls, so ask it to.
+  function toMonth() {
+    var y = document.querySelector(".picker").getBoundingClientRect().top + window.scrollY - 16;
+    if (window.parent !== window) window.parent.postMessage({ cedoloScroll: y }, "*");
+    else window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+  document.querySelectorAll("svg.chart.stack").forEach(function (svg) {
+    var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
+    var pts = JSON.parse(svg.dataset.points);
+    svg.querySelectorAll(".col-hit").forEach(function (hit) {
+      var i = Number(hit.dataset.i);
+      hit.addEventListener("pointermove", function (ev) {
+        var head1 = head(pts[i].label);
+        var total = document.createElement("div"); total.className = "row total";
+        total.textContent = pts[i].total.name + ": " + pts[i].total.value;
+        tip.replaceChildren(head1, total);
+        pts[i].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
+        tip.hidden = false;
+        var box = fig.getBoundingClientRect();
+        place(tip, fig, ev.clientX - box.left, ev.clientY - box.top);
+      });
+      hit.addEventListener("pointerleave", function () { tip.hidden = true; });
+      hit.addEventListener("click", function () {
+        var b = document.querySelector('.picker button[data-month="' + i + '"]');
+        if (b) { b.click(); toMonth(); }
+      });
     });
   });
   // A segment of the bar opens its line below.

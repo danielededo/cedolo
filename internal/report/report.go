@@ -109,13 +109,15 @@ type Data struct {
 	T        map[string]string
 	Range    string
 	Months   []Month
-	Selected int // index in Months of the month shown first: the latest
-	Trend    template.HTML
+	Selected int           // index in Months of the month shown first: the latest
+	Trend    template.HTML // where the gross pay went, month by month
 	Rows     []Row
 	Leave    []LeaveRow
-	Contract *Contract
-	Terms    []Term
-	Version  string
+	// LeaveCharts follow each kind of leave over the months.
+	LeaveCharts []LeaveChart
+	Contract    *Contract
+	Terms       []Term
+	Version     string
 }
 
 // ScriptHash returns the Content-Security-Policy source that allows the
@@ -181,18 +183,10 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 	// The latest payslip opens first, a thirteenth or fourteenth month too.
 	d.Selected = len(slips) - 1
 
-	if len(monthly) > 1 {
-		labels := make([]string, len(monthly))
-		gross := series{Name: i18n.T(l, "report.gross"), Color: "var(--series-1)"}
-		net := series{Name: i18n.T(l, "report.net"), Color: "var(--series-2)"}
-		for i, idx := range monthly {
-			p := slips[idx]
-			labels[i] = shortLabel(l, p)
-			gross.Values = append(gross.Values, p.Gross.Cents)
-			net.Values = append(net.Values, p.Net.Cents)
-		}
-		d.Trend = template.HTML(lineChart("trend", labels, []series{gross, net}))
+	if len(slips) > 1 {
+		d.Trend = template.HTML(trend(l, slips))
 	}
+	d.LeaveCharts = leaveCharts(l, slips)
 
 	// Leave balances: the latest payslip that prints any.
 	for _, idx := range slices.Backward(monthly) {
@@ -260,18 +254,16 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	if aside != 0 {
 		m.AsideTotal = money.Format(aside) + " €"
 	}
-	c, t := max(contributions(p), 0), max(taxes(p), 0)
-	o := max(p.Deductions.Cents-c-t, 0)
-	parts := []struct {
+	shares := split(p)
+	lines := [][]Line{nil, contrib, tax, other}
+	parts := make([]struct {
 		key   string
 		cents int64
 		color string
 		lines []Line
-	}{
-		{"net", max(p.Net.Cents, 0), "var(--series-1)", nil},
-		{"contrib", c, "var(--series-2)", contrib},
-		{"taxes", t, "var(--series-3)", tax},
-		{"other", o, "var(--series-4)", other},
+	}, len(partKeys))
+	for i, key := range partKeys {
+		parts[i].key, parts[i].cents, parts[i].color, parts[i].lines = key, shares[i], partColors[i], lines[i]
 	}
 	var total int64
 	for _, pt := range parts {
@@ -295,6 +287,93 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		})
 	}
 	return m
+}
+
+// The shares of the gross pay, in the order the bar and the columns stack
+// them, with their colors.
+var (
+	partKeys   = []string{"net", "contrib", "taxes", "other"}
+	partColors = []string{"var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"}
+)
+
+// split divides the gross pay into the net and the deductions, in the order
+// of partKeys.
+func split(p payslip.Payslip) []int64 {
+	c, t := max(contributions(p), 0), max(taxes(p), 0)
+	return []int64{max(p.Net.Cents, 0), c, t, max(p.Deductions.Cents-c-t, 0)}
+}
+
+// trend charts where the gross pay of every payslip went, one stacked
+// column each, additional months included.
+func trend(l i18n.Lang, slips []payslip.Payslip) string {
+	labels := make([]string, len(slips))
+	ss := make([]series, len(partKeys))
+	for i, key := range partKeys {
+		ss[i] = series{Name: i18n.T(l, "report.part."+key), Color: partColors[i]}
+	}
+	total := series{Name: i18n.T(l, "report.gross")}
+	for i, p := range slips {
+		labels[i] = shortLabel(l, p)
+		var sum int64
+		for k, v := range split(p) {
+			ss[k].Values = append(ss[k].Values, v)
+			sum += v
+		}
+		total.Values = append(total.Values, sum)
+	}
+	return stackChart("trend", labels, ss, total)
+}
+
+// LeaveChart is the balance of one kind of leave over the months.
+type LeaveChart struct {
+	Label string
+	Now   string // the latest balance, with its unit
+	SVG   template.HTML
+}
+
+// leaveCharts charts the remaining balance of each kind of leave the latest
+// payslip prints, over the payslips that print it in the same unit. A kind
+// needs two months to make a line.
+func leaveCharts(l i18n.Lang, slips []payslip.Payslip) []LeaveChart {
+	var latest []payslip.Leave
+	for _, p := range slices.Backward(slips) {
+		if len(p.Leave) > 0 {
+			latest = p.Leave
+			break
+		}
+	}
+	var out []LeaveChart
+	for n, lv := range latest {
+		if lv.Remaining == nil {
+			continue
+		}
+		var labels []string
+		s := series{Name: lv.Label, Color: "var(--series-1)"}
+		for _, p := range slips {
+			if p.Kind != payslip.Monthly {
+				continue // an additional month repeats the balances of its month
+			}
+			for _, x := range p.Leave {
+				if x.Kind == lv.Kind && x.Unit == lv.Unit && x.Remaining != nil {
+					labels = append(labels, shortLabel(l, p))
+					s.Values = append(s.Values, *x.Remaining)
+					break
+				}
+			}
+		}
+		if len(s.Values) < 2 {
+			continue
+		}
+		value := func(v int64) string { return quantity(&v, lv.Unit, l) }
+		out = append(out, LeaveChart{
+			Label: lv.Label,
+			Now:   value(*lv.Remaining),
+			SVG: template.HTML(lineChart(fmt.Sprintf("leave-%d", n), labels, []series{s}, lineOptions{
+				width: 340, height: 170, tick: whole, value: value,
+			})),
+		})
+	}
+	return out
 }
 
 func texts(l i18n.Lang) map[string]string {

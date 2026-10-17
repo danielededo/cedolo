@@ -153,11 +153,14 @@ func TestNiceMax(t *testing.T) {
 	}
 }
 
-func TestCompact(t *testing.T) {
-	for in, want := range map[int64]string{0: "0", 50000: "500", 100000: "1K", 150000: "1,5K", 2500000: "25K"} {
-		if got := compact(in); got != want {
-			t.Errorf("compact(%d) = %q, want %q", in, got, want)
+func TestTicks(t *testing.T) {
+	for in, want := range map[int64]string{0: "0 €", 50000: "500 €", 100000: "1.000 €", 250000: "2.500 €", 2500000: "25.000 €"} {
+		if got := euros(in); got != want {
+			t.Errorf("euros(%d) = %q, want %q", in, got, want)
 		}
+	}
+	if got := whole(9600); got != "96" {
+		t.Errorf("whole(9600) = %q", got)
 	}
 }
 
@@ -286,5 +289,33 @@ func TestLatestAdditionalMonthOpensFirst(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), `aria-pressed="true">13ª 26</button>`) {
 		t.Error("the thirteenth month is not highlighted in the picker")
+	}
+}
+
+func TestTrendAndLeaveCharts(t *testing.T) {
+	slips := months(t, 3)
+	thirteenth := slips[2]
+	thirteenth.Kind = payslip.Thirteenth
+	slips = append(slips, thirteenth)
+	d := Build(i18n.IT, slips, "test")
+	// One column per payslip, the thirteenth month included, each a hit
+	// target that opens its month.
+	trend := string(d.Trend)
+	if n := strings.Count(trend, `class="col-hit"`); n != 4 {
+		t.Errorf("%d columns, want 4", n)
+	}
+	if !strings.Contains(trend, "13ª 26") || !strings.Contains(trend, "3.000 €") {
+		t.Errorf("trend misses the thirteenth month or euro ticks")
+	}
+	// The synthetic months print holidays and ROL; the thirteenth month
+	// repeats December and is left out of the lines.
+	if len(d.LeaveCharts) != 2 {
+		t.Fatalf("leave charts = %+v", d.LeaveCharts)
+	}
+	if c := d.LeaveCharts[0]; c.Label != "FERIE" || c.Now != "96,00 ore" || strings.Contains(string(c.SVG), "13ª") {
+		t.Errorf("holiday chart = %q %q", c.Label, c.Now)
+	}
+	if d := Build(i18n.IT, slips[:1], "test"); d.Trend != "" || len(d.LeaveCharts) != 0 {
+		t.Error("charts for a single payslip")
 	}
 }
