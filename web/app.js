@@ -70,7 +70,7 @@ function status(text, error = false) {
 async function start() {
   try {
     const go = new globalThis.Go();
-    const { instance } = await WebAssembly.instantiateStreaming(fetch('cedolo.wasm'), go.importObject);
+    const { instance } = await WebAssembly.instantiateStreaming(fetch(new URL('cedolo.wasm', import.meta.url)), go.importObject);
     go.run(instance);
   } catch (err) {
     status(`${window.cedoloUnsupported} (${err.message})`, true);
@@ -125,8 +125,8 @@ async function readFile(file) {
     useSystemFonts: false,
     enableXfa: false,
     isOffscreenCanvasSupported: false,
-    standardFontDataUrl: './pdfjs/standard_fonts/',
-    cMapUrl: './pdfjs/cmaps/',
+    standardFontDataUrl: new URL('pdfjs/standard_fonts/', import.meta.url).href,
+    cMapUrl: new URL('pdfjs/cmaps/', import.meta.url).href,
     cMapPacked: true,
     verbosity: 0,
   });

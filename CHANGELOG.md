@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
 ### Changed
 
 - The web app's Italian heading reads "Comprendi il tuo cedolino".
@@ -29,6 +31,9 @@ How to use this file:
 
 ### Fixed
 
+- After a new version is published, the web app no longer mixes files
+  cached from the previous one, which could leave the report hidden behind
+  its placeholder. Each build now serves its files from its own folder.
 - With many months, the report's row of months opens scrolled to the month
   it shows, the latest, instead of starting from January with the marked
   month out of sight.
@@ -200,7 +205,8 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/danielededo/cedolo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/danielededo/cedolo/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielededo/cedolo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielededo/cedolo/releases/tag/v0.1.0

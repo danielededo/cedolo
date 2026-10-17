@@ -3,11 +3,19 @@
 // (run "npm ci --omit=optional --ignore-scripts" in web/ first). Serve the
 // output directory with any static file server.
 //
+// Everything but index.html goes into a folder named after a hash of its
+// content, a/<hash>/, so each build has its own addresses: a browser can
+// never mix files cached from one release with files of the next, which
+// would also break the page's Content-Security-Policy hash of the report
+// script.
+//
 //	go run ./cmd/webbuild -o dist/web -version v0.2.0
 package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -38,12 +46,14 @@ func build(out, version string) error {
 	if err := os.RemoveAll(out); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(out, "pdfjs"), 0o755); err != nil {
+	// Build into a staging folder, then move it under its content hash.
+	stage := filepath.Join(out, "a", "staging")
+	if err := os.MkdirAll(filepath.Join(stage, "pdfjs"), 0o755); err != nil {
 		return err
 	}
 
 	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w -X main.version="+version,
-		"-o", filepath.Join(out, "cedolo.wasm"), "./cmd/cedolo-wasm")
+		"-o", filepath.Join(stage, "cedolo.wasm"), "./cmd/cedolo-wasm")
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -53,24 +63,11 @@ func build(out, version string) error {
 	if err != nil {
 		return err
 	}
-	if err := copyFile(filepath.Join(strings.TrimSpace(string(goroot)), "lib", "wasm", "wasm_exec.js"), filepath.Join(out, "wasm_exec.js")); err != nil {
-		return err
-	}
-
-	page, err := os.ReadFile(filepath.Join("web", "index.html"))
-	if err != nil {
-		return err
-	}
-	const placeholder = "{{REPORT_SCRIPT_HASH}}"
-	if !bytes.Contains(page, []byte(placeholder)) {
-		return errors.New("web/index.html lacks " + placeholder)
-	}
-	page = bytes.ReplaceAll(page, []byte(placeholder), []byte(report.ScriptHash()))
-	if err := os.WriteFile(filepath.Join(out, "index.html"), page, 0o644); err != nil {
+	if err := copyFile(filepath.Join(strings.TrimSpace(string(goroot)), "lib", "wasm", "wasm_exec.js"), filepath.Join(stage, "wasm_exec.js")); err != nil {
 		return err
 	}
 	for _, name := range []string{"app.js", "boot.js", "compat.js", "layout.js", "style.css"} {
-		if err := copyFile(filepath.Join("web", name), filepath.Join(out, name)); err != nil {
+		if err := copyFile(filepath.Join("web", name), filepath.Join(stage, name)); err != nil {
 			return err
 		}
 	}
@@ -79,17 +76,63 @@ func build(out, version string) error {
 	// browsers a few versions old (protected PDFs fail there otherwise),
 	// for about 35 KB more once compressed.
 	for _, name := range []string{"legacy/build/pdf.min.mjs", "legacy/build/pdf.worker.min.mjs", "LICENSE"} {
-		if err := copyFile(filepath.Join(pdfjs, name), filepath.Join(out, "pdfjs", filepath.Base(name))); err != nil {
+		if err := copyFile(filepath.Join(pdfjs, name), filepath.Join(stage, "pdfjs", filepath.Base(name))); err != nil {
 			return err
 		}
 	}
 	for _, dir := range []string{"standard_fonts", "cmaps"} {
-		if err := copyDir(filepath.Join(pdfjs, dir), filepath.Join(out, "pdfjs", dir)); err != nil {
+		if err := copyDir(filepath.Join(pdfjs, dir), filepath.Join(stage, "pdfjs", dir)); err != nil {
 			return err
 		}
 	}
+
+	id, err := hashDir(stage)
+	if err != nil {
+		return err
+	}
+	assets := "a/" + id
+	if err := os.Rename(stage, filepath.Join(out, "a", id)); err != nil {
+		return err
+	}
+
+	page, err := os.ReadFile(filepath.Join("web", "index.html"))
+	if err != nil {
+		return err
+	}
+	for placeholder, value := range map[string]string{
+		"{{REPORT_SCRIPT_HASH}}": report.ScriptHash(),
+		"{{ASSETS}}":             assets,
+	} {
+		if !bytes.Contains(page, []byte(placeholder)) {
+			return errors.New("web/index.html lacks " + placeholder)
+		}
+		page = bytes.ReplaceAll(page, []byte(placeholder), []byte(value))
+	}
+	if err := os.WriteFile(filepath.Join(out, "index.html"), page, 0o644); err != nil {
+		return err
+	}
 	fmt.Println("web app written to", out)
 	return nil
+}
+
+// hashDir returns the first 12 hex digits of a SHA-256 over every file's
+// path and content in dir, in a fixed order.
+func hashDir(dir string) (string, error) {
+	h := sha256.New()
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, path)
+		fmt.Fprintf(h, "%s\x00%d\x00", filepath.ToSlash(rel), len(data))
+		h.Write(data)
+		return nil
+	})
+	return hex.EncodeToString(h.Sum(nil))[:12], err
 }
 
 func copyFile(from, to string) error {
