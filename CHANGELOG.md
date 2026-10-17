@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-17
+
 ### Added
 
 - Holidays and leave show how each balance moved over the months, one
@@ -293,7 +295,8 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/danielededo/cedolo/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/danielededo/cedolo/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/danielededo/cedolo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/danielededo/cedolo/compare/v0.3.0...v0.4.0
