@@ -32,6 +32,15 @@ copy, never the payslip itself:
 
 In the web app, the same copy is under "Files", then "Something read badly?".
 
+## Teaching cedolo a new wording
+
+Often a misread payslip only uses a label or an item name cedolo does not
+know yet. Add the label to its list in `internal/extract/labels.go` (a total
+such as "TOT. TRATTENUTE" goes into `deductionLabels` as "tot trattenute":
+lowercase, without accents or punctuation), or the item wording to its
+entry's keywords in `internal/taxonomy/taxonomy.go`, and add a test with
+invented values in `internal/extract/foreign_test.go`.
+
 ## Ways to contribute
 
 - **Report a bug**: open an issue using the bug report template.

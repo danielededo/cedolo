@@ -142,7 +142,7 @@ func JoinSpaced(doc Document) Document {
 		}
 		np := p
 		np.Tokens = nil
-		for _, l := range p.Lines(0.25 * medianHeight(p.Tokens)) {
+		for _, l := range p.Lines(spacedLine * medianHeight(p.Tokens)) {
 			var cur Token
 			for k, t := range l.Tokens {
 				if k > 0 && joinable(cur, t) {
@@ -168,6 +168,24 @@ func JoinSpaced(doc Document) Document {
 	return out
 }
 
+// Proportions of the text height that JoinSpaced reads letter-spaced text
+// with.
+const (
+	// spacedLine groups tokens into lines: a fraction of the median height,
+	// tighter than for whole words since lines of small type sit close.
+	spacedLine = 0.25
+	// sameSize is how much shorter one token may be than the other and
+	// still be the same type.
+	sameSize = 0.8
+	// letterGap is the widest gap inside a word, and separatorGap the
+	// widest next to a decimal or thousands separator. A space is wider.
+	letterGap, separatorGap = 0.2, 0.5
+	// overlap is how far two characters may overlap and still be joined.
+	overlap = 0.1
+	// sameBaseline is how far two baselines may differ on one line.
+	sameBaseline = 0.2
+)
+
 // joinable tells whether b continues the word a ends: on the same baseline,
 // as tall, and closer than a space would be. Some text layers leave the
 // extra spacing out of each character's box, so the gaps inside an amount
@@ -175,15 +193,15 @@ func JoinSpaced(doc Document) Document {
 // separator next to a digit is joined across a wider gap.
 func joinable(a, b Token) bool {
 	h := math.Max(a.H, b.H)
-	if h <= 0 || a.H < 0.8*b.H || b.H < 0.8*a.H {
+	if h <= 0 || a.H < sameSize*b.H || b.H < sameSize*a.H {
 		return false
 	}
-	limit := 0.2 * h
+	limit := letterGap * h
 	if separates(a.Text, b.Text) {
-		limit = 0.5 * h
+		limit = separatorGap * h
 	}
 	gap := b.X - a.Right()
-	return gap > -0.1*h && gap < limit && math.Abs((a.Y+a.H)-(b.Y+b.H)) < 0.2*h
+	return gap > -overlap*h && gap < limit && math.Abs((a.Y+a.H)-(b.Y+b.H)) < sameBaseline*h
 }
 
 // separates tells whether a and b meet inside a number: a digit then "," or

@@ -23,6 +23,18 @@ import (
 //   - stacked:    side-by-side blocks, one per kind, each a column of
 //     measure labels qualified on the line below ("RESIDUO" over "A.P.").
 
+// Distances in stacked leave blocks, in points.
+const (
+	// measureMargin starts a measure's column a little before its label.
+	measureMargin = 3.0
+	// kindLeft and kindRight bound how far a block's kind label may stand
+	// from the block's left edge, and kindReach how far above or below.
+	kindLeft, kindRight, kindReach = 12.0, 8.0, 45.0
+	// minLineHeight is the line height assumed for a gap that ends a
+	// table, so that tiny type does not end it at every line.
+	minLineHeight = 6.0
+)
+
 type measure int
 
 const (
@@ -273,9 +285,9 @@ func leaveCells(lines []line, i int, kinds []match[payslip.LeaveKind], measures 
 	byKind := map[payslip.LeaveKind]*payslip.Leave{}
 	var order []payslip.LeaveKind
 	for c, cl := range cells {
-		x0, x1 := cl.kind.x0-2, math.Inf(1)
+		x0, x1 := cl.kind.x0-cellMargin, math.Inf(1)
 		if c+1 < len(cells) {
-			x1 = cells[c+1].kind.x0 - 2
+			x1 = cells[c+1].kind.x0 - cellMargin
 		}
 		lv, ok := byKind[cl.kind.value]
 		if !ok {
@@ -283,7 +295,7 @@ func leaveCells(lines []line, i int, kinds []match[payslip.LeaveKind], measures 
 			byKind[cl.kind.value] = lv
 			order = append(order, cl.kind.value)
 		}
-		for j := i + 1; j < len(lines) && lines[j].y-l.y <= 3*l.h; j++ {
+		for j := i + 1; j < len(lines) && lines[j].y-l.y <= belowReach*l.h; j++ {
 			if leaveLabelLine(lines[j]) {
 				break
 			}
@@ -325,16 +337,16 @@ func leaveStacked(lines []line, i int, measures []match[measure]) []payslip.Leav
 	}
 	l := lines[i]
 	var below *line
-	if i+1 < len(lines) && lines[i+1].y-l.y <= 6 {
+	if i+1 < len(lines) && lines[i+1].y-l.y <= stackedGap {
 		below = &lines[i+1]
 	}
 	var out []payslip.Leave
 	for b, m := range measures {
-		x0, x1 := m.x0-3, 0.0
+		x0, x1 := m.x0-measureMargin, 0.0
 		if b+1 < len(measures) {
-			x1 = measures[b+1].x0 - 3
+			x1 = measures[b+1].x0 - measureMargin
 		} else {
-			x1 = m.x0 + (m.x0 - measures[b-1].x0) - 3
+			x1 = m.x0 + (m.x0 - measures[b-1].x0) - measureMargin
 		}
 		kind, label, ok := blockKind(lines, i, m.x0)
 		if !ok {
@@ -379,11 +391,11 @@ func leaveStacked(lines []line, i int, measures []match[measure]) []payslip.Leav
 func blockKind(lines []line, i int, left float64) (payslip.LeaveKind, string, bool) {
 	for d := 0; d <= 12; d++ {
 		for _, j := range []int{i - d, i + d} {
-			if j < 0 || j >= len(lines) || math.Abs(lines[j].y-lines[i].y) > 45 {
+			if j < 0 || j >= len(lines) || math.Abs(lines[j].y-lines[i].y) > kindReach {
 				continue
 			}
 			for _, k := range scan(lines[j], leaveKinds) {
-				if k.x0 >= left-12 && k.x0 <= left+8 {
+				if k.x0 >= left-kindLeft && k.x0 <= left+kindRight {
 					return k.value, k.label, true
 				}
 			}
@@ -396,7 +408,7 @@ func blockKind(lines []line, i int, left float64) (payslip.LeaveKind, string, bo
 // gap that ends the table.
 func nextBlock(lines []line) []line {
 	for i := 1; i < len(lines); i++ {
-		if lines[i].y-lines[i-1].y > 3*math.Max(lines[i-1].h, 6) {
+		if lines[i].y-lines[i-1].y > belowReach*math.Max(lines[i-1].h, minLineHeight) {
 			return lines[:i]
 		}
 	}
