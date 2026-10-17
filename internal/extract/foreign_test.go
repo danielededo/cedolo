@@ -505,3 +505,45 @@ func TestThirteenthAfterDecember(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+// TestTotalsUnderSmallLabels covers totals printed under labels in small
+// type, abbreviated, with a statistics column whose numbers sit just beside
+// the labels on another baseline, and a row of year-to-date values labeled
+// on its left.
+func TestTotalsUnderSmallLabels(t *testing.T) {
+	label := func(x, y float64, s string) layout.Token {
+		return layout.Token{Text: s, X: x, Y: y, W: 3 * float64(len(s)), H: 5}
+	}
+	value := func(x, y float64, s string) layout.Token {
+		return layout.Token{Text: s, X: x, Y: y, W: 4 * float64(len(s)), H: 8}
+	}
+	pg := layout.Page{Number: 1, Width: 595, Height: 842, Tokens: []layout.Token{
+		label(27, 470, "IMP."), label(214, 470, "IMP."), label(227, 470, "IRPEF"),
+		label(359, 470, "TOT."), label(372, 470, "TRAT."), label(388, 470, "IRPEF"),
+		value(425, 472, "0,00"),
+		value(221, 484, "2.088,63"), value(384, 484, "350,00"), value(425, 484, "0,00"),
+		// Here the statistics number is far enough below to make a line of
+		// its own.
+		label(359, 500, "TOT."), label(372, 500, "TRATTENUTE"),
+		value(425, 504, "0,00"),
+		value(384, 514, "586,67"), value(425, 514, "0,00"),
+		label(245, 600, "IMPONIBILE"), label(278, 600, "IRPEF"),
+		label(28, 606, "PROGRES."), label(33, 612, "ANNUI"),
+		value(257, 610, "25.000,00"),
+	}}
+	lines := buildLines(pg)
+	for _, c := range []struct {
+		name   string
+		labels []string
+		want   int64
+	}{
+		{"deductions", deductionLabels, 58667},
+		{"taxes", taxLabels, 35000},
+		{"IRPEF base", irpefBaseLabels, 208863},
+	} {
+		a, ok := amountField(lines, pg.Width, c.labels)
+		if !ok || a.Cents != c.want {
+			t.Errorf("%s = %d (found %v), want %d", c.name, a.Cents, ok, c.want)
+		}
+	}
+}

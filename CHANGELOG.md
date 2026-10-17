@@ -20,6 +20,19 @@ How to use this file:
 
 ### Fixed
 
+- Payslips that print each character on its own, with extra spacing, are
+  read: before, every word and amount came out in pieces, so no total was
+  found and the month was unknown. This works both in the web app and in the
+  terminal.
+- Totals printed under small labels are read from their own cell, not from a
+  statistics column printed just beside the labels. Abbreviated labels such
+  as "TOT. TRATTENUTE", "TOT. TRAT. IRPEF" and "TOT. CONTR. SOC." are
+  recognized, and so are the regional and municipal surcharges written
+  "ADDIZ." and the contribution relief written "ESON. IVS".
+- The IRPEF taxable base is no longer read from a row of year-to-date
+  values, such as one labeled "PROGRES. ANNUI" or "PROGR.", which some
+  payslips print under the same column headings as the month's values.
+
 - Thirteenth and fourteenth month payslips are recognized in more of the
   ways payroll software prints them: "13ª MENSILITÀ", "XIII MENSILITA'",
   "13^ MENS.", "MENSILITÀ AGGIUNTIVA" (the fourteenth when paid in June or

@@ -27,6 +27,7 @@ import (
 // period different from the previous page starts a new payslip; pages without
 // a period continue the current one.
 func Document(doc layout.Document) []payslip.Payslip {
+	doc = layout.JoinSpaced(doc)
 	type group struct {
 		pages       []layout.Page
 		year, month int
@@ -396,24 +397,65 @@ func stackedLabel(lines []line, i int, label string) []occurrence {
 // calendar, another column) is not mistaken for the label's value.
 func amountCandidates(lines []line, i, first, last int, pageWidth float64) []layout.Token {
 	l := lines[i]
+	label := l.toks[last]
+	x0, x1 := l.cell(first, last, pageWidth)
+	below := func(fits func(layout.Token) bool) []layout.Token {
+		for j := i + 1; j < len(lines) && lines[j].y-l.y <= 3*math.Max(l.h, lines[j].h); j++ {
+			if yearToDate(lines, j, x0) {
+				continue
+			}
+			for _, t := range lines[j].toks {
+				if c := center(t); c >= x0 && c < x1 && fits(t) && money.IsAmount(t.Text) {
+					return []layout.Token{t}
+				}
+			}
+		}
+		return nil
+	}
+	under := func(t layout.Token) bool { return t.X <= label.Right() }
 	for k := last + 1; k < len(l.toks); k++ {
 		t := l.toks[k]
 		if money.IsAmount(t.Text) {
+			// An amount grouped into the label's line but on another
+			// baseline may sit in a column beside the label, such as
+			// statistics: a number under the label is then its value.
+			if math.Abs((t.Y+t.H)-(label.Y+label.H)) > 0.2*label.H {
+				if v := below(under); v != nil {
+					return v
+				}
+			}
 			return []layout.Token{t}
 		}
 		if !isFiller(t.Text) {
 			break
 		}
 	}
-	x0, x1 := l.cell(first, last, pageWidth)
-	for j := i + 1; j < len(lines) && lines[j].y-l.y <= 3*l.h; j++ {
-		for _, t := range lines[j].toks {
-			if c := center(t); c >= x0 && c < x1 && money.IsAmount(t.Text) {
-				return []layout.Token{t}
+	if last+1 == len(l.toks) {
+		// A label that ends its line has no neighbour to bound its cell, so
+		// a number starting under the label beats one beside it, which may
+		// belong to another column.
+		if v := below(under); v != nil {
+			return v
+		}
+	}
+	return below(func(layout.Token) bool { return true })
+}
+
+// yearToDate reports whether line j holds the year's running totals rather
+// than the month's: a row label such as "PROGRES. ANNUI", left of the label's
+// cell, overlaps it vertically.
+func yearToDate(lines []line, j int, x0 float64) bool {
+	for _, l := range lines {
+		if l.y >= lines[j].y+lines[j].h || l.y+l.h <= lines[j].y {
+			continue
+		}
+		for _, t := range l.toks {
+			if t.X < x0 && progressiveWords[taxonomy.Normalize(t.Text)] {
+				return true
 			}
 		}
 	}
-	return nil
+	return false
 }
 
 // isFiller reports whether a token carries no information between a label

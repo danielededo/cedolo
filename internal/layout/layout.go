@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Document is the positioned text of one file.
@@ -123,4 +124,98 @@ func redactText(s string) string {
 			return r
 		}
 	}, s)
+}
+
+// JoinSpaced rejoins words that a PDF prints one or two characters at a
+// time, each placed on its own with a little extra spacing: a text layer
+// then reports "1", ".", "2", "3", "4" instead of "1.234". Two tokens on the
+// same line are joined when the gap between them is well below a space,
+// under a fifth of the text height, and their heights match. Only pages
+// where most tokens are single characters are touched: elsewhere tokens
+// that touch are separate cells, and the page is returned as it is.
+func JoinSpaced(doc Document) Document {
+	out := Document{Pages: make([]Page, len(doc.Pages))}
+	for i, p := range doc.Pages {
+		if !spaced(p.Tokens) {
+			out.Pages[i] = p
+			continue
+		}
+		np := p
+		np.Tokens = nil
+		for _, l := range p.Lines(0.25 * medianHeight(p.Tokens)) {
+			var cur Token
+			for k, t := range l.Tokens {
+				if k > 0 && joinable(cur, t) {
+					right := math.Max(cur.Right(), t.Right())
+					bottom := math.Max(cur.Y+cur.H, t.Y+t.H)
+					cur.Text += t.Text
+					cur.Y = math.Min(cur.Y, t.Y)
+					cur.W = right - cur.X
+					cur.H = bottom - cur.Y
+					continue
+				}
+				if k > 0 {
+					np.Tokens = append(np.Tokens, cur)
+				}
+				cur = t
+			}
+			if len(l.Tokens) > 0 {
+				np.Tokens = append(np.Tokens, cur)
+			}
+		}
+		out.Pages[i] = np
+	}
+	return out
+}
+
+// joinable tells whether b continues the word a ends: on the same baseline,
+// as tall, and closer than a space would be. Some text layers leave the
+// extra spacing out of each character's box, so the gaps inside an amount
+// look wider than the spaces between words; a decimal or thousands
+// separator next to a digit is joined across a wider gap.
+func joinable(a, b Token) bool {
+	h := math.Max(a.H, b.H)
+	if h <= 0 || a.H < 0.8*b.H || b.H < 0.8*a.H {
+		return false
+	}
+	limit := 0.2 * h
+	if separates(a.Text, b.Text) {
+		limit = 0.5 * h
+	}
+	gap := b.X - a.Right()
+	return gap > -0.1*h && gap < limit && math.Abs((a.Y+a.H)-(b.Y+b.H)) < 0.2*h
+}
+
+// separates tells whether a and b meet inside a number: a digit then "," or
+// ".", or a separator or a minus sign then a digit.
+func separates(a, b string) bool {
+	last, _ := utf8.DecodeLastRuneInString(a)
+	first, _ := utf8.DecodeRuneInString(b)
+	sep := func(r rune) bool { return r == ',' || r == '.' }
+	return unicode.IsDigit(last) && (b == "," || b == ".") ||
+		(sep(last) || a == "-") && unicode.IsDigit(first)
+}
+
+// spaced tells whether a page prints its words a character at a time: at
+// least two tokens in five hold a single character.
+func spaced(toks []Token) bool {
+	single := 0
+	for _, t := range toks {
+		if utf8.RuneCountInString(t.Text) == 1 {
+			single++
+		}
+	}
+	return len(toks) >= 20 && single*5 >= len(toks)*2
+}
+
+func medianHeight(toks []Token) float64 {
+	if len(toks) == 0 {
+		return 0
+	}
+	hs := make([]float64, len(toks))
+	for i, t := range toks {
+		hs[i] = t.H
+	}
+	sort.Float64s(hs)
+	return hs[len(hs)/2]
 }
