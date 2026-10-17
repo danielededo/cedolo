@@ -18,6 +18,20 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- Holidays and leave show how each balance moved over the months, one
+  small chart per kind with its latest value, above the table.
+
+### Changed
+
+- The chart of pay over time shows where the gross pay of each payslip
+  went, as stacked columns in the colors of the month's bar: net pay,
+  contributions, taxes and other deductions. Thirteenth and fourteenth
+  months have their own column, the axis reads in euros ("3.000 €"), each
+  column tells its amounts under the pointer, and tapping one opens that
+  month.
+
 ## [0.6.0] - 2026-10-17
 
 ### Added

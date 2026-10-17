@@ -352,6 +352,14 @@ function download() {
 
 // The report frame tells its height, so the page scrolls as one.
 window.addEventListener('message', (ev) => {
+  // The report asks to bring a month to the top: y is within the frame.
+  if (ev.source === $('report').contentWindow && Number.isFinite(ev.data?.cedoloScroll)) {
+    // The header stays on top of the page: land below it.
+    const header = document.querySelector('header.bar')?.offsetHeight ?? 0;
+    const top = $('report').getBoundingClientRect().top + window.scrollY + Math.max(0, ev.data.cedoloScroll) - header;
+    window.scrollTo({ top, behavior: calm() ? 'auto' : 'smooth' });
+    return;
+  }
   if (ev.source === $('report').contentWindow && typeof ev.data?.cedoloHeight === 'number') {
     $('report').style.height = `${Math.min(Math.ceil(ev.data.cedoloHeight) + 2, 100000)}px`;
     if ($('report').classList.contains('pending')) {
