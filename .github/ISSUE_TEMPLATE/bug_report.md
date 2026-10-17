@@ -10,9 +10,7 @@ assignees: ''
 IMPORTANT: never attach real payslips, screenshots of payslips, or any personal
 data (names, codice fiscale, IBAN, amounts from your own documents). Issues are
 public and their edit history is kept even after you delete content. If
-cedolo misreads a payslip, attach the anonymized copy made by
-`cedolo anonymize -o anonymized.pdf` after reading it, as described in
-CONTRIBUTING.md; it keeps the amounts unless you add -amounts mask.
+cedolo misreads a payslip, use the "A payslip is read badly" form instead.
 -->
 
 - [ ] I confirm this issue contains no real payslip, screenshot of a payslip, or personal data.

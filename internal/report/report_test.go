@@ -11,6 +11,7 @@ import (
 
 	"github.com/danielededo/cedolo/internal/extract"
 	"github.com/danielededo/cedolo/internal/i18n"
+	"github.com/danielededo/cedolo/internal/insights"
 	"github.com/danielededo/cedolo/internal/payslip"
 	"github.com/danielededo/cedolo/internal/synth"
 )
@@ -198,5 +199,22 @@ func TestScriptHash(t *testing.T) {
 	sum := sha256.Sum256([]byte(script))
 	if want := "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"; ScriptHash() != want {
 		t.Errorf("ScriptHash() = %s, rendered script hashes to %s", ScriptHash(), want)
+	}
+}
+
+func TestTellingChanges(t *testing.T) {
+	cs := []insights.Change{{Code: "leave"}, {Code: "gross"}, {Code: "net"}, {Code: "item_new"}, {Code: "unchecked"}}
+	top, rest := telling(cs)
+	if len(top) != 2 || top[0].Code != "unchecked" || top[1].Code != "net" {
+		t.Errorf("top = %+v", top)
+	}
+	if len(rest) != 3 || rest[0].Code != "item_new" || rest[2].Code != "leave" {
+		t.Errorf("rest = %+v", rest)
+	}
+	if top, rest := telling(cs[:1]); len(top) != 1 || rest != nil {
+		t.Errorf("one change: %+v %+v", top, rest)
+	}
+	if cs[0].Code != "leave" {
+		t.Error("input reordered")
 	}
 }

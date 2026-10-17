@@ -218,6 +218,9 @@ test('makes an anonymized copy that reads as the same payslip', async () => {
   await page.setInputFiles('#files', [synth('BIANCHI_ANNA_10-2026.pdf')]);
   await statuses(page);
   await page.$eval('#files-box', (d) => { d.open = true; });
+  // A file that was read offers the copy only after asking for it.
+  assert.equal(await page.$eval('.anon-open', (b) => getComputedStyle(b).display), 'none');
+  await press(page, '#anon-ask');
   await press(page, '.anon-open');
   await page.waitForSelector('#anon:not([hidden])');
   const text = await page.$eval('#anon-text', (e) => e.textContent);

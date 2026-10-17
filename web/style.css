@@ -95,6 +95,9 @@ h1 { font-size: 32px; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.02
 .files .bad .icon { color: var(--bad); }
 .files .note { color: var(--muted); }
 .files .anon-open { flex: none; white-space: nowrap; font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--line); background: var(--raised); color: var(--ink); }
+.files ul:not(.show-anon) .anon-open.optional { display: none; }
+.files .link { margin-top: 8px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.anon a { color: var(--accent); }
 .anon { margin: 0 0 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
 .anon h2 { font-size: 18px; margin: 0 0 8px; overflow-wrap: anywhere; }
 .anon p { margin: 0 0 12px; color: var(--ink-2); }
