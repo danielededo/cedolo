@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-17
+
 ### Added
 
 - A fourth synthetic layout style, `cedolo synth -style spaced`, that
@@ -43,7 +45,6 @@ How to use this file:
 - The IRPEF taxable base is no longer read from a row of year-to-date
   values, such as one labeled "PROGRES. ANNUI" or "PROGR.", which some
   payslips print under the same column headings as the month's values.
-
 - Thirteenth and fourteenth month payslips are recognized in more of the
   ways payroll software prints them: "13ª MENSILITÀ", "XIII MENSILITA'",
   "13^ MENS.", "MENSILITÀ AGGIUNTIVA" (the fourteenth when paid in June or
@@ -242,7 +243,8 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/danielededo/cedolo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/danielededo/cedolo/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/danielededo/cedolo/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielededo/cedolo/compare/v0.1.0...v0.2.0
