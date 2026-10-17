@@ -67,6 +67,8 @@ CLAUDE.local.md
 *.tiff
 *.heic
 *.webp
+# The README's screenshot, made from synthetic payslips only.
+!docs/images/screenshot.png
 # Local folders for private payslips and their ground truth.
 private/
 testdata/private/
