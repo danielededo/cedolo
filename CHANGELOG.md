@@ -18,8 +18,19 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- A fourth synthetic layout style, `cedolo synth -style spaced`, that
+  prints every character on its own with its totals under small labels, a
+  statistics column beside them and a row of year-to-date values. The
+  tests read it on every change, with PDFium and in the web app, so
+  payslips laid out this way keep being read correctly.
+
 ### Fixed
 
+- The anonymized copy of a payslip printed one character at a time keeps
+  its labels and amounts. Before, every character was masked on its own and
+  the copy could not be read back.
 - Payslips that print each character on its own, with extra spacing, are
   read: before, every word and amount came out in pieces, so no total was
   found and the month was unknown. This works both in the web app and in the

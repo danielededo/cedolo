@@ -37,6 +37,9 @@ type Options struct {
 
 // Layout returns an anonymized copy of doc. The input is not modified.
 func Layout(doc layout.Document, o Options) (layout.Document, Stats) {
+	// Words printed a character at a time are rejoined first: single
+	// letters match no vocabulary, so every label would be masked.
+	doc = layout.JoinSpaced(doc)
 	vocab := vocabulary()
 	var st Stats
 	out := layout.Document{Pages: make([]layout.Page, len(doc.Pages))}
@@ -91,6 +94,7 @@ func number(s string) bool {
 // that still appear in the anonymized document, and the personal identifiers
 // it contains. Anything it returns means the output must not be shared.
 func Leaks(original, anonymized layout.Document) []string {
+	original = layout.JoinSpaced(original) // as Layout reads it
 	out := map[string]bool{}
 	for _, p := range anonymized.Pages {
 		for _, t := range p.Tokens {

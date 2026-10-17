@@ -104,7 +104,7 @@ func TestVerdict(t *testing.T) {
 }
 
 func TestExtractEveryStyle(t *testing.T) {
-	for _, style := range []string{"classic", "signed", "grid"} {
+	for _, style := range []string{"classic", "signed", "grid", "spaced"} {
 		path := filepath.Join(t.TempDir(), style+".pdf")
 		if err := runSynth([]string{"-style", style, "-o", path}); err != nil {
 			t.Fatal(err)

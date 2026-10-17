@@ -57,7 +57,7 @@ Usage:
   cedolo layout [-reader pdfium|poppler] [-redact] FILE
       Print the positioned text of a PDF as JSON. Without -redact the output
       contains personal data: keep it on your machine.
-  cedolo synth [-style classic|signed|grid] [-month 1-12] [-password PW] [-rotate 90] [-o FILE]
+  cedolo synth [-style classic|signed|grid|spaced] [-month 1-12] [-password PW] [-rotate 90] [-o FILE]
       Write a synthetic payslip PDF with invented data (default: synthetic.pdf).
   cedolo version
       Print the version.
@@ -235,7 +235,7 @@ func runLayout(args []string, out, warn io.Writer) error {
 func runSynth(args []string) error {
 	fs := flag.NewFlagSet("synth", flag.ContinueOnError)
 	outPath := fs.String("o", "synthetic.pdf", "output file")
-	styleName := fs.String("style", "classic", "layout style: classic, signed, or grid")
+	styleName := fs.String("style", "classic", "layout style: classic, signed, grid, or spaced")
 	password := fs.String("password", "", "protect the PDF with this password")
 	rotate := fs.Int("rotate", 0, "turn the page by 90, 180 or 270 degrees")
 	month := fs.Int("month", 10, "month of the payslip, 1 to 12")
