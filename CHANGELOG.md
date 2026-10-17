@@ -22,6 +22,12 @@ How to use this file:
 
 - The web app's Italian heading reads "Comprendi il tuo cedolino".
 
+### Fixed
+
+- With many months, the report's row of months opens scrolled to the month
+  it shows, the latest, instead of starting from January with the marked
+  month out of sight.
+
 ## [0.3.0] - 2026-10-17
 
 ### Changed
