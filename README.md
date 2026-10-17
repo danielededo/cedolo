@@ -1,120 +1,119 @@
-# cedolo
+<p align="center">
+  <img src="docs/images/logo.svg" width="72" height="72" alt="">
+</p>
 
-cedolo helps employees in Italy understand their payslips (cedolini, buste
-paga). It reads the PDF payslips you already have, turns them into clean data,
-checks that the numbers add up, and shows how your gross pay, net pay,
-deductions, TFR and leave change over time, with plain-language explanations
-of every item. Everything runs on your own device: your payslips are never
-uploaded anywhere.
+<h1 align="center">cedolo</h1>
+
+<p align="center">
+  <strong>Understand your Italian payslip.</strong><br>
+  cedolo reads your PDF payslips (cedolini, buste paga) on your own device,
+  checks that the numbers add up and explains every item in plain words.
+</p>
+
+<p align="center">
+  <a href="https://danielededo.github.io/cedolo/"><strong>Open the web app</strong></a> ·
+  <a href="https://github.com/danielededo/cedolo/releases/latest">Download the command-line tool</a> ·
+  <a href="#report-a-payslip-read-badly">Report a payslip read badly</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/danielededo/cedolo/actions/workflows/ci.yml"><img src="https://github.com/danielededo/cedolo/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/danielededo/cedolo/releases/latest"><img src="https://img.shields.io/github/v/release/danielededo/cedolo" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0"></a>
+</p>
+
+![The cedolo web app: the start page, and the report of a synthetic payslip on a phone](docs/images/screenshot.png)
+
+## What it does
+
+- **Shows where your gross pay goes**: net pay, contributions, taxes and
+  other deductions, one payslip at a time, with every printed item explained
+  on tap.
+- **Checks the numbers**: every value is marked as verified by the payslip's
+  own arithmetic, read, inferred, inconsistent or missing, so a misreading
+  shows up instead of hiding behind a plausible number.
+- **Explains what changed** from one month to the next, such as surcharge
+  instalments, the thirteenth month or the year-end tax adjustment.
+- **Identifies your collective agreement (CCNL)** from its CNEL code: sector,
+  latest agreement and signatories.
+- **Works with any payroll software** that produces text PDFs, without
+  templates per vendor. Scanned payslips are not supported yet.
+- In **Italian and English**, in the browser or in a terminal.
 
 cedolo explains what a payslip says. It is not tax, legal or labour advice and
 it can be wrong; for decisions, ask your payroll office, a CAF, a patronato or
 union office, or a consulente del lavoro.
 
-## Status
-
-v0.1 is a command-line tool for text PDF payslips, independent of the payroll
-software that produced them. A web app with the same engine, in English and
-Italian, is in progress; see the roadmap in
-[docs/design/mvp-design.md](docs/design/mvp-design.md#9-roadmap).
-
-## Features
-
-- Reads header, totals, line items, TFR and leave balances from text PDF
-  payslips, without templates per payroll software.
-- Cross-checks every payslip with its own arithmetic, so each value is marked
-  as verified, extracted, inferred, inconsistent or missing.
-- Compares months and explains what changed, such as surcharge instalments,
-  the thirteenth month or the year-end tax adjustment.
-- Writes an offline, interactive HTML report in Italian or English: one
-  payslip at a time, where the gross pay goes, and pay over time.
-- Explains in plain words every kind of item it finds and the terms around
-  them, such as imponibile and conguaglio, in the report and with
-  `cedolo glossary`.
-- Identifies the collective agreement (CCNL) from its CNEL code and shows its
-  sector, latest agreement and signatories.
-
 ## Privacy
 
-Payslips contain sensitive data, including in some cases health information
-and union membership. cedolo processes them on your device, keeps no copy of
-the original PDF by default, sends nothing over the network, and contains no
-analytics or telemetry. See [ADR 0003](docs/adr/0003-on-device-processing-by-default.md).
+Payslips contain sensitive data, sometimes including health information and
+union membership. cedolo reads them **on your device** and sends nothing over
+the network. It has no account, no analytics and no telemetry, and the web app
+saves nothing: closing the page forgets everything. A Content-Security-Policy
+forbids the page from contacting any other site, and browser tests check it.
+See [ADR 0003](docs/adr/0003-on-device-processing-by-default.md) and the
+[web app's security limits](docs/design/web-security.md).
 
 Never attach a real payslip or a screenshot of one to an issue or pull request.
 
-## Install
+## Use it
+
+### In the browser
+
+Open **https://danielededo.github.io/cedolo/**, drop the PDFs of your payslips
+on the page and read the report. Several months give a better picture.
+Payslips protected by a password are opened after you type it; the password
+stays in memory only.
+
+The web app is a set of static files, also attached to each release as
+`cedolo-web_<version>.zip`. To run your own copy, unpack it, run
+`python3 -m http.server --bind 127.0.0.1` in the folder and open
+http://127.0.0.1:8000. Browsers do not run it from a file opened directly.
+
+### In a terminal
 
 Download the archive for your system from the
 [latest release](https://github.com/danielededo/cedolo/releases/latest),
-unpack it and run `cedolo` from a terminal. Nothing else is needed. Check the
-download against `SHA256SUMS` if you like.
-
-The binaries are not signed. On macOS, allow it once with
-`xattr -d com.apple.quarantine cedolo`; on Windows, SmartScreen may ask you to
-confirm with "More info", then "Run anyway".
-
-With Go installed you can also run it from source: `go run ./cmd/cedolo`.
-
-## Web app
-
-The same engine runs in the browser: drop your payslip PDFs in the page and
-read the report. Everything happens on your device; the files are never
-uploaded and nothing is saved. Each release has `cedolo-web_<version>.zip`,
-static files you can serve with any web server, for example
-`python3 -m http.server --bind 127.0.0.1` in the unpacked folder, then open
-http://127.0.0.1:8000 (without `--bind` the server is reachable from your
-whole network). Browsers do not run it from a file opened directly.
-
-If a payslip is read badly, "Anonymized copy" next to its name makes the
-same copy as `cedolo anonymize -o`, shows all of its text for review and
-lets you download it to attach to an issue.
-
-To build it from source, with Go and Node.js installed:
+unpack it and run `cedolo`; nothing else is needed. Check the download against
+`SHA256SUMS` if you like. The binaries are not signed: on macOS allow it once
+with `xattr -d com.apple.quarantine cedolo`, and on Windows confirm
+SmartScreen with "More info", then "Run anyway". With Go installed you can
+also run `go run ./cmd/cedolo`.
 
 ```
-(cd web && npm ci --omit=optional --ignore-scripts)
-go run ./cmd/webbuild -o dist/web
-(cd web && npm test)        # the web app must read payslips as the CLI does
-(cd web && npx playwright install chromium && npm run test:e2e)   # in a real browser
-```
-
-## Usage
-
-```
-cedolo synth -o synthetic.pdf        # write a payslip with invented data
-cedolo inspect synthetic.pdf         # check that a PDF has a readable text layer
-cedolo extract synthetic.pdf         # read it: items, totals, cross-checks
+cedolo report -o report.html *.pdf   # the interactive report, offline
+cedolo extract payslip.pdf           # items, totals and cross-checks
 cedolo compare jan.pdf feb.pdf       # what changed from one month to the next
-cedolo report -o report.html *.pdf   # an offline HTML report with charts
-cedolo ccnl -search metalmeccanici   # look up a collective agreement (CCNL)
+cedolo glossary conguaglio           # what a payslip word means
+cedolo ccnl -search metalmeccanici   # look up a collective agreement
+cedolo synth -o synthetic.pdf        # a payslip with invented data, to try it
 ```
 
-Run `cedolo help` for every command and option. Payslips protected by a
-password (often the codice fiscale) are opened after cedolo asks for it in
-the terminal; scripts can set `CEDOLO_PDF_PASSWORD` instead. Files that
-cannot be read are reported and skipped.
+Run `cedolo help` for every command and option. A protected payslip is opened
+after cedolo asks for the password in the terminal; scripts can set
+`CEDOLO_PDF_PASSWORD`. Files that cannot be read are reported and skipped.
 
-`cedolo extract` does not need to know which payroll software produced the
-payslip. Every value is marked as verified (confirmed by the payslip's own
-arithmetic), extracted, inferred, inconsistent or missing, so a misreading
-shows up instead of hiding behind a plausible number. It works on text PDFs
-only; scanned payslips are not supported yet.
+## Report a payslip read badly
 
-If cedolo reads your payslip badly, `cedolo anonymize -o anonymized.pdf payslip.pdf`
-writes a copy you can share. It is a new PDF rebuilt from the payslip's
-text, holding nothing else from the original file. Only known payroll labels
-and the amounts are kept. Names, companies, addresses, identifiers, dates and
-codes are masked, together with words that would reveal health, union
-membership, family situation or debts. Add `-amounts mask` to mask the
-amounts too. Read it before sharing it; see
-[CONTRIBUTING.md](CONTRIBUTING.md#reporting-a-payslip-layout) and
-[ADR 0008](docs/adr/0008-rebuild-anonymized-payslips.md).
+cedolo learns new layouts from anonymized copies, never from real payslips.
 
-`cedolo inspect` prints counts only, never names, amounts or file names, so
-its output is safe to share when reporting that a payslip format is not read
-correctly. `cedolo layout -redact FILE` prints the positioned text with every
-letter and digit masked.
+1. Make an **anonymized copy**: in the web app open "Files", then "Something
+   read badly?"; in a terminal run
+   `cedolo anonymize -o anonymized.pdf payslip.pdf`. The copy is a new PDF
+   rebuilt from the payslip's text with nothing else from the original file.
+   Names, companies, addresses, identifiers, dates and codes are masked, and
+   so are words that would reveal health, union membership, family situation
+   or debts. Amounts are kept so errors in the totals can be reproduced;
+   untick the box, or add `-amounts mask`, to mask them too.
+2. **Read all of it.** If anything personal survived, do not share it and
+   report that instead.
+3. Open an issue with the
+   [**A payslip is read badly**](https://github.com/danielededo/cedolo/issues/new?template=misread.yml)
+   form and attach the copy.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#reporting-a-payslip-layout) and
+[ADR 0008](docs/adr/0008-rebuild-anonymized-payslips.md) for how the copy is
+made and what it can still reveal.
 
 ## Development
 
@@ -125,11 +124,23 @@ go vet ./...
 go run ./cmd/piiscan .
 ```
 
-Tests that compare against poppler run only when `pdftotext` is installed. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and
-[docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for commit messages.
+Tests that compare against poppler run only when `pdftotext` is installed.
+To build and test the web app, with Go and Node.js installed:
 
-## Layout
+```
+(cd web && npm ci --omit=optional --ignore-scripts)
+go run ./cmd/webbuild -o dist/web
+(cd web && npm test)                                              # reads payslips as the CLI does
+(cd web && npx playwright install chromium && npm run test:e2e)   # in a real browser
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow,
+[docs/COMMIT-CONVENTION.md](docs/COMMIT-CONVENTION.md) for commit messages,
+[docs/design](docs/design) for the design and [docs/adr](docs/adr) for the
+decisions behind it.
+
+<details>
+<summary>Repository layout</summary>
 
 ```
 /
@@ -156,14 +167,15 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 │   ├── payslip/              # normalized payslip model
 │   ├── taxonomy/             # canonical item catalogue, bilingual labels
 │   ├── extract/              # generic extraction and cross-checks
-│   ├── anonymize/            # allowlist anonymizer for sharing layouts
+│   ├── anonymize/            # anonymized copies for sharing layouts (ADR 0008)
 │   ├── insights/             # month-to-month comparison
-│   ├── report/               # self-contained HTML report with charts
+│   ├── report/               # self-contained interactive HTML report
 │   ├── ccnl/                 # national collective agreements by CNEL code (embedded data)
 │   ├── i18n/                 # user-facing texts in Italian and English
 │   └── synth/                # synthetic payslips for tests, in several styles
 ├── docs/
 │   ├── design/               # product and architecture design, spike reports
+│   ├── images/               # the logo and screenshot of this README
 │   ├── adr/                  # architecture decision records
 │   ├── BRANCHING-STRATEGY.md
 │   ├── COMMIT-CONVENTION.md
@@ -173,6 +185,8 @@ Tests that compare against poppler run only when `pdftotext` is installed. See
 ├── .claude/skills/           # symlinks to .agents/skills
 └── .github/                  # CI workflow, issue and pull request templates, Dependabot
 ```
+
+</details>
 
 ## Data sources
 
