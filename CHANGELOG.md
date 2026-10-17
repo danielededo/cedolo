@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-17
+
 ### Changed
 
 - The report is simpler and interactive. It shows one payslip at a time,
@@ -177,6 +179,7 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/danielededo/cedolo/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/danielededo/cedolo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/danielededo/cedolo/releases/tag/v0.1.0
