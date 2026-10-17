@@ -229,6 +229,14 @@ test('shows the latest of many months first', async () => {
   assert.equal(visible.length, 1);
   assert.match(visible[0], /^September 2026/);
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Sep 26');
+  // On a phone the row of months is wider than the screen: it opens
+  // scrolled to the marked month, not to January.
+  const inView = await frame.$eval('.picker', (row) => {
+    const b = row.querySelector('[aria-pressed="true"]').getBoundingClientRect();
+    const r = row.getBoundingClientRect();
+    return row.scrollWidth > row.clientWidth && b.left >= r.left && b.right <= r.right;
+  });
+  assert.ok(inView, 'the marked month is in view');
   assert.deepEqual(seen.errors, []);
   await page.close();
 });
