@@ -219,12 +219,15 @@ test('the report frame fits its content on a phone', async () => {
 test('shows the latest of many months first', async () => {
   // Files picked in any order: the report opens on the latest month, the
   // one its picker marks.
-  const files = [9, 1, 5, 3, 7, 2, 8, 4, 6].map((m) => synth(`month-${m}.pdf`, '-month', String(m)));
+  // August is in another style, so that months differ in height.
+  const files = [9, 1, 5, 3, 7, 2, 8, 4, 6].map((m) => synth(`month-${m}.pdf`, '-month', String(m), ...(m === 8 ? ['-style', 'spaced'] : [])));
   const { page, seen } = await open({ viewport: { width: 390, height: 800 } });
   await page.setInputFiles('#files', files);
   await statuses(page);
   const frame = page.frames().find((f) => f !== page.mainFrame());
   await frame.waitForSelector('section.month:not([hidden]) .bar');
+  // The frame is laid out hidden first; what counts is the report shown.
+  await page.waitForSelector('#report:not(.pending)');
   const visible = await frame.$$eval('section.month', (ms) => ms.filter((m) => getComputedStyle(m).display !== 'none').map((m) => m.querySelector('.when').textContent));
   assert.equal(visible.length, 1);
   assert.match(visible[0], /^September 2026/);
@@ -237,6 +240,13 @@ test('shows the latest of many months first', async () => {
     return row.scrollWidth > row.clientWidth && b.left >= r.left && b.right <= r.right;
   });
   assert.ok(inView, 'the marked month is in view');
+  // Picking a month in view leaves the row where it is, though the frame
+  // changes height with the month shown.
+  const left = await frame.$eval('.picker', (row) => row.scrollLeft);
+  await press(frame, '.picker button[data-month="7"]');
+  await frame.waitForSelector('section.month[data-month="7"]:not([hidden])');
+  await page.waitForTimeout(300);
+  assert.equal(await frame.$eval('.picker', (row) => row.scrollLeft), left);
   assert.deepEqual(seen.errors, []);
   await page.close();
 });
