@@ -562,3 +562,25 @@ func TestNotAPayslip(t *testing.T) {
 		t.Errorf("got %d payslips, want none: %+v", len(got), got)
 	}
 }
+
+// TestTaxReturnRefundOutsideGross covers a tax return refund paid in the
+// payslip: it is not pay, so the printed gross leaves it out.
+func TestTaxReturnRefundOutsideGross(t *testing.T) {
+	pg := page(
+		[]string{"40:Periodo: Settembre 2026"},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:Retribuzione ordinaria", "450>2.000,00"},
+		[]string{"40:IRPEF A CREDITO -MOD.730-", "450>300,00"},
+		[]string{"40:Ritenuta IRPEF", "540>400,00"},
+		[]string{},
+		[]string{"40:Totale lordo", "450>2.000,00"},
+		[]string{"40:Totale trattenute", "540>400,00"},
+		[]string{"40:Netto del mese", "540>1.900,00"},
+	)
+	p := Document(layout.Document{Pages: []layout.Page{pg}})[0]
+	if it := find(t, p.Items, "tax.return"); it.Side != payslip.Earning || it.Cents != 30000 {
+		t.Errorf("refund = %+v", it)
+	}
+	wantStatus(t, "gross", p.Gross, 200000, payslip.Verified)
+	wantStatus(t, "net", p.Net, 190000, payslip.Verified)
+}

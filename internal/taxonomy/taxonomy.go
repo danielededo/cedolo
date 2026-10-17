@@ -40,6 +40,8 @@ var Entries = []Entry{
 		Keywords: []string{"arrotondamento", "arrotond", "arrot", "arr to"}},
 	{Key: "meal_vouchers", LabelEN: "Meal vouchers (taxable part)", LabelIT: "Buoni pasto (parte imponibile)",
 		Keywords: []string{"buoni pasto", "buono pasto", "ticket restaurant", "assoggettamento pasti", "pasti"}},
+	{Key: "tax.return", LabelEN: "Tax return settlement (730)", LabelIT: "Conguaglio 730",
+		Keywords: []string{"730", "mod 730", "modello 730", "assistenza fiscale"}},
 	{Key: "earnings.reimbursement", LabelEN: "Expense reimbursement", LabelIT: "Rimborso spese",
 		Side: payslip.Earning, Keywords: []string{"nota spese", "rimborso spese", "rimborsi spese", "rimborso", "rimborsi", "rimb spese"}},
 	{Key: "earnings.contribution_relief", LabelEN: "Social security contribution relief", LabelIT: "Esonero contributivo",

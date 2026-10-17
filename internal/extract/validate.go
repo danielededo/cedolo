@@ -18,6 +18,7 @@ var outsideGross = map[string]bool{
 	"earnings.reimbursement":       true,
 	"earnings.contribution_relief": true,
 	"tax.credit":                   true,
+	"tax.return":                   true,
 	"rounding":                     true,
 }
 
@@ -51,7 +52,7 @@ func validate(p *payslip.Payslip) {
 			mark(&p.Gross, true)
 		case p.Gross.Cents == taxable:
 			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: true,
-				Detail: fmt.Sprintf("items other than reimbursements, contribution relief and tax credits add up to %s, printed gross is %s", money.Format(taxable), money.Format(p.Gross.Cents))})
+				Detail: fmt.Sprintf("items other than reimbursements, contribution relief, tax credits and tax return refunds add up to %s, printed gross is %s", money.Format(taxable), money.Format(p.Gross.Cents))})
 			mark(&p.Gross, true)
 		default:
 			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: false,
