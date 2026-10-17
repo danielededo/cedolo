@@ -30,20 +30,22 @@ func Document(doc layout.Document) []payslip.Payslip {
 	type group struct {
 		pages       []layout.Page
 		year, month int
-		closed      bool // a page already printed the net pay
+		kind        payslip.Kind // set when the period itself names an additional month
+		closed      bool         // a page already printed the net pay
 	}
 	var groups []group
 	for _, p := range doc.Pages {
 		lines := buildLines(p)
-		year, month := findPeriod(lines)
+		year, month, kind := findPeriod(lines)
 		n := len(groups)
 		switch {
 		// A new period starts a new payslip; so does a page with a period
 		// after a payslip that already printed its net pay, as when two
 		// payslips of the same month share a file. Continuation pages repeat
 		// the header but leave the net to the last page.
-		case n == 0, month != 0 && (month != groups[n-1].month || year != groups[n-1].year || groups[n-1].closed):
-			groups = append(groups, group{pages: []layout.Page{p}, year: year, month: month})
+		case n == 0, (month != 0 || kind != "") && (month != groups[n-1].month || year != groups[n-1].year ||
+			kind != groups[n-1].kind || groups[n-1].closed):
+			groups = append(groups, group{pages: []layout.Page{p}, year: year, month: month, kind: kind})
 		default:
 			groups[n-1].pages = append(groups[n-1].pages, p)
 		}
@@ -53,7 +55,11 @@ func Document(doc layout.Document) []payslip.Payslip {
 	}
 	out := make([]payslip.Payslip, 0, len(groups))
 	for _, g := range groups {
-		out = append(out, extractPayslip(g.pages, g.year, g.month))
+		p := extractPayslip(g.pages, g.year, g.month)
+		if g.kind != "" {
+			p.Kind = g.kind
+		}
+		out = append(out, p)
 	}
 	return out
 }
@@ -86,6 +92,18 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 		}
 		if l.has(fourteenthWords...) {
 			p.Kind = payslip.Fourteenth
+		}
+	}
+	// "Mensilità aggiuntiva" alone: the fourteenth is paid in June or July,
+	// the thirteenth in December.
+	if p.Kind == payslip.Monthly {
+		for _, l := range header {
+			if l.has(additionalWords...) {
+				p.Kind = payslip.Thirteenth
+				if p.Month == 6 || p.Month == 7 {
+					p.Kind = payslip.Fourteenth
+				}
+			}
 		}
 	}
 	p.CCNL = textField(header, pages[0].Width, "ccnl", "contratto")
@@ -148,11 +166,14 @@ func hasLeave(ls []payslip.Leave, k payslip.LeaveKind) bool {
 	return false
 }
 
-var numericPeriod = regexp.MustCompile(`^(0?[1-9]|1[0-2])[/.-]((?:19|20)\d\d)$`)
+var numericPeriod = regexp.MustCompile(`^(0?[1-9]|1[0-2]|13|14)[/.-]((?:19|20)\d\d)$`)
 
 // findPeriod returns the first "month year" in reading order, or a numeric
-// "mm/yyyy" on a line that is, or is just below, a period label.
-func findPeriod(lines []line) (year, month int) {
+// "mm/yyyy" on a line that is, or is just below, a period label. Some
+// payroll software numbers the additional months 13 and 14: "13/2025" is
+// the thirteenth month, paid in December, and "14/2025" the fourteenth,
+// whose month of payment the period does not tell.
+func findPeriod(lines []line) (year, month int, kind payslip.Kind) {
 	for i, l := range lines {
 		for k, w := range l.words {
 			m, ok := monthNames[w.text]
@@ -160,7 +181,7 @@ func findPeriod(lines []line) (year, month int) {
 				continue
 			}
 			if y, err := strconv.Atoi(l.words[k+1].text); err == nil && y >= 1990 && y <= 2099 {
-				return y, m
+				return y, m, ""
 			}
 		}
 		labelled := l.has(periodLabels...) || (i > 0 && lines[i-1].has(periodLabels...))
@@ -171,11 +192,37 @@ func findPeriod(lines []line) (year, month int) {
 			if m := numericPeriod.FindStringSubmatch(t.Text); m != nil {
 				mo, _ := strconv.Atoi(m[1])
 				y, _ := strconv.Atoi(m[2])
-				return y, mo
+				switch mo {
+				case 13:
+					return y, 12, payslip.Thirteenth
+				case 14:
+					return y, 0, payslip.Fourteenth
+				}
+				return y, mo, ""
 			}
 		}
 	}
-	return 0, 0
+	// "13MA MENS. 2025": an additional month named with its year only.
+	for _, l := range lines {
+		for _, c := range []struct {
+			words []string
+			kind  payslip.Kind
+			month int
+		}{{thirteenthWords, payslip.Thirteenth, 12}, {fourteenthWords, payslip.Fourteenth, 0}} {
+			for _, p := range c.words {
+				_, last, ok := l.find(p)
+				if !ok {
+					continue
+				}
+				for _, t := range l.toks[last+1:] {
+					if y, err := strconv.Atoi(t.Text); err == nil && y >= 1990 && y <= 2099 {
+						return y, c.month, c.kind
+					}
+				}
+			}
+		}
+	}
+	return 0, 0, ""
 }
 
 // valueTokens returns the tokens that hold a label's value: the tokens to the
@@ -468,6 +515,10 @@ func findTable(lines []line, pageWidth float64) (table, bool) {
 var numericToken = regexp.MustCompile(`^[-+]?[0-9][0-9.,]*%?-?$`)
 var codeToken = regexp.MustCompile(`^[A-Za-z0-9]{1,6}$`)
 
+// ordinalMonth is "13ma", "14a" and the like: the start of a description
+// naming an additional month, not an item code.
+var ordinalMonth = regexp.MustCompile(`(?i)^1[34](a|ma|esima)$`)
+
 // rows reads the item lines below the table header until the totals or the
 // end of the table.
 func (t table) rows(lines []line, page int) []payslip.Item {
@@ -533,7 +584,7 @@ func (t table) row(l line, page int) []payslip.Item {
 		case colEarnings, colDeductions, colAmount:
 			amounts = append(amounts, amt{tok, k})
 		default:
-			if i == 0 && codeToken.MatchString(tok.Text) && strings.ContainsAny(tok.Text, "0123456789") {
+			if i == 0 && codeToken.MatchString(tok.Text) && strings.ContainsAny(tok.Text, "0123456789") && !ordinalMonth.MatchString(tok.Text) {
 				code = tok.Text
 				continue
 			}

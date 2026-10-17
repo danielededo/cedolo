@@ -213,7 +213,7 @@ func TestNumericPeriod(t *testing.T) {
 		{Text: "Mese", X: 40, Y: 40, W: 20, H: 9}, {Text: "retribuito", X: 65, Y: 40, W: 40, H: 9},
 		{Text: "09/2026", X: 40, Y: 52, W: 30, H: 9},
 	}}
-	y, m := findPeriod(buildLines(page))
+	y, m, _ := findPeriod(buildLines(page))
 	if y != 2026 || m != 9 {
 		t.Errorf("period = %d/%d, want 9/2026", m, y)
 	}

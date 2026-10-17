@@ -74,8 +74,13 @@ var monthNames = map[string]int{
 var periodLabels = []string{"periodo", "mese", "competenza", "retribuzione", "paga"}
 
 var (
-	thirteenthWords = []string{"tredicesima", "13ma", "13a mensilita", "gratifica natalizia", "13 mensilita"}
-	fourteenthWords = []string{"quattordicesima", "14ma", "14a mensilita", "14 mensilita"}
+	thirteenthWords = []string{"tredicesima", "13ma", "13esima", "13a mensilita", "13 mensilita", "13a mens",
+		"13 mens", "xiii mensilita", "gratifica natalizia"}
+	fourteenthWords = []string{"quattordicesima", "14ma", "14esima", "14a mensilita", "14 mensilita", "14a mens",
+		"14 mens", "xiv mensilita"}
+	// additionalWords name an additional month without saying which one;
+	// the month of payment tells (June or July for the fourteenth).
+	additionalWords = []string{"mensilita aggiuntiva", "mens aggiuntiva", "mensilita supplementare"}
 )
 
 // Vocabulary returns every word the extractor recognizes in labels, column
@@ -85,7 +90,7 @@ func Vocabulary() []string {
 	var phrases []string
 	for _, list := range [][]string{grossLabels, deductionLabels, netLabels, inpsBaseLabels, irpefBaseLabels,
 		tfrLabels, tfrBaseLabels, socialLabels, taxLabels, inpsLabels, roundingPreviousLabels, roundingCurrentLabels,
-		periodLabels, thirteenthWords, fourteenthWords} {
+		periodLabels, thirteenthWords, fourteenthWords, additionalWords} {
 		phrases = append(phrases, list...)
 	}
 	for w := range columnWords {

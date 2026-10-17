@@ -90,3 +90,15 @@ func TestEntriesAreWellFormed(t *testing.T) {
 		}
 	}
 }
+
+func TestAdditionalMonthItems(t *testing.T) {
+	for desc, key := range map[string]string{
+		"13ª MENSILITÀ": "earnings.thirteenth", "XIII MENSILITA'": "earnings.thirteenth", "13^ MENS.": "earnings.thirteenth",
+		"RATEI 13MA": "earnings.thirteenth", "14ª MENSILITÀ": "earnings.fourteenth", "XIV MENSILITA'": "earnings.fourteenth",
+		"14esima": "earnings.fourteenth",
+	} {
+		if got := Classify(desc, payslip.Earning); got != key {
+			t.Errorf("%q = %s, want %s", desc, got, key)
+		}
+	}
+}

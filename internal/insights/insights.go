@@ -43,6 +43,16 @@ const (
 // payslip of the same month, and payslips without a period go last.
 func Sort(slips []payslip.Payslip) {
 	order := func(p payslip.Payslip) (int, int, int) {
+		if p.Month == 0 && p.Year != 0 {
+			// An additional month known only by its year: the thirteenth
+			// is paid in December, the fourteenth usually in July.
+			switch p.Kind {
+			case payslip.Thirteenth:
+				return p.Year, 12, 1
+			case payslip.Fourteenth:
+				return p.Year, 7, 1
+			}
+		}
 		if p.Month == 0 {
 			return math.MaxInt32, 0, 0
 		}
@@ -78,7 +88,7 @@ func Dedupe(slips []payslip.Payslip) ([]payslip.Payslip, int) {
 	seen := map[key]bool{}
 	out := slips[:0:0]
 	for _, p := range slips {
-		if p.Month == 0 || !p.Net.Found() {
+		if (p.Month == 0 && (p.Kind == payslip.Monthly || p.Year == 0)) || !p.Net.Found() {
 			out = append(out, p)
 			continue
 		}
@@ -94,6 +104,9 @@ func Dedupe(slips []payslip.Payslip) ([]payslip.Payslip, int) {
 
 // Label names a payslip's period.
 func Label(l i18n.Lang, p payslip.Payslip) string {
+	if p.Month == 0 && p.Year != 0 && p.Kind != payslip.Monthly {
+		return i18n.T(l, "period."+string(p.Kind)+".year", p.Year)
+	}
 	if p.Month == 0 {
 		return i18n.T(l, "period.unknown")
 	}

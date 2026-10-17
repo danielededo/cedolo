@@ -435,3 +435,73 @@ func TestContractFields(t *testing.T) {
 		t.Errorf("GG. CCNL read as the contract: %q", got[0].CCNL)
 	}
 }
+
+// additional builds a minimal payslip page whose header shows period and
+// whose only item is described as item.
+func additional(period []string, item string) layout.Page {
+	return page(
+		append([]string{"40:ACME SINTETICA SPA"}, period...),
+		[]string{},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:" + item, "450>1.900,00"},
+		[]string{"40:Contributo IVS", "540>174,61"},
+		[]string{},
+		[]string{"40:Totale competenze", "450>1.900,00"},
+		[]string{"40:Totale trattenute", "540>174,61"},
+		[]string{"40:Netto a pagare", "540>1.725,39"},
+	)
+}
+
+// TestAdditionalMonths covers the ways payroll software marks the
+// thirteenth and fourteenth month: words in the header, with ordinal
+// marks or Roman numerals, a generic "additional month" and a period
+// numbered 13 or 14.
+func TestAdditionalMonths(t *testing.T) {
+	for _, c := range []struct {
+		name        string
+		period      []string
+		item        string
+		year, month int
+		kind        payslip.Kind
+		key         string
+	}{
+		{"ordinal", []string{"300:DICEMBRE 2025", "420:13ª MENSILITÀ"}, "13ª MENSILITÀ", 2025, 12, payslip.Thirteenth, "earnings.thirteenth"},
+		{"roman", []string{"300:DICEMBRE 2025", "420:XIII MENSILITA'"}, "XIII MENSILITA'", 2025, 12, payslip.Thirteenth, "earnings.thirteenth"},
+		{"caret", []string{"300:Periodo 13/2025"}, "13^ MENSILITA'", 2025, 12, payslip.Thirteenth, "earnings.thirteenth"},
+		{"fourteenth number", []string{"300:Periodo 14/2025"}, "14ma MENSILITA'", 2025, 0, payslip.Fourteenth, "earnings.fourteenth"},
+		{"additional in July", []string{"300:LUGLIO 2025", "420:MENSILITA' AGGIUNTIVA"}, "RATEI 14MA", 2025, 7, payslip.Fourteenth, "earnings.fourteenth"},
+		{"additional in December", []string{"300:DICEMBRE 2025", "420:MENSILITA' AGGIUNTIVA"}, "RATEO 13MA", 2025, 12, payslip.Thirteenth, "earnings.thirteenth"},
+		{"ordinary December", []string{"300:DICEMBRE 2025"}, "Retribuzione", 2025, 12, payslip.Monthly, "earnings.base_salary"},
+		{"year only", []string{"300:PERIODO DI RETRIBUZIONE", "460:13MA MENS. 2025"}, "GRATIFICA NATALIZIA", 2025, 12, payslip.Thirteenth, "earnings.thirteenth"},
+		{"fourteenth year only", []string{"460:14ª MENSILITÀ 2025"}, "14ª MENSILITÀ", 2025, 0, payslip.Fourteenth, "earnings.fourteenth"},
+	} {
+		got := Document(layout.Document{Pages: []layout.Page{additional(c.period, c.item)}})
+		if len(got) != 1 {
+			t.Fatalf("%s: %d payslips", c.name, len(got))
+		}
+		p := got[0]
+		if p.Year != c.year || p.Month != c.month || p.Kind != c.kind {
+			t.Errorf("%s: %d/%d %s, want %d/%d %s", c.name, p.Month, p.Year, p.Kind, c.month, c.year, c.kind)
+		}
+		if len(p.Items) == 0 || p.Items[0].Key != c.key {
+			t.Errorf("%s: items %+v, want %s first", c.name, p.Items, c.key)
+		}
+		if p.Net.Cents != 172539 {
+			t.Errorf("%s: net %d", c.name, p.Net.Cents)
+		}
+	}
+}
+
+// TestThirteenthAfterDecember reads a file with the December payslip and
+// the thirteenth month numbered 13: two payslips, not one.
+func TestThirteenthAfterDecember(t *testing.T) {
+	doc := layout.Document{Pages: []layout.Page{
+		additional([]string{"300:Periodo 12/2025"}, "Retribuzione"),
+		additional([]string{"300:Periodo 13/2025"}, "Tredicesima"),
+	}}
+	doc.Pages[1].Number = 2
+	got := Document(doc)
+	if len(got) != 2 || got[0].Kind != payslip.Monthly || got[1].Kind != payslip.Thirteenth || got[1].Month != 12 {
+		t.Fatalf("got %+v", got)
+	}
+}
