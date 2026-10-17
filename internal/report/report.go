@@ -45,14 +45,15 @@ type Month struct {
 	Status     Status
 	StatusText string
 	Net        string
-	Gross      string // "of 2.194,50 € gross pay"
-	Delta      string // change of the net from the previous month, empty when unknown
-	Parts      []Part // where the gross pay goes
-	Earnings   []Line // what makes up the gross pay
-	SetAside   []Line // TFR and other amounts that do not change this month's pay
-	GrossTotal string // the gross pay, next to Earnings
-	AsideTotal string // the sum of SetAside
-	Changes    []insights.Change
+	Gross      string            // "of 2.194,50 € gross pay"
+	Delta      string            // change of the net from the previous month, empty when unknown
+	Parts      []Part            // where the gross pay goes
+	Earnings   []Line            // what makes up the gross pay
+	SetAside   []Line            // TFR and other amounts that do not change this month's pay
+	GrossTotal string            // the gross pay, next to Earnings
+	AsideTotal string            // the sum of SetAside
+	Changes    []insights.Change // the most telling changes, at most two
+	More       []insights.Change // the others, behind "show all"
 }
 
 // Part is one share of the gross pay: the net or a kind of deduction.
@@ -225,8 +226,8 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		Status:     st,
 		StatusText: i18n.T(l, "report."+string(st)),
 		Net:        amount(p.Net),
-		Changes:    per.Changes,
 	}
+	m.Changes, m.More = telling(per.Changes)
 	if p.Gross.Found() {
 		m.Gross = i18n.T(l, "report.of_gross", amount(p.Gross))
 		m.GrossTotal = amount(p.Gross)
@@ -370,6 +371,29 @@ func shortLabel(l i18n.Lang, p payslip.Payslip) string {
 
 func twoDigits(n int) string {
 	return string([]byte{byte('0' + n/10), byte('0' + n%10)})
+}
+
+// changeOrder ranks changes by how much they tell a person about the
+// month: a caveat on the numbers first, then the net, then why it moved.
+var changeOrder = map[string]int{
+	"unchecked": 0, "net": 1, "item_new": 2, "item_gone": 3, "level": 4, "ccnl": 5,
+	"tax_rate": 6, "gross": 7, "inps_rate": 8, "leave": 9, "gap": 10,
+}
+
+// telling returns the two most telling changes and the others.
+func telling(changes []insights.Change) (top, rest []insights.Change) {
+	rank := func(c insights.Change) int {
+		if r, ok := changeOrder[c.Code]; ok {
+			return r
+		}
+		return len(changeOrder)
+	}
+	sorted := slices.Clone(changes)
+	slices.SortStableFunc(sorted, func(a, b insights.Change) int { return rank(a) - rank(b) })
+	if len(sorted) <= 2 {
+		return sorted, nil
+	}
+	return sorted[:2], sorted[2:]
 }
 
 // contributions returns social contributions withheld: the summary box when

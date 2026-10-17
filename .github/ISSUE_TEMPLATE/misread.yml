@@ -1,0 +1,65 @@
+name: A payslip is read badly
+description: cedolo reads a payslip wrong or not at all. Attach the anonymized copy, never the payslip.
+title: "[layout] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never attach your payslip, a screenshot of it, or values copied from it.**
+        Issues are public, and their edit history is kept even after you delete something.
+
+        Attach the **anonymized copy** instead:
+        - in the web app, open "Files", then "Something read badly?" and "Anonymized copy";
+        - in a terminal, run `cedolo anonymize -o anonymized.pdf payslip.pdf`.
+
+        The copy is a new PDF holding only the payslip's text. Names, companies, addresses, codes
+        and dates are masked. Amounts are kept unless you untick the box or add `-amounts mask`.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before sending
+      options:
+        - label: I read the whole anonymized copy and it shows nothing personal.
+          required: true
+        - label: This issue has no payslip, screenshot or value of mine other than the anonymized copy.
+          required: true
+  - type: dropdown
+    id: problem
+    attributes:
+      label: What is wrong?
+      multiple: true
+      options:
+        - No payslip is recognized in the file
+        - A total is wrong (gross, deductions, net)
+        - An item is in the wrong group (for example taxes shown as other deductions)
+        - Items are missing
+        - The month or the year is wrong
+        - Leave balances are wrong or missing
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What cedolo shows, and what it should show
+      description: Describe it in words, naming the lines as printed on the anonymized copy, such as "the net is read from the TOTALE COMPETENZE cell".
+    validations:
+      required: true
+  - type: textarea
+    id: copy
+    attributes:
+      label: Anonymized copy
+      description: Drag the anonymized PDF here.
+    validations:
+      required: true
+  - type: input
+    id: software
+    attributes:
+      label: Payroll software, if you know it
+      description: Often printed in small type at the bottom of the payslip. Leave empty if unsure.
+  - type: input
+    id: version
+    attributes:
+      label: cedolo version
+      description: Shown at the bottom of the web app, or by `cedolo version`.

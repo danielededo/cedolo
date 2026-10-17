@@ -26,8 +26,11 @@ copy, never the payslip itself:
    Together they can identify you to someone who knows your pay, such as a
    payroll office or a colleague. If that matters, add `-amounts mask`:
    most layout problems can still be found.
-4. Attach the file to an issue, with a description in words of what cedolo
-   got wrong (for example "the net pay is read from the wrong cell").
+4. Open an issue with the ["A payslip is read badly"](https://github.com/danielededo/cedolo/issues/new?template=misread.yml)
+   form, attach the file and describe in words what cedolo got wrong (for
+   example "the net pay is read from the wrong cell").
+
+In the web app, the same copy is under "Files", then "Something read badly?".
 
 ## Ways to contribute
 

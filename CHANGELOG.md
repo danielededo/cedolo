@@ -26,11 +26,22 @@ How to use this file:
   other deductions), and every printed item with its explanation one tap
   away. Pay over time appears from two months on; the month table, leave,
   the contract and the payslip's words are closed until opened.
+- "What changed" speaks plainly ("You receive 1.668,00 € instead of
+  1.667,40 €") and shows the two most telling changes; the others are
+  behind "Show all".
+- "Anonymized copy" is offered next to files where no payslip was read;
+  for the others it appears after "Something read badly?".
 - The web app's start page is shorter, and once the payslips are read it
   makes room for the report: the introduction is hidden until "Start over".
+- The web app has a more polished look: a logo, a link to the project on
+  GitHub in the header, the three promises as small labelled icons, a
+  clearer upload area with a "Choose files" button, icons on the main
+  buttons and a tidier footer, in light and dark mode.
 
 ### Added
 
+- An issue form, "A payslip is read badly", guides a report with the
+  anonymized copy; the web app links to it from the copy.
 - `cedolo anonymize -o anonymized.pdf` writes a copy of a payslip to share
   when cedolo reads it badly. It is a new PDF rebuilt from the masked text,
   with nothing else from the original file. Amounts are now kept by default

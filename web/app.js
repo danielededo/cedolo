@@ -202,9 +202,11 @@ function render() {
     text.append(name, ' ', n);
     li.append(i, text);
     if (f.layout && hasText(f.layout)) {
+      // Offered up front where nothing was read; elsewhere only after
+      // "Something read badly?", to keep the list quiet.
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'anon-open';
+      b.className = f.read === 0 ? 'anon-open' : 'anon-open optional';
       b.textContent = t('web.anon.button');
       b.addEventListener('click', () => openAnon(f));
       li.append(b);
@@ -212,6 +214,8 @@ function render() {
     list.append(li);
   }
   const any = state.report !== '';
+  list.classList.remove('show-anon');
+  $('anon-ask').hidden = !state.files.some((f) => f.layout && hasText(f.layout) && f.read > 0);
   $('files-box').open = !any || attention;
   $('none').hidden = any;
   $('too-many').hidden = !state.tooMany;
@@ -323,6 +327,10 @@ $('download').addEventListener('click', download);
 $('anon-amounts').addEventListener('change', () => { if (state.anon) openAnon(state.anon); });
 $('anon-download').addEventListener('click', downloadAnon);
 $('anon-close').addEventListener('click', closeAnon);
+$('anon-ask').addEventListener('click', () => {
+  $('file-list').classList.add('show-anon');
+  $('anon-ask').hidden = true;
+});
 for (const b of document.querySelectorAll('[data-lang]')) {
   b.addEventListener('click', () => {
     if (!globalThis.cedolo) return;

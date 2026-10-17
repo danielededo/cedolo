@@ -160,6 +160,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .changes { margin: 0; padding-left: 20px; }
 .changes > li { padding: 4px 0; }
 .changes .why { color: var(--ink-2); font-size: 14px; }
+.more-changes { margin-top: 4px; }
+.more-changes > summary { font-size: 14px; color: var(--series-1); }
 .contract-note { margin-top: 12px; }
 .glossary { margin: 12px 0 0; }
 .glossary dt { font-weight: 600; margin-top: 14px; }
@@ -223,6 +225,12 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <ul class="changes">
 {{range $m.Changes}}<li>{{.Text}}{{range .Why}}<div class="why">{{.}}</div>{{end}}</li>
 {{end}}</ul>
+{{if $m.More}}<details class="more-changes">
+<summary>{{index $.T "report.all_changes"}} ({{len $m.More}})</summary>
+<ul class="changes">
+{{range $m.More}}<li>{{.Text}}{{range .Why}}<div class="why">{{.}}</div>{{end}}</li>
+{{end}}</ul>
+</details>{{end}}
 {{end}}
 </section>
 {{end}}
