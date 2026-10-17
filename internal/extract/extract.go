@@ -60,6 +60,11 @@ func Document(doc layout.Document) []payslip.Payslip {
 		if g.kind != "" {
 			p.Kind = g.kind
 		}
+		if len(p.Items) == 0 && len(p.Leave) == 0 && !p.Gross.Found() && !p.Deductions.Found() && !p.Net.Found() {
+			// No pay item, total or leave balance: another document, such
+			// as a tax return, whose dates only look like a pay period.
+			continue
+		}
 		out = append(out, p)
 	}
 	return out

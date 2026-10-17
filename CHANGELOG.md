@@ -29,6 +29,12 @@ How to use this file:
 
 ### Fixed
 
+- A file that is not a payslip, such as a tax return summary with a date
+  that reads like a pay period, is listed as "no payslip recognized"
+  instead of showing empty months in the report.
+- The row of months in the report no longer jumps when you pick a month:
+  it moved whenever the report changed height. A month at the edge of the
+  row now slides into view.
 - The report opens on the latest payslip even when it is a thirteenth or
   fourteenth month, highlighted in the month row. Before, it opened on the
   last ordinary month.

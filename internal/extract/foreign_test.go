@@ -547,3 +547,18 @@ func TestTotalsUnderSmallLabels(t *testing.T) {
 		}
 	}
 }
+
+// TestNotAPayslip covers a document that has a date reading as a pay period
+// and some amounts, but no pay item, total or leave balance, such as a tax
+// return: it is not a payslip.
+func TestNotAPayslip(t *testing.T) {
+	pg := page(
+		[]string{"40:PROSPETTO DI LIQUIDAZIONE", "300:Periodo 07/2017"},
+		[]string{"40:REDDITO COMPLESSIVO", "450>25.000,00"},
+		[]string{"40:IMPOSTA NETTA", "450>4.000,00"},
+		[]string{"40:ADDIZ. REGIONALE IRPEF", "450>300,00"},
+	)
+	if got := Document(layout.Document{Pages: []layout.Page{pg}}); len(got) != 0 {
+		t.Errorf("got %d payslips, want none: %+v", len(got), got)
+	}
+}
