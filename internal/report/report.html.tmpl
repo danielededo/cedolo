@@ -82,6 +82,7 @@ p { margin: 0 0 12px; }
 .net { margin: 4px 0 0; display: flex; flex-direction: column; }
 .net .label { font-size: 14px; color: var(--ink-2); }
 .net .big { font-size: 44px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.summary { margin: 12px 0 0; font-size: 17px; max-width: 34em; }
 .bar { display: flex; gap: 2px; height: 28px; margin: 12px 0 6px; }
 .bar .seg { border: 0; padding: 0; min-width: 4px; cursor: pointer; }
 .bar .seg:first-child { border-radius: 6px 0 0 6px; }
@@ -197,7 +198,8 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <section class="month" data-month="{{$i}}"{{if ne $i $.Selected}} hidden{{end}}>
 <p class="when">{{$m.Label}} <span class="status {{$m.Status}}">{{$m.StatusText}}</span></p>
 <p class="net"><span class="label">{{index $.T "report.net"}}</span><span class="big">{{$m.Net}}</span></p>
-{{if or $m.Gross $m.Delta}}<p class="sub">{{$m.Gross}}{{if and $m.Gross $m.Delta}} · {{end}}{{$m.Delta}}</p>{{end}}
+{{if $m.Gross}}<p class="sub">{{$m.Gross}}</p>{{end}}
+{{if $m.Summary}}<p class="summary">{{$m.Summary}}</p>{{end}}
 
 {{if $m.Parts}}
 <h2>{{index $.T "report.where"}}</h2>

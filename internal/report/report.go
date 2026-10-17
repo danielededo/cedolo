@@ -1,6 +1,6 @@
 // Package report renders payslips as one self-contained HTML page. It shows
-// one payslip at a time, the latest first: the net pay, where the gross pay
-// goes, the printed items with their explanation one tap away, and what
+// one payslip at a time, the latest first: the net pay, a sentence on what
+// changed since the previous month and why, where the gross pay goes, the printed items with their explanation one tap away, and what
 // changed. Pay over time, the month table, leave, the contract and the
 // payslip's vocabulary follow, closed until opened. The page loads nothing
 // from the network and runs no code but a small inline script.
@@ -47,6 +47,7 @@ type Month struct {
 	Net        string
 	Gross      string            // "of 2.194,50 € gross pay"
 	Delta      string            // change of the net from the previous month, empty when unknown
+	Summary    string            // the month in one sentence: what changed and why, or where the gross goes
 	Parts      []Part            // where the gross pay goes
 	Earnings   []Line            // what makes up the gross pay
 	SetAside   []Line            // TFR and other amounts that do not change this month's pay
@@ -166,9 +167,11 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 			Changes:       periods[i].Changes,
 		})
 		m := month(l, p, periods[i])
+		m.Summary = share(l, p)
 		if p.Kind == payslip.Monthly && p.Month != 0 {
 			if prev != nil && p.Net.Found() && prev.Net.Found() {
 				m.Delta = i18n.T(l, "report.vs_previous", signed(p.Net.Cents-prev.Net.Cents))
+				m.Summary = compared(l, *prev, p)
 			}
 			prev = &slips[i]
 			monthly = append(monthly, i)
@@ -394,6 +397,81 @@ func telling(changes []insights.Change) (top, rest []insights.Change) {
 		return sorted, nil
 	}
 	return sorted[:2], sorted[2:]
+}
+
+// share sums up a payslip on its own: how much of every 100 € of gross pay
+// reaches the employee.
+func share(l i18n.Lang, p payslip.Payslip) string {
+	if !p.Gross.Found() || !p.Net.Found() || p.Gross.Cents <= 0 || p.Net.Cents <= 0 || p.Net.Cents > p.Gross.Cents {
+		return ""
+	}
+	return i18n.T(l, "report.summary.share", (p.Net.Cents*100+p.Gross.Cents/2)/p.Gross.Cents)
+}
+
+// compared sums up a month against the previous one: how much the net pay
+// moved and the item that moved it most, when one item explains at least
+// half of the change.
+func compared(l i18n.Lang, prev, cur payslip.Payslip) string {
+	since := insights.Label(l, prev)
+	if l == i18n.IT {
+		// "a settembre", but "ad agosto", "ad aprile", "ad ottobre".
+		prep := "a "
+		if strings.ContainsRune("aeiou", rune(since[0])) {
+			prep = "ad "
+		}
+		since = prep + since
+	}
+	delta := cur.Net.Cents - prev.Net.Cents
+	if delta == 0 {
+		return i18n.T(l, "report.summary.same", since)
+	}
+	dir := "more"
+	if delta < 0 {
+		dir = "less"
+	}
+	diff := effects(cur)
+	for k, v := range effects(prev) {
+		diff[k] -= v
+	}
+	var key string
+	var best int64
+	for k, v := range diff {
+		if v == 0 || (v > 0) != (delta > 0) {
+			continue
+		}
+		// Ties go to the first key, so the sentence does not depend on
+		// the map's order.
+		if abs(v) > abs(best) || abs(v) == abs(best) && k < key {
+			key, best = k, v
+		}
+	}
+	if key == "" || 2*abs(best) < abs(delta) {
+		return i18n.T(l, "report.summary."+dir, since, money.Format(abs(delta))+" €")
+	}
+	return i18n.T(l, "report.summary."+dir+"_because", since, money.Format(abs(delta))+" €", i18n.ItemLabel(l, key), signed(best))
+}
+
+// effects returns how each kind of item moves the net pay: earnings add,
+// deductions subtract. Information items and roundings are left out.
+func effects(p payslip.Payslip) map[string]int64 {
+	out := map[string]int64{}
+	for _, it := range p.Items {
+		switch {
+		case it.Key == "rounding" || it.Side == payslip.Info:
+		case it.Side == payslip.Deduction:
+			out[it.Key] -= it.Cents
+		default:
+			out[it.Key] += it.Cents
+		}
+	}
+	return out
+}
+
+func abs(c int64) int64 {
+	if c < 0 {
+		return -c
+	}
+	return c
 }
 
 // contributions returns social contributions withheld: the summary box when
