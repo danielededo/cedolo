@@ -218,3 +218,53 @@ func TestTellingChanges(t *testing.T) {
 		t.Error("input reordered")
 	}
 }
+
+func TestMonthSummary(t *testing.T) {
+	d := Build(i18n.EN, months(t, 3), "test")
+	if got := d.Months[0].Summary; !strings.HasPrefix(got, "Of every 100 € of gross pay you receive ") {
+		t.Errorf("first month summary = %q", got)
+	}
+	// Overtime grows by 50 € a month and drives the net up.
+	want := "Compared with February 2026 you receive "
+	if got := d.Months[2].Summary; !strings.HasPrefix(got, want) || !strings.Contains(got, "more, mostly because of “"+i18n.ItemLabel(i18n.EN, "earnings.overtime")+"” (+50,00 €).") {
+		t.Errorf("latest month summary = %q", got)
+	}
+
+	item := func(key string, side payslip.Side, cents int64) payslip.Item {
+		return payslip.Item{Key: key, Side: side, Cents: cents}
+	}
+	slip := func(month int, net int64, items ...payslip.Item) payslip.Payslip {
+		return payslip.Payslip{Year: 2026, Month: month, Kind: payslip.Monthly,
+			Net: payslip.Amount{Cents: net, Status: payslip.Verified}, Items: items}
+	}
+	prev := slip(1, 150000, item("earnings.base_salary", payslip.Earning, 200000), item("tax.irpef", payslip.Deduction, 50000))
+	for _, c := range []struct {
+		name string
+		cur  payslip.Payslip
+		want string
+	}{
+		{"same", slip(2, 150000, prev.Items...), "You receive the same as in January 2026."},
+		{"tax up", slip(2, 140000, item("earnings.base_salary", payslip.Earning, 200000), item("tax.irpef", payslip.Deduction, 60000)),
+			"Compared with January 2026 you receive 100,00 € less, mostly because of “" + i18n.ItemLabel(i18n.EN, "tax.irpef") + "” (-100,00 €)."},
+		{"no single cause", slip(2, 151000, item("earnings.base_salary", payslip.Earning, 200400), item("earnings.allowance", payslip.Earning, 300),
+			item("earnings.overtime", payslip.Earning, 300), item("tax.irpef", payslip.Deduction, 50000)),
+			"Compared with January 2026 you receive 10,00 € more."},
+	} {
+		if got := compared(i18n.EN, prev, c.cur); got != c.want {
+			t.Errorf("%s: %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestMonthSummaryItalianPreposition(t *testing.T) {
+	prev := payslip.Payslip{Year: 2026, Month: 8, Kind: payslip.Monthly, Net: payslip.Amount{Cents: 100, Status: payslip.Verified}}
+	cur := prev
+	cur.Month = 9
+	if got := compared(i18n.IT, prev, cur); got != "Ricevi quanto ad agosto 2026." {
+		t.Errorf("got %q", got)
+	}
+	prev.Month, cur.Month = 9, 10
+	if got := compared(i18n.IT, prev, cur); got != "Ricevi quanto a settembre 2026." {
+		t.Errorf("got %q", got)
+	}
+}

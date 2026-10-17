@@ -18,6 +18,15 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- Each month of the report opens with one sentence under the net pay: how
+  much more or less you receive than the month before and the item that
+  moved it most, such as "Rispetto a settembre 2026 ricevi 45,40 € in più,
+  soprattutto per la voce «Straordinario» (+50,00 €)". For the first month,
+  or a thirteenth or fourteenth month, it says how much of every 100 € of
+  gross pay you receive.
+
 ### Fixed
 
 - The anonymized copy reads back like the payslip in more layouts. Column
