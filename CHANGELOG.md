@@ -54,6 +54,12 @@ How to use this file:
   file shows all the text the copy contains, with or without amounts, and
   downloads it under a fixed name.
 
+### Fixed
+
+- In the web app the disclaimer appeared twice at the end of the page: the
+  report now leaves its own footer to the page, and a large gap below it is
+  gone. A downloaded report keeps its footer.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added

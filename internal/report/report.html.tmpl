@@ -167,6 +167,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .glossary dt { font-weight: 600; margin-top: 14px; }
 .glossary dd { margin: 4px 0 0; font-size: 15px; color: var(--ink-2); max-width: 70ch; }
 footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
+.embedded footer { display: none; }
+.embedded main { padding-bottom: 8px; }
 @media (max-width: 520px) {
   .chart .tick { font-size: 22px; }
   .chart .end-label { display: none; }
@@ -383,6 +385,8 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   // the content. Not the document's scroll height: that is never less than
   // the frame, so each resize of the frame would ask for a larger one.
   if (window.parent !== window) {
+    // The page around it already shows the disclaimer and the version.
+    document.documentElement.classList.add("embedded");
     var tell = function () { window.parent.postMessage({ cedoloHeight: document.body.getBoundingClientRect().height }, "*"); };
     window.addEventListener("load", tell);
     window.addEventListener("resize", tell);

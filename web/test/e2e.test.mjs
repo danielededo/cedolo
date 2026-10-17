@@ -201,10 +201,13 @@ test('the report frame fits its content on a phone', async () => {
   const frame = page.frames().find((f) => f !== page.mainFrame());
   await frame.waitForSelector('section.month:not([hidden]) .bar');
   const height = () => page.$eval('#report', (f) => parseInt(f.style.height, 10) || 0);
-  await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 1000);
+  await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 500);
   const first = await height();
   await page.waitForTimeout(1500);
   assert.equal(await height(), first, 'the frame keeps its height');
+  // In the page the report drops its own footer: the page shows the
+  // disclaimer once.
+  assert.equal(await frame.$eval('footer', (f) => getComputedStyle(f).display), 'none');
   const content = await frame.evaluate(() => document.body.getBoundingClientRect().height);
   assert.ok(Math.abs(first - content) <= 4, `frame ${first}px for ${content}px of content`);
   // Content that grows later, such as text reflowed by a late font, gets room.
