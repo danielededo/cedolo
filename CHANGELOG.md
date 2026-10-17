@@ -32,6 +32,14 @@ How to use this file:
   column tells its amounts under the pointer, and tapping one opens that
   month.
 
+### Fixed
+
+- Tax return settlements paid or withheld in the payslip ("IRPEF A
+  CREDITO -MOD.730-", "ADD.REG.CREDITO -MOD.730-", assistenza fiscale) are a
+  kind of their own, "Conguaglio 730", with its explanation. A refund is
+  left out of the gross pay, as payroll software prints it, so such a
+  payslip no longer shows that its numbers do not add up.
+
 ## [0.6.0] - 2026-10-17
 
 ### Added
