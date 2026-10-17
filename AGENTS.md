@@ -70,7 +70,17 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   the payslip terms; a new taxonomy key needs its explanation (a test
   checks), written as general guidance without yearly rates or limits.
 - `internal/extract`: the generic extractor and the arithmetic cross-checks
-  (ADR 0006). New layout traits get a test in `foreign_test.go`.
+  (ADR 0006). New layout traits get a test in `foreign_test.go`. By file:
+  `extract.go` groups pages into payslips and reads each one, `period.go`
+  finds the pay period, `fields.go` reads the value of a label (totals,
+  contract, level), `table.go` the item table, `leave.go` leave balances,
+  `validate.go` the cross-checks. `labels.go` holds the label synonyms and
+  column words, `geometry.go` the distances the page is read with; change a
+  distance only with a test that needs it.
+- Teaching cedolo a new wording: a total or field label goes into its list
+  in `internal/extract/labels.go`, normalized (lowercase, no accents or
+  punctuation: "TOT. TRATTENUTE" is "tot trattenute"); an item's wording
+  goes into its entry's keywords in `internal/taxonomy/taxonomy.go`.
 
 ## Conventions
 

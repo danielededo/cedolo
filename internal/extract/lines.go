@@ -25,10 +25,6 @@ type word struct {
 	tok  int // index into toks
 }
 
-// lineTolerance is the largest difference, in points, between the tops of two
-// tokens on the same printed line.
-const lineTolerance = 2.5
-
 func buildLines(p layout.Page) []line {
 	var out []line
 	for _, l := range p.Lines(lineTolerance) {
@@ -107,7 +103,7 @@ func (l line) continues(a, b int) bool {
 	if a == b {
 		return true
 	}
-	return l.toks[b].X-l.toks[a].Right() < 1.2*l.toks[a].H
+	return l.toks[b].X-l.toks[a].Right() < wordGap*l.toks[a].H
 }
 
 // has reports whether the line contains any of the phrases.
@@ -124,10 +120,10 @@ func (l line) has(phrases ...string) bool {
 // are laid out in a row with their values below: from the label's left edge
 // to the start of the next token on the same line, or to the page edge.
 func (l line) cell(first, last int, pageWidth float64) (x0, x1 float64) {
-	x0 = l.toks[first].X - 2
+	x0 = l.toks[first].X - cellMargin
 	x1 = pageWidth
 	if last+1 < len(l.toks) {
-		x1 = l.toks[last+1].X - 2
+		x1 = l.toks[last+1].X - cellMargin
 	}
 	return x0, x1
 }
