@@ -21,6 +21,11 @@ How to use this file:
 ### Changed
 
 - The web app's Italian heading reads "Comprendi il tuo cedolino".
+- Smoother steps in the web app: a progress bar while the files are read,
+  the start page fading out and the results rising in, a placeholder in the
+  report's place until it is ready instead of an empty frame, and the same
+  in reverse on "Start over". People who ask their system for reduced
+  motion get no animation.
 
 ### Fixed
 

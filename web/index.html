@@ -50,6 +50,7 @@
       <span class="drop-title" data-t="web.drop"></span>
       <span class="drop-choose" data-t="web.choose"></span>
       <span class="drop-hint" data-t="web.drop.hint"></span>
+      <span class="progress" id="progress" hidden><span class="progress-bar" id="progress-bar"></span></span>
     </label>
     <form class="password" id="pw-form" hidden>
       <p class="pw-title" id="pw-title"></p>
@@ -89,6 +90,11 @@
     </section>
     <p class="notice" id="none" hidden data-t="web.none"></p>
     <p class="notice" id="too-many" hidden></p>
+    <div class="skeleton" id="skeleton" hidden aria-hidden="true">
+      <span class="sk sk-title"></span><span class="sk sk-line"></span>
+      <span class="sk sk-big"></span><span class="sk sk-bar"></span>
+      <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
+    </div>
     <iframe id="report" title="Report" sandbox="allow-scripts" hidden></iframe>
   </section>
 </main>

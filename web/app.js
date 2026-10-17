@@ -12,6 +12,20 @@ import { layoutOf, hasText } from './layout.js';
 // worker-src 'none' in the policy keeps it that way.
 globalThis.pdfjsWorker = await import('./pdfjs/pdf.worker.min.mjs');
 
+// Motion is skipped for people who asked their system to reduce it.
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait = (ms) => new Promise((r) => setTimeout(r, calm() ? 0 : ms));
+
+// enter plays the entrance animation on elements just shown.
+function enter(...els) {
+  for (const el of els) {
+    el.classList.remove('enter');
+    void el.offsetWidth; // restart the animation
+    el.classList.add('enter');
+    el.addEventListener('animationend', () => el.classList.remove('enter'), { once: true });
+  }
+}
+
 // Limits that keep huge, hostile or too many files from freezing the page.
 const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 50;
@@ -222,10 +236,27 @@ function render() {
   $('too-many').textContent = t('web.too_many', MAX_FILES);
   $('download').hidden = !any;
   $('report').hidden = !any;
-  if (any) $('report').srcdoc = state.report;
+  if (any && $('report').srcdoc !== state.report) {
+    // Until the report tells its height, a placeholder stands in for it,
+    // so the page neither flashes an empty frame nor jumps.
+    $('report').classList.add('pending');
+    $('skeleton').hidden = false;
+    $('report').srcdoc = state.report;
+  }
+  const first = $('result').hidden;
   $('intro').hidden = true;
   $('pick').hidden = true;
   $('result').hidden = false;
+  if (first) {
+    window.scrollTo({ top: 0, behavior: calm() ? 'auto' : 'smooth' });
+    enter($('result'));
+  }
+}
+
+// progress shows how many files have been read, or hides the bar.
+function progress(done, total) {
+  $('progress').hidden = total === 0;
+  $('progress-bar').style.width = total ? `${Math.round((done / total) * 100)}%` : '0';
 }
 
 async function handle(fileList) {
@@ -234,18 +265,27 @@ async function handle(fileList) {
   state.tooMany = files.length > MAX_FILES;
   files = files.slice(0, MAX_FILES);
   $('drop').classList.add('busy');
+  progress(0, files.length);
   try {
     for (const [i, file] of files.entries()) {
       status(t('web.reading', i + 1, files.length));
       state.files.push(await readFile(file));
+      progress(i + 1, files.length);
     }
     analyze();
     status('');
+    // The start page fades out before the results come in.
+    $('intro').classList.add('leaving');
+    $('pick').classList.add('leaving');
+    await wait(180);
     render();
   } catch (err) {
     status(t('web.failed', err.message), true);
   } finally {
     $('drop').classList.remove('busy');
+    $('intro').classList.remove('leaving');
+    $('pick').classList.remove('leaving');
+    progress(0, 0);
   }
 }
 
@@ -287,11 +327,15 @@ function restart() {
   state.tooMany = false;
   state.passwords = [];
   $('report').removeAttribute('srcdoc');
+  $('report').classList.remove('pending');
+  $('skeleton').hidden = true;
   $('files').value = '';
   $('result').hidden = true;
   $('intro').hidden = false;
   $('pick').hidden = false;
   status('');
+  window.scrollTo({ top: 0 });
+  enter($('intro'), $('pick'));
 }
 
 function save(blob, name) {
@@ -310,6 +354,11 @@ function download() {
 window.addEventListener('message', (ev) => {
   if (ev.source === $('report').contentWindow && typeof ev.data?.cedoloHeight === 'number') {
     $('report').style.height = `${Math.min(Math.ceil(ev.data.cedoloHeight) + 2, 100000)}px`;
+    if ($('report').classList.contains('pending')) {
+      $('report').classList.remove('pending');
+      $('skeleton').hidden = true;
+      enter($('report'));
+    }
   }
 });
 
