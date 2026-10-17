@@ -268,3 +268,23 @@ func TestMonthSummaryItalianPreposition(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+// TestLatestAdditionalMonthOpensFirst checks that a thirteenth month after
+// the last ordinary month is the one shown and highlighted first.
+func TestLatestAdditionalMonthOpensFirst(t *testing.T) {
+	slips := months(t, 12)[9:] // October to December
+	thirteenth := slips[2]
+	thirteenth.Kind = payslip.Thirteenth
+	slips = append(slips, thirteenth)
+	d := Build(i18n.IT, slips, "test")
+	if d.Selected != len(d.Months)-1 || d.Months[d.Selected].Short != "13ª 26" {
+		t.Fatalf("selected %d (%q), want the thirteenth month", d.Selected, d.Months[d.Selected].Short)
+	}
+	var b bytes.Buffer
+	if err := Render(&b, i18n.IT, slips, "test"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), `aria-pressed="true">13ª 26</button>`) {
+		t.Error("the thirteenth month is not highlighted in the picker")
+	}
+}
