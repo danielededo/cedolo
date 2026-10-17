@@ -26,8 +26,10 @@ How to use this file:
   July), and a period numbered 13 or 14 such as "13/2025". Their items are
   classified as thirteenth or fourteenth month instead of other earnings,
   and "14ma" at the start of a description is no longer taken for an item
-  code. A fourteenth month known only by its year is shown as
-  "Quattordicesima 2025" instead of an unknown period.
+  code. A header naming the additional month with its year only, such as
+  "13MA MENS. 2025", gives the period too. A fourteenth month known only
+  by its year is shown as "Quattordicesima 2025" instead of an unknown
+  period.
 
 ## [0.4.0] - 2026-10-17
 

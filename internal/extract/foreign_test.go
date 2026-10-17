@@ -472,6 +472,8 @@ func TestAdditionalMonths(t *testing.T) {
 		{"additional in July", []string{"300:LUGLIO 2025", "420:MENSILITA' AGGIUNTIVA"}, "RATEI 14MA", 2025, 7, payslip.Fourteenth, "earnings.fourteenth"},
 		{"additional in December", []string{"300:DICEMBRE 2025", "420:MENSILITA' AGGIUNTIVA"}, "RATEO 13MA", 2025, 12, payslip.Thirteenth, "earnings.thirteenth"},
 		{"ordinary December", []string{"300:DICEMBRE 2025"}, "Retribuzione", 2025, 12, payslip.Monthly, "earnings.base_salary"},
+		{"year only", []string{"300:PERIODO DI RETRIBUZIONE", "460:13MA MENS. 2025"}, "GRATIFICA NATALIZIA", 2025, 12, payslip.Thirteenth, "earnings.thirteenth"},
+		{"fourteenth year only", []string{"460:14ª MENSILITÀ 2025"}, "14ª MENSILITÀ", 2025, 0, payslip.Fourteenth, "earnings.fourteenth"},
 	} {
 		got := Document(layout.Document{Pages: []layout.Page{additional(c.period, c.item)}})
 		if len(got) != 1 {

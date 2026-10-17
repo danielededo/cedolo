@@ -202,6 +202,26 @@ func findPeriod(lines []line) (year, month int, kind payslip.Kind) {
 			}
 		}
 	}
+	// "13MA MENS. 2025": an additional month named with its year only.
+	for _, l := range lines {
+		for _, c := range []struct {
+			words []string
+			kind  payslip.Kind
+			month int
+		}{{thirteenthWords, payslip.Thirteenth, 12}, {fourteenthWords, payslip.Fourteenth, 0}} {
+			for _, p := range c.words {
+				_, last, ok := l.find(p)
+				if !ok {
+					continue
+				}
+				for _, t := range l.toks[last+1:] {
+					if y, err := strconv.Atoi(t.Text); err == nil && y >= 1990 && y <= 2099 {
+						return y, c.month, c.kind
+					}
+				}
+			}
+		}
+	}
 	return 0, 0, ""
 }
 
