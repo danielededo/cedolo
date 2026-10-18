@@ -250,22 +250,41 @@ test('shows the latest of many months first', async () => {
   // The charts are in their own tab, reached from the tabs or from the
   // link under the month; arrows move between tabs.
   assert.ok(await frame.$eval('#panel-time', (p) => p.hidden));
+  // Inside the app the tabs are the page's, in the bar that stays on top;
+  // the report's own are hidden.
+  assert.equal(await frame.$eval('.tabs', (t) => getComputedStyle(t).display), 'none');
+  const tab = (name) => page.$eval(`#tabs [data-tab="${name}"]`, (t) => t.getAttribute('aria-selected'));
+  assert.equal(await tab('month'), 'true');
   await press(frame, '.teaser button');
-  assert.equal(await frame.$eval('#tab-time', (t) => t.getAttribute('aria-selected')), 'true');
+  await page.waitForFunction(() => document.querySelector('#tabs [data-tab="time"]').getAttribute('aria-selected') === 'true');
   assert.ok(await frame.$eval('#panel-month', (p) => p.hidden));
-  await frame.focus('#tab-time');
-  await frame.press('#tab-time', 'ArrowRight');
-  assert.ok(!(await frame.$eval('#panel-reference', (p) => p.hidden)));
-  await frame.press('#tab-reference', 'ArrowLeft');
-  assert.ok(!(await frame.$eval('#panel-time', (p) => p.hidden)));
+  await page.focus('#tabs [data-tab="time"]');
+  await page.keyboard.press('ArrowRight');
+  await frame.waitForSelector('#panel-reference:not([hidden])');
+  assert.equal(await tab('reference'), 'true');
+  // A sideways swipe moves between tabs, and the page's tabs follow.
+  const swipe = (dx) => frame.evaluate((dx) => {
+    const el = document.querySelector('.panel:not([hidden]) h3');
+    const at = (x) => new Touch({ identifier: 1, target: el, clientX: x, clientY: 200 });
+    el.dispatchEvent(new TouchEvent('touchstart', { touches: [at(200)], changedTouches: [at(200)], bubbles: true }));
+    el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [at(200 + dx)], bubbles: true }));
+  }, dx);
+  await swipe(150);
+  await frame.waitForSelector('#panel-time:not([hidden])');
+  await page.waitForFunction(() => document.querySelector('#tabs [data-tab="time"]').getAttribute('aria-selected') === 'true');
   // A column of the chart opens its month, marked in the row too. On a
   // phone the chart is the narrow one.
   assert.equal(await frame.$eval('#trend', (svg) => getComputedStyle(svg).display), 'none');
   await press(frame, '#trend-narrow .col-hit[data-i="2"]');
   await frame.waitForSelector('section.month[data-month="2"]:not([hidden])');
   assert.ok(!(await frame.$eval('#panel-month', (p) => p.hidden)), 'the column leads back to the month');
+  assert.equal(await tab('month'), 'true');
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.dataset.month), '2');
   assert.equal(await frame.$eval('#trend-narrow .month.current', (t) => t.dataset.i), '2');
+  // The arrows beside the month step to the one before.
+  await press(frame, 'section.month[data-month="2"] .steps button[data-to="1"]');
+  await frame.waitForSelector('section.month[data-month="1"]:not([hidden])');
+  assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.dataset.month), '1');
   assert.deepEqual(seen.errors, []);
   await page.close();
 });
@@ -300,8 +319,9 @@ test('makes an anonymized copy that reads as the same payslip', async () => {
   const { page, seen } = await open();
   await page.setInputFiles('#files', [synth('BIANCHI_ANNA_10-2026.pdf')]);
   await statuses(page);
-  await page.$eval('#files-box', (d) => { d.open = true; });
-  // A file that was read offers the copy only after asking for it.
+  // Every file was read: the list of files stays out of the way, and a
+  // file that was read offers the copy only after asking for it.
+  assert.ok(await page.$eval('#files-box', (b) => b.hidden));
   assert.equal(await page.$eval('.anon-open', (b) => getComputedStyle(b).display), 'none');
   await press(page, '#anon-ask');
   await press(page, '.anon-open');
