@@ -18,6 +18,18 @@ How to use this file:
 
 ## [Unreleased]
 
+### Changed
+
+- The report is laid out in three parts: the payslip of the month, then
+  "Over time" with the year by year totals and the charts, then "For
+  reference" with the contract and the glossary.
+- Holiday and leave balances are shown with the month they belong to,
+  instead of only the latest ones at the bottom of the page.
+- What makes up the gross pay and the amounts set aside have headings of
+  their own, apart from where the gross pay goes.
+- The month by month table opens under the chart it shows, as "Show as a
+  table".
+
 ### Added
 
 - In the web app, payslips can be added to a report already shown, with

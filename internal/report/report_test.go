@@ -84,8 +84,8 @@ func TestBuild(t *testing.T) {
 			t.Errorf("line %+v", l)
 		}
 	}
-	if len(d.Leave) == 0 {
-		t.Error("no leave rows")
+	if len(m.Leave) == 0 {
+		t.Error("no leave rows in the month")
 	}
 	if len(d.Terms) != len(i18n.Terms) || d.Terms[0].Text == "" {
 		t.Errorf("terms = %+v", d.Terms)
@@ -380,8 +380,8 @@ func TestVariablePayAndTFR(t *testing.T) {
 	if !strings.Contains(string(d.Variable), `id="variable"`) || !strings.Contains(string(d.Variable), "Overtime, bonuses and allowances") {
 		t.Errorf("variable = %.200s", d.Variable)
 	}
-	if !strings.Contains(string(d.TFR), `id="tfr"`) || !strings.Contains(d.TFRNote, "summed up: ") {
-		t.Errorf("tfr = %.200s, note %q", d.TFR, d.TFRNote)
+	if !strings.Contains(string(d.TFR), `id="tfr"`) || d.TFRTotal == "" || d.TFRSpan != "accrued over 3 payslips" {
+		t.Errorf("tfr = %.200s, total %q, span %q", d.TFR, d.TFRTotal, d.TFRSpan)
 	}
 	// Without overtime, bonuses or allowances there is nothing to chart.
 	for i := range slips {
@@ -396,7 +396,7 @@ func TestVariablePayAndTFR(t *testing.T) {
 	if v := variablePay(i18n.EN, slips); v != "" {
 		t.Error("variable pay drawn for ordinary pay only")
 	}
-	if svg, _ := tfrChart(i18n.EN, slips[:1]); svg != "" {
+	if svg, _, _ := tfrChart(i18n.EN, slips[:1]); svg != "" {
 		t.Error("TFR chart drawn for one payslip")
 	}
 }
