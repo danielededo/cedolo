@@ -18,23 +18,6 @@ How to use this file:
 
 ## [Unreleased]
 
-### Changed
-
-- The report is split into three tabs: the month, "Over time" with the
-  year by year totals and the charts, and "For reference" with the contract
-  and the glossary. A link under the month leads to the payslips over time,
-  and a column of a chart leads back to its month. A single payslip keeps
-  one page; printing shows every tab.
-- Holiday and leave balances are shown with the month they belong to,
-  instead of only the latest ones at the bottom of the page.
-- What makes up the gross pay and the amounts set aside have headings of
-  their own, apart from where the gross pay goes.
-- The month by month table opens under the chart it shows, as "Show as a
-  table".
-- On a phone the charts are drawn for its width, with text that stays
-  readable, instead of a wide chart scaled down.
-- The TFR shows its total in large type over a small line.
-
 ### Added
 
 - In the web app, payslips can be added to a report already shown, with
