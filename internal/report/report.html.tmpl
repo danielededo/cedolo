@@ -261,17 +261,11 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </section>
 {{end}}
 
-{{if .Mix}}
+{{if .Variable}}
 <section>
-<h2>{{index .T "report.mix"}}</h2>
-<ul class="legend">
-<li><span class="key" style="background:var(--series-1)"></span>{{index .T "report.mix.ordinary"}}</li>
-<li><span class="key" style="background:var(--series-2)"></span>{{index .T "report.mix.variable"}}</li>
-<li><span class="key" style="background:var(--series-3)"></span>{{index .T "report.mix.additional"}}</li>
-<li><span class="key" style="background:var(--series-4)"></span>{{index .T "report.mix.other"}}</li>
-</ul>
-<figure>{{.Mix}}<div class="tooltip" hidden></div></figure>
-<p class="note">{{index .T "report.mix.note"}}</p>
+<h2>{{index .T "report.variable"}}</h2>
+<figure>{{.Variable}}<div class="tooltip" hidden></div></figure>
+<p class="note">{{index .T "report.variable.note"}}</p>
 </section>
 {{end}}
 

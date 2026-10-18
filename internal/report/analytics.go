@@ -113,54 +113,32 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 	return t
 }
 
-// The groups the earnings chart stacks, in order from the base up.
-var (
-	earningGroups = []string{"ordinary", "variable", "additional", "other"}
-	groupOf       = map[string]string{
-		"earnings.base_salary": "ordinary", "earnings.superminimum": "ordinary", "earnings.seniority": "ordinary",
-		"earnings.contingency": "ordinary", "earnings.leave": "ordinary", "earnings.sick_pay": "ordinary",
-		"earnings.overtime": "variable", "earnings.bonus": "variable", "earnings.allowance": "variable",
-		"earnings.thirteenth": "additional", "earnings.fourteenth": "additional",
-	}
-)
+// variableKeys are the earnings that change from one month to the next.
+var variableKeys = []string{"earnings.overtime", "earnings.bonus", "earnings.allowance"}
 
-// earningsMix charts what the earnings of every payslip are made of: the
-// ordinary pay, the variable part, the additional months and the rest. It
-// is left out when every payslip is ordinary pay only, as it would say
-// nothing the trend does not.
-func earningsMix(l i18n.Lang, slips []payslip.Payslip) string {
+// variablePay charts the variable part of the earnings of every payslip:
+// overtime, bonuses and allowances, on a scale of its own so that their
+// changes show, where in the gross they are a sliver. It is left out when
+// no payslip has any.
+func variablePay(l i18n.Lang, slips []payslip.Payslip) string {
 	labels := make([]string, len(slips))
-	ss := make([]series, len(earningGroups))
-	for g, key := range earningGroups {
-		ss[g] = series{Name: i18n.T(l, "report.mix."+key), Color: partColors[g]}
-	}
-	total := series{Name: i18n.T(l, "report.mix.total")}
-	beyond := false
+	s := series{Name: i18n.T(l, "report.variable.series"), Color: "var(--series-2)"}
+	found := false
 	for i, p := range slips {
 		labels[i] = shortLabel(l, p)
-		sums := make([]int64, len(earningGroups))
-		for _, it := range p.Items {
-			if it.Side != payslip.Earning {
-				continue
-			}
-			g := slices.Index(earningGroups, cmp.Or(groupOf[it.Key], "other"))
-			sums[g] += it.Cents
-		}
 		var sum int64
-		for g, v := range sums {
-			v = max(v, 0)
-			ss[g].Values = append(ss[g].Values, v)
-			sum += v
-			if g > 0 && v > 0 {
-				beyond = true
+		for _, it := range p.Items {
+			if it.Side == payslip.Earning && slices.Contains(variableKeys, it.Key) {
+				sum += it.Cents
 			}
 		}
-		total.Values = append(total.Values, sum)
+		s.Values = append(s.Values, max(sum, 0))
+		found = found || sum > 0
 	}
-	if !beyond {
+	if !found {
 		return ""
 	}
-	return stackChart("mix", labels, ss, total)
+	return stackChart("variable", labels, []series{s}, s)
 }
 
 // tfrChart follows the TFR accrued in the payslips, added up month by month.

@@ -372,18 +372,18 @@ func TestYearsTable(t *testing.T) {
 	}
 }
 
-func TestEarningsMixAndTFR(t *testing.T) {
+func TestVariablePayAndTFR(t *testing.T) {
 	slips := months(t, 3)
 	d := Build(i18n.EN, slips, "test")
 	// The synthetic payslips carry overtime and an allowance besides the
 	// base salary, and print the month's TFR.
-	if !strings.Contains(string(d.Mix), `id="mix"`) || !strings.Contains(string(d.Mix), "Overtime, bonuses and allowances") {
-		t.Errorf("mix = %.200s", d.Mix)
+	if !strings.Contains(string(d.Variable), `id="variable"`) || !strings.Contains(string(d.Variable), "Overtime, bonuses and allowances") {
+		t.Errorf("variable = %.200s", d.Variable)
 	}
 	if !strings.Contains(string(d.TFR), `id="tfr"`) || !strings.Contains(d.TFRNote, "summed up: ") {
 		t.Errorf("tfr = %.200s, note %q", d.TFR, d.TFRNote)
 	}
-	// Ordinary pay alone says nothing the trend does not.
+	// Without overtime, bonuses or allowances there is nothing to chart.
 	for i := range slips {
 		var base []payslip.Item
 		for _, it := range slips[i].Items {
@@ -393,8 +393,8 @@ func TestEarningsMixAndTFR(t *testing.T) {
 		}
 		slips[i].Items = base
 	}
-	if mix := earningsMix(i18n.EN, slips); mix != "" {
-		t.Error("mix drawn for ordinary pay only")
+	if v := variablePay(i18n.EN, slips); v != "" {
+		t.Error("variable pay drawn for ordinary pay only")
 	}
 	if svg, _ := tfrChart(i18n.EN, slips[:1]); svg != "" {
 		t.Error("TFR chart drawn for one payslip")

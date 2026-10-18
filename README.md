@@ -34,9 +34,9 @@
   shows up instead of hiding behind a plausible number.
 - **Explains what changed** from one month to the next, such as surcharge
   instalments, the thirteenth month or the year-end tax adjustment.
-- **Follows your pay over time**: where the gross went and what it was made
-  of month by month, the totals of each year, the TFR accrued and your
-  holiday and leave balances.
+- **Follows your pay over time**: where the gross went month by month, the
+  overtime, bonuses and allowances, the totals of each year, the TFR accrued
+  and your holiday and leave balances.
 - **Identifies your collective agreement (CCNL)** from its CNEL code: sector,
   latest agreement and signatories.
 - **Works with any payroll software** that produces text PDFs, without

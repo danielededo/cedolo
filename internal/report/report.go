@@ -112,7 +112,7 @@ type Data struct {
 	Months   []Month
 	Selected int           // index in Months of the month shown first: the latest
 	Trend    template.HTML // where the gross pay went, month by month
-	Mix      template.HTML // what the earnings were made of, month by month
+	Variable template.HTML // overtime, bonuses and allowances, month by month
 	Years    *YearTable
 	TFR      template.HTML // the TFR accrued in the payslips, added up
 	TFRNote  string        // what the TFR chart adds up, with its total
@@ -190,7 +190,7 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 
 	if len(slips) > 1 {
 		d.Trend = template.HTML(trend(l, slips))
-		d.Mix = template.HTML(earningsMix(l, slips))
+		d.Variable = template.HTML(variablePay(l, slips))
 		d.Years = years(l, slips)
 		if svg, total := tfrChart(l, slips); svg != "" {
 			d.TFR, d.TFRNote = svg, i18n.T(l, "report.tfr.note", total)
