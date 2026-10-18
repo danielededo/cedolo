@@ -15,6 +15,7 @@ import (
 	"html/template"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/danielededo/cedolo/internal/ccnl"
@@ -42,6 +43,7 @@ const (
 type Month struct {
 	Label      string // "ottobre 2026"
 	Short      string // "ott 26", for the month picker
+	Prev, Next string // the index of the month before and after, empty at either end
 	Status     Status
 	StatusText string
 	Net        string
@@ -197,6 +199,14 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		}
 		m.Changes, m.More = telling(changes)
 		d.Months = append(d.Months, m)
+	}
+	for i := range d.Months {
+		if i > 0 {
+			d.Months[i].Prev = strconv.Itoa(i - 1)
+		}
+		if i < len(d.Months)-1 {
+			d.Months[i].Next = strconv.Itoa(i + 1)
+		}
 	}
 	// The latest payslip opens first, a thirteenth or fourteenth month too.
 	d.Selected = len(slips) - 1

@@ -37,6 +37,8 @@ const state = {
   texts: {},
   // {name, layout, error, refused: [key, ...args], read, repeated}
   files: [],
+  // The report tab picked last, kept when the report is built again.
+  tab: '',
   tooMany: false,
   report: '',
   // The file whose anonymized copy is open, and the copy's PDF bytes.
@@ -228,15 +230,21 @@ function render() {
     list.append(li);
   }
   const any = state.report !== '';
+  // The files show only when one needs attention, or when picking the one
+  // read badly.
   list.classList.remove('show-anon');
+  $('files-title').textContent = t('web.files.attention');
+  $('files-box').hidden = any && !attention;
   $('anon-ask').hidden = !state.files.some((f) => f.layout && hasText(f.layout) && f.read > 0);
-  $('files-box').open = !any || attention;
   $('none').hidden = any;
   $('too-many').hidden = !state.tooMany;
   $('too-many').textContent = t('web.too_many', MAX_FILES);
   $('download').hidden = !any;
   $('report').hidden = !any;
+  if (!any) $('tabs').hidden = true;
   if (any && $('report').srcdoc !== state.report) {
+    // A new report tells its tabs once loaded; one payslip has none.
+    $('tabs').hidden = true;
     // Until the report tells its height, a placeholder stands in for it,
     // so the page neither flashes an empty frame nor jumps.
     $('report').classList.add('pending');
@@ -347,8 +355,67 @@ function download() {
   save(new Blob([state.report], { type: 'text/html' }), state.lang === 'it' ? 'report-cedolini.html' : 'payslip-report.html');
 }
 
+// The report's tabs sit in the bar at the top of the page, which stays in
+// view as the page scrolls. The report says which tabs it has and which it
+// shows; the page asks it for one. The tab picked stays picked when the
+// report is built again with more payslips.
+function tabsFrom(v) {
+  const ok = Array.isArray(v?.names) && Array.isArray(v.labels) && v.names.length === v.labels.length && v.names.length <= 5 &&
+    v.names.every((n) => typeof n === 'string' && /^[a-z]{1,20}$/.test(n)) &&
+    v.labels.every((l) => typeof l === 'string' && l.length <= 40);
+  if (!ok) return;
+  const bar = $('tabs');
+  bar.replaceChildren(...v.names.map((name, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    b.dataset.tab = name;
+    b.textContent = v.labels[i];
+    b.addEventListener('click', () => pickTab(name));
+    b.addEventListener('keydown', (ev) => {
+      const j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: v.names.length - 1 }[ev.key];
+      if (j === undefined) return;
+      ev.preventDefault();
+      const next = v.names[(j + v.names.length) % v.names.length];
+      pickTab(next);
+      bar.querySelector(`[data-tab="${next}"]`).focus();
+    });
+    return b;
+  }));
+  bar.hidden = false;
+  const keep = v.names.includes(state.tab) ? state.tab : v.current;
+  markTab(keep);
+  if (keep !== v.current) $('report').contentWindow.postMessage({ cedoloShowTab: keep }, '*');
+}
+
+function markTab(name) {
+  state.tab = name;
+  for (const b of $('tabs').children) {
+    const on = b.dataset.tab === name;
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+  }
+}
+
+function pickTab(name) {
+  markTab(name);
+  $('report').contentWindow.postMessage({ cedoloShowTab: name }, '*');
+  // Back to the top of the report when it was scrolled past.
+  const header = document.querySelector('header.bar').offsetHeight;
+  const top = $('report').getBoundingClientRect().top + window.scrollY - header;
+  if (window.scrollY > top) window.scrollTo({ top, behavior: calm() ? 'auto' : 'smooth' });
+}
+
 // The report frame tells its height, so the page scrolls as one.
 window.addEventListener('message', (ev) => {
+  if (ev.source === $('report').contentWindow && ev.data?.cedoloTabs) {
+    tabsFrom(ev.data.cedoloTabs);
+    return;
+  }
+  if (ev.source === $('report').contentWindow && typeof ev.data?.cedoloTab === 'string') {
+    if ([...$('tabs').children].some((b) => b.dataset.tab === ev.data.cedoloTab)) markTab(ev.data.cedoloTab);
+    return;
+  }
   // The report asks to bring a month to the top: y is within the frame.
   if (ev.source === $('report').contentWindow && Number.isFinite(ev.data?.cedoloScroll)) {
     // The header stays on top of the page: land below it.
@@ -397,7 +464,10 @@ $('anon-download').addEventListener('click', downloadAnon);
 $('anon-close').addEventListener('click', closeAnon);
 $('anon-ask').addEventListener('click', () => {
   $('file-list').classList.add('show-anon');
+  $('files-title').textContent = t('web.files.pick');
+  $('files-box').hidden = false;
   $('anon-ask').hidden = true;
+  $('files-box').scrollIntoView({ block: 'nearest', behavior: calm() ? 'auto' : 'smooth' });
 });
 for (const b of document.querySelectorAll('[data-lang]')) {
   b.addEventListener('click', () => {

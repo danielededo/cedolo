@@ -74,7 +74,16 @@ h2.group + section > h3:first-child { margin-top: 16px; }
 h2.total { display: flex; gap: 12px; align-items: baseline; }
 h2.total span:first-child { flex: 1; }
 h2.total .amount { font-variant-numeric: tabular-nums; }
-.tabs { display: flex; gap: 4px; margin: 20px -16px 0; padding: 0 16px; border-bottom: 1px solid var(--grid); overflow-x: auto; scrollbar-width: none; }
+.tabs { display: flex; gap: 4px; margin: 20px -16px 0; padding: 0 16px; border-bottom: 1px solid var(--grid); overflow-x: auto; scrollbar-width: none; position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.embedded .tabs { display: none; }
+.panel:not([hidden]) { animation: panel-in .18s ease-out; }
+@keyframes panel-in { from { opacity: 0; transform: translateX(var(--from, 0)); } }
+@media (prefers-reduced-motion: reduce) { .panel:not([hidden]) { animation: none; } }
+.when { display: flex; align-items: center; gap: 8px; }
+.when .label { flex: 1; }
+.steps { display: flex; gap: 6px; }
+.steps button { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+.steps button:disabled { opacity: .35; cursor: default; }
 .tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
 .tabs button:focus-visible { outline: 2px solid var(--series-1); outline-offset: -2px; border-radius: 4px; }
@@ -195,7 +204,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   .chart.narrow { display: block; }
 }
 @media print {
-  .tooltip, .picker, .hint, .tabs, .teaser { display: none; }
+  .tooltip, .picker, .hint, .tabs, .teaser, .steps { display: none; }
   .panel[hidden] { display: block !important; }
   .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
@@ -226,7 +235,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 
 {{range $i, $m := .Months}}
 <section class="month" data-month="{{$i}}"{{if ne $i $.Selected}} hidden{{end}}>
-<p class="when">{{$m.Label}} <span class="status {{$m.Status}}">{{$m.StatusText}}</span></p>
+<p class="when"><span class="label">{{$m.Label}} <span class="status {{$m.Status}}">{{$m.StatusText}}</span></span>{{if gt (len $.Months) 1}}<span class="steps"><button type="button" data-to="{{$m.Prev}}" aria-label="{{index $.T "report.prev"}}"{{if not $m.Prev}} disabled{{end}}>‹</button><button type="button" data-to="{{$m.Next}}" aria-label="{{index $.T "report.next"}}"{{if not $m.Next}} disabled{{end}}>›</button></span>{{end}}</p>
 <p class="net"><span class="label">{{index $.T "report.net"}}</span><span class="big">{{$m.Net}}</span></p>
 {{if $m.Gross}}<p class="sub">{{$m.Gross}}</p>{{end}}
 {{if $m.Summary}}<p class="summary">{{$m.Summary}}</p>{{end}}
@@ -503,13 +512,26 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   function toMonth() { toTop(document.querySelector(".picker")); }
   // Tabs: the month, the payslips over time, and the reference. Arrows
   // move between them; a link to a tab opens it and scrolls to the tabs.
+  var embedded = window.parent !== window;
   var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
-  function showTab(name) {
+  var names = tabs.map(function (t) { return t.dataset.tab; });
+  function current() {
+    for (var i = 0; i < tabs.length; i++) if (tabs[i].getAttribute("aria-selected") === "true") return names[i];
+    return "";
+  }
+  // Inside the web app the tabs are the page's, which stay in view: the
+  // report tells it which tab it shows, unless the page asked for it.
+  function showTab(name, fromPage) {
+    if (names.indexOf(name) < 0) return;
+    var from = names.indexOf(current()) < names.indexOf(name) ? "24px" : "-24px";
+    if (embedded && !fromPage) window.parent.postMessage({ cedoloTab: name }, "*");
     tabs.forEach(function (t) {
       var on = t.dataset.tab === name;
       t.setAttribute("aria-selected", String(on));
       t.tabIndex = on ? 0 : -1;
-      document.getElementById("panel-" + t.dataset.tab).hidden = !on;
+      var panel = document.getElementById("panel-" + t.dataset.tab);
+      if (on && panel.hidden) panel.style.setProperty("--from", from);
+      panel.hidden = !on;
     });
     // The row of months was hidden with its tab: bring the marked one back
     // into view.
@@ -526,10 +548,38 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       next.focus();
     });
   });
+  // The top of a tab: under the page's tabs inside the web app, else the
+  // report's own tabs, which stay at the top of the window.
+  function toTab(name) { toTop(embedded ? document.getElementById("panel-" + name) : document.querySelector(".tabs")); }
   document.querySelectorAll('button[data-tab]:not([role="tab"])').forEach(function (b) {
     b.addEventListener("click", function () {
       showTab(b.dataset.tab);
-      toTop(document.querySelector(".tabs"));
+      toTab(b.dataset.tab);
+    });
+  });
+  // A sideways swipe moves to the next or previous tab, except on rows that
+  // scroll sideways themselves.
+  if (tabs.length) {
+    var sx = null, sy = 0, st = 0;
+    document.addEventListener("touchstart", function (ev) {
+      sx = null;
+      if (ev.touches.length !== 1 || ev.target.closest(".picker, .scroll, .tabs")) return;
+      sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; st = Date.now();
+    }, { passive: true });
+    document.addEventListener("touchend", function (ev) {
+      if (sx === null) return;
+      var dx = ev.changedTouches[0].clientX - sx, dy = ev.changedTouches[0].clientY - sy;
+      sx = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy) || Date.now() - st > 800) return;
+      var next = names[names.indexOf(current()) + (dx < 0 ? 1 : -1)];
+      if (next) { showTab(next); toTab(next); }
+    }, { passive: true });
+  }
+  // The arrows beside a month step to the one before or after.
+  document.querySelectorAll(".steps button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var to = document.querySelector('.picker button[data-month="' + b.dataset.to + '"]');
+      if (to) to.click();
     });
   });
   document.querySelectorAll("svg.chart.stack").forEach(function (svg) {
@@ -569,9 +619,20 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   // Inside the web app the report sits in a frame: tell it the height of
   // the content. Not the document's scroll height: that is never less than
   // the frame, so each resize of the frame would ask for a larger one.
-  if (window.parent !== window) {
-    // The page around it already shows the disclaimer and the version.
+  if (embedded) {
+    // The page around it already shows the disclaimer, the version and,
+    // when there are tabs, the tabs: it is told which there are, and asks
+    // for one in turn.
     document.documentElement.classList.add("embedded");
+    if (tabs.length) {
+      var labels = tabs.map(function (t) { return t.textContent; });
+      window.addEventListener("load", function () {
+        window.parent.postMessage({ cedoloTabs: { names: names, labels: labels, current: current() } }, "*");
+      });
+    }
+    window.addEventListener("message", function (ev) {
+      if (ev.source === window.parent && ev.data && typeof ev.data.cedoloShowTab === "string") showTab(ev.data.cedoloShowTab, true);
+    });
     var tell = function () { window.parent.postMessage({ cedoloHeight: document.body.getBoundingClientRect().height }, "*"); };
     window.addEventListener("load", tell);
     window.addEventListener("resize", tell);

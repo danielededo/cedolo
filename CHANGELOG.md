@@ -55,6 +55,13 @@ How to use this file:
 - The web app's report keeps two buttons, "Download the report" and "Add
   payslips"; "Start over" is gone, as reloading the page starts over.
 
+- In the web app the report's tabs sit in the bar at the top, which stays
+  in view while scrolling; the tab picked stays picked when payslips are
+  added. A sideways swipe moves to the next or previous tab, and arrows
+  beside the month step to the month before or after.
+- The list of files shows only when a file needs a look; "Something read
+  badly?" sits under the report and opens it to pick the file to copy.
+
 ### Fixed
 
 - Percentages in the changes use the decimal comma in Italian: "-30,3%".
