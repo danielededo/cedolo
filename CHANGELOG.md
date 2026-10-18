@@ -18,6 +18,15 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- The report sums the payslips of each year: gross, contributions, taxes,
+  net, the average monthly net, how much of every 100 euros of gross was
+  paid, and the TFR accrued.
+- A chart follows overtime, bonuses and allowances month by month, on a
+  scale of their own, so that the part of the pay that changes shows.
+- A chart follows the TFR accrued in the payslips, added up month by month.
+
 ## [0.8.0] - 2026-10-18
 
 ### Changed

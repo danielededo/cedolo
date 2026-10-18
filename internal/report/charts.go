@@ -250,7 +250,8 @@ func xsAttr(n int, x func(int) float64) string {
 }
 
 // pointsJSON lists, per month, the label, each series' formatted value and,
-// when given, the total, for the hover layer.
+// when given, the total, for the hover layer. A single series with a total
+// gives the total alone.
 func pointsJSON(labels []string, ss []series, format func(int64) string, total *series) string {
 	type value struct {
 		Name  string `json:"name"`
@@ -267,6 +268,9 @@ func pointsJSON(labels []string, ss []series, format func(int64) string, total *
 		pts[i].Label = l
 		if total != nil {
 			pts[i].Total = &value{Name: total.Name, Value: format(total.Values[i])}
+			if len(ss) == 1 {
+				continue // the total says it all
+			}
 		}
 		for _, s := range ss {
 			pts[i].Values = append(pts[i].Values, value{s.Name, s.Color, format(s.Values[i])})
