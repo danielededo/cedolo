@@ -631,3 +631,22 @@ func TestCombinationsPreferFewerAlternatives(t *testing.T) {
 		t.Errorf("combinations = %v, want %v", got, want)
 	}
 }
+
+// TestPartialAgreementKeepsPreferredReadings checks that an alternative
+// reading which fixes one check while another still fails is not taken.
+func TestPartialAgreementKeepsPreferredReadings(t *testing.T) {
+	amount := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Extracted} }
+	p := payslip.Payslip{
+		Items: []payslip.Item{{Side: payslip.Earning, Key: "earnings.base_salary", Cents: 200000},
+			{Side: payslip.Deduction, Key: "tax.irpef", Cents: 50000}},
+		Gross: amount(190000), Deductions: amount(50000), Net: amount(140000),
+	}
+	resolve(&p, []total{
+		{"gross pay", func(p *payslip.Payslip) *payslip.Amount { return &p.Gross }, []payslip.Amount{amount(190000), amount(200000)}},
+		{"net pay", func(p *payslip.Payslip) *payslip.Amount { return &p.Net }, []payslip.Amount{amount(140000)}},
+	})
+	if p.Gross.Cents != 190000 || p.Gross.Alternative {
+		t.Errorf("gross = %d, alternative %v; want the preferred 190000", p.Gross.Cents, p.Gross.Alternative)
+	}
+	wantStatus(t, "net", p.Net, 140000, payslip.Inconsistent)
+}

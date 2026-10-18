@@ -31,9 +31,11 @@ and by falling back to today's first reading when none does.
   yields its readings in today's order of preference: beside the label on its
   baseline, in its cell below, beside it on another baseline. At most a few
   per total, so that the search stays small.
-- **Choice.** Combinations are scored by the cross-checks they pass (net
-  balance, deductions sum, earnings sum), then by the preference of their
-  readings. A payslip that today reads right and verifies keeps exactly the
+- **Choice.** Combinations are tried from the closest to the preferred
+  readings, and the first under which every cross-check passes (net balance,
+  deductions sum, earnings sum) wins. One that only passes more checks than
+  the preferred readings is not taken: a single sum matched by chance is
+  likelier than all of them. A payslip that today reads right and verifies keeps exactly the
   same values, because its first readings already pass.
 - **Exactness.** A combination counts only when its arithmetic holds to the
   cent, as today. A reading chosen over the first because it reconciles is

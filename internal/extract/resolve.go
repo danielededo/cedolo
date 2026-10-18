@@ -22,10 +22,11 @@ type total struct {
 }
 
 // resolve validates the payslip under the preferred reading of each total
-// and, when a cross-check fails, under the other readings: the combination
-// that passes the most checks wins, and among equals the one closest to the
-// preferred readings (ADR 0009). A payslip whose preferred readings add up is
-// left as validate leaves it.
+// and, when a cross-check fails, under the other readings: the first
+// combination, closest to the preferred readings, under which every check
+// passes wins (ADR 0009). A combination that only passes more checks is not
+// enough, since a single sum matched by chance is likelier than all of them.
+// Without a winner, the payslip is left as validate leaves it.
 func resolve(p *payslip.Payslip, totals []total) {
 	choices := make([][]payslip.Amount, len(totals))
 	for k, t := range totals {
@@ -59,22 +60,20 @@ func resolve(p *payslip.Payslip, totals []total) {
 
 	best, passed, applied := try(make([]int, len(totals)))
 	if passed < applied {
-		var bestPick []int
 		for _, pick := range combinations(choices)[1:] {
 			q, n, _ := try(pick)
-			if n > passed {
-				best, passed, bestPick = q, n, pick
-				if passed == applied {
-					break
+			if n < applied {
+				continue
+			}
+			best = q
+			for k, i := range pick {
+				if i > 0 {
+					best.Checks = append(best.Checks, payslip.Check{Name: "total_reading", OK: true,
+						Detail: fmt.Sprintf("%s read as %s rather than %s, the reading under which the totals add up",
+							totals[k].name, money.Format(choices[k][i].Cents), money.Format(choices[k][0].Cents))})
 				}
 			}
-		}
-		for k, i := range bestPick {
-			if i > 0 {
-				best.Checks = append(best.Checks, payslip.Check{Name: "total_reading", OK: true,
-					Detail: fmt.Sprintf("%s read as %s rather than %s, the reading under which the totals add up",
-						totals[k].name, money.Format(choices[k][i].Cents), money.Format(choices[k][0].Cents))})
-			}
+			break
 		}
 	}
 	*p = best
