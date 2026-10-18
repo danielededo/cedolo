@@ -3,6 +3,7 @@ package extract
 import (
 	"math"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -134,23 +135,43 @@ func levelField(lines []line, pageWidth float64) string {
 // A label may be split over two stacked lines ("ARROTONDAMENTO" above
 // "ATTUALE"); its value is then searched from the first line of the label.
 func amountField(lines []line, pageWidth float64, labels []string) (payslip.Amount, bool) {
+	if rs := amountReadings(lines, pageWidth, labels, false); len(rs) > 0 {
+		return rs[0], true
+	}
+	return payslip.Amount{}, false
+}
+
+// amountReadings returns the amounts printed for the labels, most preferred
+// first: the preferred amount of each occurrence of each label, in label
+// order, and then, if asked, the other amounts each occurrence could be read
+// as. The first reading is the one amountField returns.
+func amountReadings(lines []line, pageWidth float64, labels []string, others bool) []payslip.Amount {
+	var first, rest []payslip.Amount
 	for _, label := range labels {
 		for i, l := range lines {
 			occs := l.findAll(label)
 			occs = append(occs, stackedLabel(lines, i, label)...)
 			for _, o := range occs {
-				for _, t := range amountCandidates(lines, i, o.first, o.last, pageWidth) {
+				for k, t := range amountCandidates(lines, i, o.first, o.last, pageWidth) {
 					cents, err := money.Parse(t.Text)
 					if err != nil {
 						continue
 					}
 					src := sourceOf(t, l.page)
-					return payslip.Amount{Cents: cents, Status: payslip.Extracted, Source: &src}, true
+					a := payslip.Amount{Cents: cents, Status: payslip.Extracted, Source: &src}
+					if k == 0 {
+						first = append(first, a)
+					} else {
+						rest = append(rest, a)
+					}
 				}
 			}
 		}
 	}
-	return payslip.Amount{}, false
+	if !others {
+		return first
+	}
+	return append(first, rest...)
 }
 
 // stackedLabel finds a label whose first words end line i and whose remaining
@@ -176,11 +197,13 @@ func stackedLabel(lines []line, i int, label string) []occurrence {
 	return out
 }
 
-// amountCandidates returns the amount printed right after a label on its
-// line, or failing that the amounts in the label's cell on the following
-// lines. A value to the right counts only when nothing but currency signs or
-// punctuation separates it from the label, so that a neighbouring block (a
-// calendar, another column) is not mistaken for the label's value.
+// amountCandidates returns the amounts a label could be read as, preferred
+// first: the amount printed right after the label on its line, or failing
+// that the amounts in the label's cell on the following lines. A value to the
+// right counts only when nothing but currency signs or punctuation separates
+// it from the label, so that a neighbouring block (a calendar, another
+// column) is not mistaken for the label's value. The other candidates are the
+// readings the preferred one won over.
 func amountCandidates(lines []line, i, first, last int, pageWidth float64) []layout.Token {
 	l := lines[i]
 	label := l.toks[last]
@@ -198,33 +221,45 @@ func amountCandidates(lines []line, i, first, last int, pageWidth float64) []lay
 		}
 		return nil
 	}
-	under := func(t layout.Token) bool { return t.X <= label.Right() }
+	under := below(func(t layout.Token) bool { return t.X <= label.Right() })
+	cell := below(func(layout.Token) bool { return true })
+	var beside []layout.Token
 	for k := last + 1; k < len(l.toks); k++ {
 		t := l.toks[k]
 		if money.IsAmount(t.Text) {
-			// An amount grouped into the label's line but on another
-			// baseline may sit in a column beside the label, such as
-			// statistics: a number under the label is then its value.
-			if math.Abs((t.Y+t.H)-(label.Y+label.H)) > baselineSlack*label.H {
-				if v := below(under); v != nil {
-					return v
-				}
-			}
-			return []layout.Token{t}
+			beside = []layout.Token{t}
+			break
 		}
 		if !isFiller(t.Text) {
 			break
 		}
 	}
-	if last+1 == len(l.toks) {
+	var order [][]layout.Token
+	switch {
+	case beside != nil && math.Abs((beside[0].Y+beside[0].H)-(label.Y+label.H)) > baselineSlack*label.H:
+		// An amount grouped into the label's line but on another baseline
+		// may sit in a column beside the label, such as statistics: a
+		// number under the label is then its value.
+		order = [][]layout.Token{under, beside, cell}
+	case beside != nil:
+		order = [][]layout.Token{beside, under, cell}
+	case last+1 == len(l.toks):
 		// A label that ends its line has no neighbour to bound its cell, so
 		// a number starting under the label beats one beside it, which may
 		// belong to another column.
-		if v := below(under); v != nil {
-			return v
+		order = [][]layout.Token{under, cell}
+	default:
+		order = [][]layout.Token{cell, under}
+	}
+	var out []layout.Token
+	for _, ts := range order {
+		for _, t := range ts {
+			if !slices.Contains(out, t) {
+				out = append(out, t)
+			}
 		}
 	}
-	return below(func(layout.Token) bool { return true })
+	return out
 }
 
 // yearToDate reports whether line j holds the year's running totals rather

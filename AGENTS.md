@@ -74,9 +74,10 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   `extract.go` groups pages into payslips and reads each one, `period.go`
   finds the pay period, `fields.go` reads the value of a label (totals,
   contract, level), `table.go` the item table, `leave.go` leave balances,
-  `validate.go` the cross-checks. `labels.go` holds the label synonyms and
-  column words, `geometry.go` the distances the page is read with; change a
-  distance only with a test that needs it.
+  `validate.go` the cross-checks, `resolve.go` the choice of the readings of
+  the totals that add up (ADR 0009). `labels.go` holds the label synonyms
+  and column words, `geometry.go` the distances the page is read with;
+  change a distance only with a test that needs it.
 - Teaching cedolo a new wording: a total or field label goes into its list
   in `internal/extract/labels.go`, normalized (lowercase, no accents or
   punctuation: "TOT. TRATTENUTE" is "tot trattenute"); an item's wording

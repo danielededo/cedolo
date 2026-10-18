@@ -48,6 +48,7 @@ type Month struct {
 	Gross      string            // "of 2.194,50 € gross pay"
 	Delta      string            // change of the net from the previous month, empty when unknown
 	Summary    string            // the month in one sentence: what changed and why, or where the gross goes
+	Reread     string            // which totals were read from a less usual place so that they add up
 	Parts      []Part            // where the gross pay goes
 	Earnings   []Line            // what makes up the gross pay
 	SetAside   []Line            // TFR and other amounts that do not change this month's pay
@@ -223,6 +224,7 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		Net:        amount(p.Net),
 	}
 	m.Changes, m.More = telling(per.Changes)
+	m.Reread = reread(l, p)
 	if p.Gross.Found() {
 		m.Gross = i18n.T(l, "report.of_gross", amount(p.Gross))
 		m.GrossTotal = amount(p.Gross)
@@ -382,6 +384,28 @@ func texts(l i18n.Lang) map[string]string {
 		m[k] = i18n.T(l, k)
 	}
 	return m
+}
+
+// reread names the totals read from a less usual place beside their label
+// because the payslip adds up with them, so that a person can check them.
+func reread(l i18n.Lang, p payslip.Payslip) string {
+	var names []string
+	for _, t := range []struct {
+		a   payslip.Amount
+		key string
+	}{
+		{p.Gross, "report.gross"}, {p.Deductions, "report.deductions"}, {p.Net, "report.net"},
+		{p.SocialContributions, "report.contrib"}, {p.Taxes, "report.taxes"},
+		{p.RoundingPrevious, "report.rounding"}, {p.RoundingCurrent, "report.rounding"},
+	} {
+		if n := i18n.T(l, t.key); t.a.Alternative && !slices.Contains(names, n) {
+			names = append(names, n)
+		}
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	return i18n.T(l, "report.reread", strings.Join(names, ", "))
 }
 
 func status(p payslip.Payslip) Status {

@@ -207,6 +207,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <p class="net"><span class="label">{{index $.T "report.net"}}</span><span class="big">{{$m.Net}}</span></p>
 {{if $m.Gross}}<p class="sub">{{$m.Gross}}</p>{{end}}
 {{if $m.Summary}}<p class="summary">{{$m.Summary}}</p>{{end}}
+{{with $m.Reread}}<p class="note">{{.}}</p>{{end}}
 
 {{if $m.Parts}}
 <h2>{{index $.T "report.where"}}</h2>

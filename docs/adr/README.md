@@ -52,4 +52,4 @@ makes onboarding trivial if the project ever gains collaborators.
 | [0006](0006-generic-extraction-first.md) | Extract generically first, tune per vendor only where needed | Accepted |
 | [0007](0007-embed-cnel-contract-list.md) | Embed the CNEL list of national collective agreements | Accepted |
 | [0008](0008-rebuild-anonymized-payslips.md) | Share payslips as rebuilt, allowlist-anonymized PDFs | Accepted |
-| [0009](0009-resolve-totals-by-arithmetic-agreement.md) | Resolve totals by the reading that adds up | Proposed |
+| [0009](0009-resolve-totals-by-arithmetic-agreement.md) | Resolve totals by the reading that adds up | Accepted |

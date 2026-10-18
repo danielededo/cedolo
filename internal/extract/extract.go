@@ -118,6 +118,13 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 		}
 		return payslip.Amount{Status: payslip.Missing}
 	}
+	readings := func(labels []string) []payslip.Amount {
+		var out []payslip.Amount
+		for i := len(all) - 1; i >= 0; i-- {
+			out = append(out, amountReadings(all[i], pages[i].Width, labels, true)...)
+		}
+		return out
+	}
 	p.Gross = find(grossLabels)
 	p.Deductions = find(deductionLabels)
 	p.Net = find(netLabels)
@@ -149,7 +156,16 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 		}
 	}
 
-	validate(&p)
+	// The totals the cross-checks tie together, with every reading of each.
+	resolve(&p, []total{
+		{"gross pay", func(p *payslip.Payslip) *payslip.Amount { return &p.Gross }, readings(grossLabels)},
+		{"total deductions", func(p *payslip.Payslip) *payslip.Amount { return &p.Deductions }, readings(deductionLabels)},
+		{"net pay", func(p *payslip.Payslip) *payslip.Amount { return &p.Net }, readings(netLabels)},
+		{"contributions", func(p *payslip.Payslip) *payslip.Amount { return &p.SocialContributions }, readings(socialLabels)},
+		{"taxes", func(p *payslip.Payslip) *payslip.Amount { return &p.Taxes }, readings(taxLabels)},
+		{"previous rounding", func(p *payslip.Payslip) *payslip.Amount { return &p.RoundingPrevious }, readings(roundingPreviousLabels)},
+		{"current rounding", func(p *payslip.Payslip) *payslip.Amount { return &p.RoundingCurrent }, readings(roundingCurrentLabels)},
+	})
 	checkLeave(&p)
 	return p
 }

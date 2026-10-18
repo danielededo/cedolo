@@ -319,3 +319,17 @@ func TestTrendAndLeaveCharts(t *testing.T) {
 		t.Error("charts for a single payslip")
 	}
 }
+
+func TestRereadTotalsAreNoted(t *testing.T) {
+	p := payslip.Payslip{Year: 2026, Month: 3, Kind: payslip.Monthly,
+		Net:   payslip.Amount{Cents: 150000, Status: payslip.Verified, Alternative: true},
+		Taxes: payslip.Amount{Cents: 30000, Status: payslip.Verified, Alternative: true}}
+	want := "To make the totals add up, cedolo read some amounts from a less usual place on the payslip (Net pay, Taxes): compare them with the payslip."
+	if got := reread(i18n.EN, p); got != want {
+		t.Errorf("reread = %q", got)
+	}
+	p.Net.Alternative, p.Taxes.Alternative = false, false
+	if got := reread(i18n.EN, p); got != "" {
+		t.Errorf("reread without alternatives = %q", got)
+	}
+}

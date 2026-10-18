@@ -1,6 +1,6 @@
 # ADR 0009: Resolve totals by the reading that adds up
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-17
 - **Deciders:** maintainer (danielededo)
 
