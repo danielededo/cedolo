@@ -29,11 +29,11 @@ type YearRow struct {
 // payslip.
 func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 	type sum struct {
-		year                            int
-		monthly, extra                  int
-		gross, contrib, taxes, net, tfr int64
-		monthlyNet                      int64
-		netMonths                       int
+		year                       int
+		monthly, extra             int
+		gross, contrib, taxes, net int64
+		monthlyNet                 int64
+		netMonths                  int
 	}
 	var sums []*sum
 	for _, p := range slips {
@@ -60,9 +60,6 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		}
 		if p.Net.Found() {
 			s.net += p.Net.Cents
-		}
-		if p.TFR.Found() {
-			s.tfr += p.TFR.Cents
 		}
 		s.contrib += contributions(p)
 		s.taxes += taxes(p)
@@ -109,7 +106,6 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		}
 		return strconv.FormatInt(roundDiv(s.net*100, s.gross), 10) + " €"
 	})
-	row("report.year.tfr", func(s *sum) string { return optional(s.tfr) })
 	return t
 }
 

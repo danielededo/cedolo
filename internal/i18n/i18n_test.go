@@ -79,12 +79,12 @@ func TestChangeTexts(t *testing.T) {
 	args := map[string][]any{
 		"change.level":     {"3", "4"},
 		"change.ccnl":      {"A", "B"},
-		"change.net":       {"1.000,00 €", "1.100,00 €", 10.0},
-		"change.gross":     {"1.000,00 €", "1.100,00 €", 10.0},
+		"change.net":       {"1.000,00 €", "1.100,00 €", "+10,0"},
+		"change.gross":     {"1.000,00 €", "1.100,00 €", "+10,0"},
 		"change.item_new":  {"IRPEF", "10,00"},
 		"change.item_gone": {"IRPEF"},
-		"change.tax_rate":  {12.5, 13.5},
-		"change.inps_rate": {9.19, 9.49},
+		"change.tax_rate":  {"12,5", "13,5"},
+		"change.inps_rate": {"9,19", "9,49"},
 		"change.leave":     {"Ferie", "10,00", "8,00", "-2,00"},
 		"change.gap":       {"gennaio 2026", "marzo 2026"},
 		"change.unchecked": nil,
@@ -96,7 +96,7 @@ func TestChangeTexts(t *testing.T) {
 			}
 		}
 	}
-	if got := T(EN, "change.net", "a", "b", 2.5); got != "You receive b instead of a (+2.5%)." {
+	if got := T(EN, "change.net", "a", "b", "+2.5"); got != "You receive b instead of a (+2.5%)." {
 		t.Errorf("change.net = %q", got)
 	}
 }
