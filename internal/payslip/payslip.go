@@ -52,6 +52,10 @@ type Amount struct {
 	Cents  int64   `json:"cents"`
 	Status Status  `json:"status"`
 	Source *Source `json:"source,omitempty"`
+	// Alternative marks a value read from a less preferred place beside its
+	// label, chosen because the payslip's arithmetic holds with it and not
+	// with the preferred one.
+	Alternative bool `json:"alternative,omitempty"`
 }
 
 // Found reports whether the amount has a value, read or inferred.

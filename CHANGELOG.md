@@ -18,6 +18,13 @@ How to use this file:
 
 ## [Unreleased]
 
+### Changed
+
+- When a number next to a total is not its value, cedolo now tries the
+  other places the total could be read from and keeps the one with which
+  the payslip adds up. The report says when this happens, so the amount
+  can be checked against the payslip.
+
 ## [0.7.0] - 2026-10-17
 
 ### Added

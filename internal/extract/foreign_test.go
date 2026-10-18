@@ -1,6 +1,7 @@
 package extract
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -583,4 +584,69 @@ func TestTaxReturnRefundOutsideGross(t *testing.T) {
 	}
 	wantStatus(t, "gross", p.Gross, 200000, payslip.Verified)
 	wantStatus(t, "net", p.Net, 190000, payslip.Verified)
+}
+
+// TestTotalReadByArithmetic covers a number printed right after a total's
+// label that is not its value: the value under the label is the one with
+// which the payslip adds up, so it is chosen and marked (ADR 0009).
+func TestTotalReadByArithmetic(t *testing.T) {
+	pg := page(
+		[]string{"40:ACME SINTETICA SPA", "380:Mese retribuito:"},
+		[]string{"380:03/2026"},
+		[]string{},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:Minimo contrattuale", "450>1.900,00"},
+		[]string{"40:Superminimo individuale", "450>200,00"},
+		[]string{"40:Contributo IVS a carico dipendente", "540>192,99"},
+		[]string{"40:Irpef", "540>333,27"},
+		[]string{},
+		[]string{"40:Totale competenze", "200:Totale trattenute", "360:Netto", "470:1,00"},
+		[]string{"130>2.100,00", "290>526,26", "430>1.573,74"},
+	)
+	got := Document(layout.Document{Pages: []layout.Page{pg}})
+	if len(got) != 1 {
+		t.Fatalf("got %d payslips", len(got))
+	}
+	p := got[0]
+	wantStatus(t, "net", p.Net, 157374, payslip.Verified)
+	wantStatus(t, "deductions", p.Deductions, 52626, payslip.Verified)
+	if !p.Net.Alternative || p.Gross.Alternative || p.Deductions.Alternative {
+		t.Errorf("alternative: net %v, gross %v, deductions %v", p.Net.Alternative, p.Gross.Alternative, p.Deductions.Alternative)
+	}
+	var noted bool
+	for _, c := range p.Checks {
+		noted = noted || c.Name == "total_reading" && strings.Contains(c.Detail, "net pay read as 1.573,74 rather than 1,00")
+	}
+	if !noted {
+		t.Errorf("no total_reading check in %+v", p.Checks)
+	}
+}
+
+func TestCombinationsPreferFewerAlternatives(t *testing.T) {
+	two := make([]payslip.Amount, 2)
+	three := make([]payslip.Amount, 3)
+	got := combinations([][]payslip.Amount{three, two, make([]payslip.Amount, 1)})
+	want := [][]int{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {2, 0, 0}, {1, 1, 0}, {2, 1, 0}}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("combinations = %v, want %v", got, want)
+	}
+}
+
+// TestPartialAgreementKeepsPreferredReadings checks that an alternative
+// reading which fixes one check while another still fails is not taken.
+func TestPartialAgreementKeepsPreferredReadings(t *testing.T) {
+	amount := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Extracted} }
+	p := payslip.Payslip{
+		Items: []payslip.Item{{Side: payslip.Earning, Key: "earnings.base_salary", Cents: 200000},
+			{Side: payslip.Deduction, Key: "tax.irpef", Cents: 50000}},
+		Gross: amount(190000), Deductions: amount(50000), Net: amount(140000),
+	}
+	resolve(&p, []total{
+		{"gross pay", func(p *payslip.Payslip) *payslip.Amount { return &p.Gross }, []payslip.Amount{amount(190000), amount(200000)}},
+		{"net pay", func(p *payslip.Payslip) *payslip.Amount { return &p.Net }, []payslip.Amount{amount(140000)}},
+	})
+	if p.Gross.Cents != 190000 || p.Gross.Alternative {
+		t.Errorf("gross = %d, alternative %v; want the preferred 190000", p.Gross.Cents, p.Gross.Alternative)
+	}
+	wantStatus(t, "net", p.Net, 140000, payslip.Inconsistent)
 }
