@@ -262,8 +262,21 @@ function progress(done, total) {
 async function handle(fileList) {
   let files = [...fileList].filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
   if (files.length === 0) return;
-  state.tooMany = files.length > MAX_FILES;
-  files = files.slice(0, MAX_FILES);
+  // Files added to those already read count towards the same limit.
+  const room = MAX_FILES - state.files.length;
+  state.tooMany = files.length > room;
+  files = files.slice(0, Math.max(room, 0));
+  if (files.length === 0) {
+    render();
+    return;
+  }
+  // Adding to a report: the picker comes back above it while reading, for
+  // the progress and any password.
+  const adding = !$('result').hidden;
+  if (adding) {
+    $('pick').hidden = false;
+    $('pick').scrollIntoView({ block: 'nearest' });
+  }
   $('drop').classList.add('busy');
   progress(0, files.length);
   try {
@@ -275,13 +288,15 @@ async function handle(fileList) {
     analyze();
     status('');
     // The start page fades out before the results come in.
-    $('intro').classList.add('leaving');
+    if (!adding) $('intro').classList.add('leaving');
     $('pick').classList.add('leaving');
     await wait(180);
     render();
   } catch (err) {
     status(t('web.failed', err.message), true);
   } finally {
+    // The same file can be picked again, to be told it was already read.
+    $('files').value = '';
     $('drop').classList.remove('busy');
     $('intro').classList.remove('leaving');
     $('pick').classList.remove('leaving');
@@ -378,6 +393,21 @@ drop.addEventListener('drop', (ev) => {
   ev.preventDefault();
   drop.classList.remove('over');
   if (!$('files').disabled && !drop.classList.contains('busy')) handle(ev.dataTransfer.files);
+});
+// Payslips can be added to a report: with its button, or dropped on it.
+$('add').addEventListener('click', () => $('files').click());
+// Files dragged anywhere over the page while a report is shown; the report
+// frame stops taking pointer events meanwhile, so that it does not swallow
+// the drop.
+const result = $('result');
+window.addEventListener('dragenter', () => { if (!result.hidden) result.classList.add('over'); });
+window.addEventListener('dragleave', (ev) => { if (ev.relatedTarget === null) result.classList.remove('over'); });
+window.addEventListener('dragover', (ev) => { if (!result.hidden) ev.preventDefault(); });
+window.addEventListener('drop', (ev) => {
+  result.classList.remove('over');
+  if (result.hidden) return;
+  ev.preventDefault();
+  if (!drop.classList.contains('busy')) handle(ev.dataTransfer.files);
 });
 $('restart').addEventListener('click', restart);
 $('download').addEventListener('click', download);

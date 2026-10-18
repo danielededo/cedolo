@@ -20,6 +20,9 @@ How to use this file:
 
 ### Added
 
+- In the web app, payslips can be added to a report already shown, with
+  "Add payslips" or by dropping them on the page; a payslip already read is
+  pointed out and not counted twice.
 - The report sums the payslips of each year: gross, contributions, taxes,
   net, the average monthly net, how much of every 100 euros of gross was
   paid, and the TFR accrued.
