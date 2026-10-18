@@ -68,7 +68,25 @@ body {
 }
 main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
 h1 { font-size: 28px; line-height: 1.2; margin: 0 0 4px; }
-h2 { font-size: 20px; margin: 40px 0 8px; }
+h2, h3 { font-size: 20px; margin: 40px 0 8px; }
+h2.group { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 56px 0 0; padding-top: 16px; border-top: 1px solid var(--grid); }
+h2.group + section > h3:first-child { margin-top: 16px; }
+h2.total { display: flex; gap: 12px; align-items: baseline; }
+h2.total span:first-child { flex: 1; }
+h2.total .amount { font-variant-numeric: tabular-nums; }
+h2.group + .more { margin-top: 8px; border-top: 0; }
+.tabs { display: flex; gap: 4px; margin: 20px -16px 0; padding: 0 16px; border-bottom: 1px solid var(--grid); overflow-x: auto; scrollbar-width: none; }
+.tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.tabs button:focus-visible { outline: 2px solid var(--series-1); outline-offset: -2px; border-radius: 4px; }
+.tabs ~ .panel h2.group { display: none; }
+.tabs ~ #panel-time > section:first-of-type > h3, .tabs ~ #panel-reference > .more { margin-top: 24px; }
+.teaser { margin: 32px 0 0; }
+.link { font: inherit; font-size: 15px; padding: 0; border: 0; background: none; color: var(--series-1); cursor: pointer; text-align: left; }
+.stat { margin: 0 0 8px; color: var(--ink-2); }
+.stat strong { font-size: 28px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.mini { max-width: 420px; }
+.as-table { margin-top: 4px; }
 p { margin: 0 0 12px; }
 .sub, .note, small { color: var(--ink-2); }
 .note { font-size: 14px; }
@@ -97,7 +115,6 @@ p { margin: 0 0 12px; }
 .part > summary { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--ink); font-size: 16px; list-style: none; }
 .part > summary::-webkit-details-marker { display: none; }
 .part > summary .key { flex: none; width: 12px; height: 12px; border-radius: 3px; background: var(--c); border: 1px solid var(--c); }
-.part-gross > summary .key, .part-aside > summary .key { border-color: var(--baseline); }
 .part > summary .name { flex: 1; }
 .part > summary .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
 .part > summary::after { content: "›"; color: var(--muted); transition: transform .15s; }
@@ -176,14 +193,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 .embedded footer { display: none; }
 .embedded main { padding-bottom: 8px; }
+.chart.narrow { display: none; }
 @media (max-width: 520px) {
-  .chart .tick { font-size: 22px; }
-  .mini .chart .tick { font-size: 12px; }
-  .chart .end-label { display: none; }
-  .chart .tick.thin { display: none; }
+  .chart.wide { display: none; }
+  .chart.narrow { display: block; }
 }
 @media print {
-  .tooltip, .picker, .hint { display: none; }
+  .tooltip, .picker, .hint, .tabs, .teaser { display: none; }
+  .panel[hidden] { display: block !important; }
+  .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
 }
 </style>
@@ -195,6 +213,15 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{with .Range}}<p class="sub">{{.}}</p>{{end}}
 </header>
 
+{{if .Tabs}}
+<div class="tabs" role="tablist" aria-label="{{index .T "report.tabs"}}">
+<button type="button" role="tab" id="tab-month" data-tab="month" aria-controls="panel-month" aria-selected="true">{{index .T "report.tab.month"}}</button>
+<button type="button" role="tab" id="tab-time" data-tab="time" aria-controls="panel-time" aria-selected="false" tabindex="-1">{{index .T "report.group.time"}}</button>
+<button type="button" role="tab" id="tab-reference" data-tab="reference" aria-controls="panel-reference" aria-selected="false" tabindex="-1">{{index .T "report.group.reference"}}</button>
+</div>
+{{end}}
+
+<div class="panel" id="panel-month"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-month"{{end}}>
 {{if gt (len .Months) 1}}
 <nav class="picker" aria-label="{{index .T "report.pick"}}">
 {{range $i, $m := .Months}}<button type="button" data-month="{{$i}}" aria-pressed="{{if eq $i $.Selected}}true{{else}}false{{end}}">{{$m.Short}}</button>
@@ -219,17 +246,37 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <div class="body"><p class="explain">{{.Text}}</p>
 {{if .Lines}}<ul class="lines">{{range .Lines}}{{template "line" .}}{{end}}</ul>{{end}}</div>
 </details>
-{{end}}{{if $m.Earnings}}<details class="part part-gross">
-<summary><span class="key"></span><span class="name">{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></summary>
-<div class="body"><p class="explain">{{index $.T "report.earnings.text"}}</p>
-<ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul></div>
-</details>
-{{end}}{{if $m.SetAside}}<details class="part part-aside">
-<summary><span class="key"></span><span class="name">{{index $.T "report.aside"}}</span><span class="amount">{{$m.AsideTotal}}</span></summary>
-<div class="body"><p class="explain">{{index $.T "report.aside.text"}}</p>
-<ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul></div>
-</details>
 {{end}}</div>
+{{end}}
+
+{{if $m.Earnings}}
+<h2 class="total"><span>{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></h2>
+<p class="explain">{{index $.T "report.earnings.text"}}</p>
+<ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul>
+{{end}}
+
+{{if $m.SetAside}}
+<h2 class="total"><span>{{index $.T "report.aside"}}</span><span class="amount">{{$m.AsideTotal}}</span></h2>
+<p class="explain">{{index $.T "report.aside.text"}}</p>
+<ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul>
+{{end}}
+
+{{if $m.Leave}}
+<h2>{{index $.T "report.leave"}}</h2>
+<div class="scroll">
+<table>
+<thead><tr>
+<th>{{index $.T "report.col.kind"}}</th>
+<th class="num">{{index $.T "report.col.previous"}}</th>
+<th class="num">{{index $.T "report.col.accrued"}}</th>
+<th class="num">{{index $.T "report.col.used"}}</th>
+<th class="num">{{index $.T "report.col.remain"}}</th>
+</tr></thead>
+<tbody>
+{{range $m.Leave}}<tr><td>{{.Label}}</td><td class="num">{{.Previous}}</td><td class="num">{{.Accrued}}</td><td class="num">{{.Used}}</td><td class="num">{{.Remaining}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
 {{end}}
 
 {{if $m.Changes}}
@@ -246,32 +293,17 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}
 </section>
 {{end}}
+{{with .Teaser}}<p class="teaser"><button type="button" class="link" data-tab="time">{{.}} →</button></p>{{end}}
+</div>
 
-{{if .Trend}}
-<section>
-<h2>{{index .T "report.trend"}}</h2>
-<ul class="legend">
-<li><span class="key" style="background:var(--series-1)"></span>{{index .T "report.part.net"}}</li>
-<li><span class="key" style="background:var(--series-2)"></span>{{index .T "report.part.contrib"}}</li>
-<li><span class="key" style="background:var(--series-3)"></span>{{index .T "report.part.taxes"}}</li>
-<li><span class="key" style="background:var(--series-4)"></span>{{index .T "report.part.other"}}</li>
-</ul>
-<figure>{{.Trend}}<div class="tooltip" hidden></div></figure>
-<p class="hint">{{index .T "report.trend.tap"}}</p>
-</section>
-{{end}}
-
-{{if .Variable}}
-<section>
-<h2>{{index .T "report.variable"}}</h2>
-<figure>{{.Variable}}<div class="tooltip" hidden></div></figure>
-<p class="note">{{index .T "report.variable.note"}}</p>
-</section>
+<div class="panel" id="panel-time"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-time" hidden{{end}}>
+{{if or .Years .Trend .LeaveCharts .TFR}}
+<h2 class="group">{{index .T "report.group.time"}}</h2>
 {{end}}
 
 {{with .Years}}
 <section>
-<h2>{{index $.T "report.years"}}</h2>
+<h3>{{index $.T "report.years"}}</h3>
 <div class="scroll">
 <table class="years">
 <thead><tr><th></th>{{range .Years}}<th class="num">{{.}}</th>{{end}}</tr></thead>
@@ -284,18 +316,19 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </section>
 {{end}}
 
-{{if .TFR}}
+{{if .Trend}}
 <section>
-<h2>{{index .T "report.tfr"}}</h2>
-<figure>{{.TFR}}<div class="tooltip" hidden></div></figure>
-<p class="note">{{.TFRNote}}</p>
-</section>
-{{end}}
-
-{{if .Rows}}
-<section class="more">
-{{if gt (len .Rows) 1}}<details>
-<summary>{{index .T "report.months"}}</summary>
+<h3>{{index .T "report.trend"}}</h3>
+<ul class="legend">
+<li><span class="key" style="background:var(--series-1)"></span>{{index .T "report.part.net"}}</li>
+<li><span class="key" style="background:var(--series-2)"></span>{{index .T "report.part.contrib"}}</li>
+<li><span class="key" style="background:var(--series-3)"></span>{{index .T "report.part.taxes"}}</li>
+<li><span class="key" style="background:var(--series-4)"></span>{{index .T "report.part.other"}}</li>
+</ul>
+<figure>{{.Trend}}<div class="tooltip" hidden></div></figure>
+<p class="hint">{{index .T "report.trend.tap"}}</p>
+<details class="as-table">
+<summary>{{index .T "report.table.show"}}</summary>
 <div class="scroll">
 <table>
 <thead><tr>
@@ -320,29 +353,41 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}</tbody>
 </table>
 </div>
-</details>{{end}}
+</details>
+</section>
+{{end}}
 
-{{if .Leave}}<details>
-<summary>{{index .T "report.leave"}}</summary>
-{{if .LeaveCharts}}<p class="note">{{index .T "report.leave.trend"}}</p>
+{{if .Variable}}
+<section>
+<h3>{{index .T "report.variable"}}</h3>
+<figure>{{.Variable}}<div class="tooltip" hidden></div></figure>
+<p class="note">{{index .T "report.variable.note"}}</p>
+</section>
+{{end}}
+
+{{if .LeaveCharts}}
+<section>
+<h3>{{index .T "report.leave.over"}}</h3>
 <div class="minis">{{range .LeaveCharts}}<figure class="mini"><figcaption>{{.Label}} <strong>{{.Now}}</strong></figcaption>{{.SVG}}<div class="tooltip" hidden></div></figure>
-{{end}}</div>{{end}}
-<div class="scroll">
-<table>
-<thead><tr>
-<th>{{index .T "report.col.kind"}}</th>
-<th class="num">{{index .T "report.col.previous"}}</th>
-<th class="num">{{index .T "report.col.accrued"}}</th>
-<th class="num">{{index .T "report.col.used"}}</th>
-<th class="num">{{index .T "report.col.remain"}}</th>
-</tr></thead>
-<tbody>
-{{range .Leave}}<tr><td>{{.Label}}</td><td class="num">{{.Previous}}</td><td class="num">{{.Accrued}}</td><td class="num">{{.Used}}</td><td class="num">{{.Remaining}}</td></tr>
-{{end}}</tbody>
-</table>
-</div>
-</details>{{end}}
+{{end}}</div>
+</section>
+{{end}}
 
+{{if .TFR}}
+<section>
+<h3>{{index .T "report.tfr"}}</h3>
+<p class="stat"><strong>{{.TFRTotal}}</strong> {{.TFRSpan}}</p>
+<div class="minis"><figure class="mini">{{.TFR}}<div class="tooltip" hidden></div></figure></div>
+<p class="note">{{index .T "report.tfr.note"}}</p>
+</section>
+{{end}}
+
+</div>
+
+<div class="panel" id="panel-reference"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-reference" hidden{{end}}>
+{{if .Rows}}
+<h2 class="group">{{index .T "report.group.reference"}}</h2>
+<section class="more">
 {{with .Contract}}<details>
 <summary>{{index $.T "ccnl.section"}}</summary>
 {{with .Title}}<p><strong>{{.}}</strong></p>{{end}}
@@ -365,6 +410,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </details>
 </section>
 {{end}}
+</div>
 
 <footer>
 <p>{{index .T "report.privacy"}}</p>
@@ -455,11 +501,43 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   picks.forEach(function (b) { b.addEventListener("click", function () { mark(b.dataset.month); }); });
   // Bring the month shown to the top: inside the web app the page around
   // the frame scrolls, so ask it to.
-  function toMonth() {
-    var y = document.querySelector(".picker").getBoundingClientRect().top + window.scrollY - 16;
+  function toTop(el) {
+    var y = el.getBoundingClientRect().top + window.scrollY - 16;
     if (window.parent !== window) window.parent.postMessage({ cedoloScroll: y }, "*");
     else window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
+  function toMonth() { toTop(document.querySelector(".picker")); }
+  // Tabs: the month, the payslips over time, and the reference. Arrows
+  // move between them; a link to a tab opens it and scrolls to the tabs.
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function showTab(name) {
+    tabs.forEach(function (t) {
+      var on = t.dataset.tab === name;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById("panel-" + t.dataset.tab).hidden = !on;
+    });
+    // The row of months was hidden with its tab: bring the marked one back
+    // into view.
+    if (name === "month") toCurrent();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { showTab(t.dataset.tab); });
+    t.addEventListener("keydown", function (ev) {
+      var j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[ev.key];
+      if (j === undefined) return;
+      ev.preventDefault();
+      var next = tabs[(j + tabs.length) % tabs.length];
+      showTab(next.dataset.tab);
+      next.focus();
+    });
+  });
+  document.querySelectorAll('button[data-tab]:not([role="tab"])').forEach(function (b) {
+    b.addEventListener("click", function () {
+      showTab(b.dataset.tab);
+      toTop(document.querySelector(".tabs"));
+    });
+  });
   document.querySelectorAll("svg.chart.stack").forEach(function (svg) {
     var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
     var pts = JSON.parse(svg.dataset.points);
@@ -478,7 +556,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       hit.addEventListener("pointerleave", function () { tip.hidden = true; });
       hit.addEventListener("click", function () {
         var b = document.querySelector('.picker button[data-month="' + i + '"]');
-        if (b) { b.click(); toMonth(); }
+        if (b) { if (tabs.length) showTab("month"); b.click(); toMonth(); }
       });
     });
   });

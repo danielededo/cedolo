@@ -84,8 +84,8 @@ func TestBuild(t *testing.T) {
 			t.Errorf("line %+v", l)
 		}
 	}
-	if len(d.Leave) == 0 {
-		t.Error("no leave rows")
+	if len(m.Leave) == 0 {
+		t.Error("no leave rows in the month")
 	}
 	if len(d.Terms) != len(i18n.Terms) || d.Terms[0].Text == "" {
 		t.Errorf("terms = %+v", d.Terms)
@@ -299,10 +299,13 @@ func TestTrendAndLeaveCharts(t *testing.T) {
 	slips = append(slips, thirteenth)
 	d := Build(i18n.IT, slips, "test")
 	// One column per payslip, the thirteenth month included, each a hit
-	// target that opens its month.
+	// target that opens its month; drawn wide and narrow, for phones.
 	trend := string(d.Trend)
-	if n := strings.Count(trend, `class="col-hit"`); n != 4 {
-		t.Errorf("%d columns, want 4", n)
+	if n := strings.Count(trend, `class="col-hit"`); n != 8 {
+		t.Errorf("%d columns, want 4 in each size", n)
+	}
+	if !strings.Contains(trend, `class="chart stack wide"`) || !strings.Contains(trend, `id="trend-narrow" class="chart stack narrow" viewBox="0 0 360 240"`) {
+		t.Errorf("trend is not drawn in both sizes")
 	}
 	if !strings.Contains(trend, "13ª 26") || !strings.Contains(trend, "3.000 €") {
 		t.Errorf("trend misses the thirteenth month or euro ticks")
@@ -380,8 +383,8 @@ func TestVariablePayAndTFR(t *testing.T) {
 	if !strings.Contains(string(d.Variable), `id="variable"`) || !strings.Contains(string(d.Variable), "Overtime, bonuses and allowances") {
 		t.Errorf("variable = %.200s", d.Variable)
 	}
-	if !strings.Contains(string(d.TFR), `id="tfr"`) || !strings.Contains(d.TFRNote, "summed up: ") {
-		t.Errorf("tfr = %.200s, note %q", d.TFR, d.TFRNote)
+	if !strings.Contains(string(d.TFR), `id="tfr"`) || d.TFRTotal == "" || d.TFRSpan != "accrued over 3 payslips" {
+		t.Errorf("tfr = %.200s, total %q, span %q", d.TFR, d.TFRTotal, d.TFRSpan)
 	}
 	// Without overtime, bonuses or allowances there is nothing to chart.
 	for i := range slips {
@@ -396,7 +399,33 @@ func TestVariablePayAndTFR(t *testing.T) {
 	if v := variablePay(i18n.EN, slips); v != "" {
 		t.Error("variable pay drawn for ordinary pay only")
 	}
-	if svg, _ := tfrChart(i18n.EN, slips[:1]); svg != "" {
+	if svg, _, _ := tfrChart(i18n.EN, slips[:1]); svg != "" {
 		t.Error("TFR chart drawn for one payslip")
+	}
+}
+
+func TestTabs(t *testing.T) {
+	var b bytes.Buffer
+	if err := Render(&b, i18n.EN, months(t, 2), "test"); err != nil {
+		t.Fatal(err)
+	}
+	page := b.String()
+	if n := strings.Count(page, `role="tab" id=`); n != 3 {
+		t.Errorf("%d tabs, want 3", n)
+	}
+	for _, want := range []string{`id="panel-month" role="tabpanel" aria-labelledby="tab-month">`,
+		`id="panel-time" role="tabpanel" aria-labelledby="tab-time" hidden>`,
+		`data-tab="time">How your 2 payslips went over time →</button>`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("page misses %s", want)
+		}
+	}
+	// A single payslip has nothing over time: one page, no tabs.
+	b.Reset()
+	if err := Render(&b, i18n.EN, months(t, 1), "test"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), `role="tab" id=`) || strings.Contains(b.String(), "went over time") {
+		t.Error("tabs for a single payslip")
 	}
 }

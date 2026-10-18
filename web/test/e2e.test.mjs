@@ -247,11 +247,25 @@ test('shows the latest of many months first', async () => {
   await frame.waitForSelector('section.month[data-month="7"]:not([hidden])');
   await page.waitForTimeout(300);
   assert.equal(await frame.$eval('.picker', (row) => row.scrollLeft), left);
-  // A column of the chart opens its month, marked in the row too.
-  await press(frame, '.chart.stack .col-hit[data-i="2"]');
+  // The charts are in their own tab, reached from the tabs or from the
+  // link under the month; arrows move between tabs.
+  assert.ok(await frame.$eval('#panel-time', (p) => p.hidden));
+  await press(frame, '.teaser button');
+  assert.equal(await frame.$eval('#tab-time', (t) => t.getAttribute('aria-selected')), 'true');
+  assert.ok(await frame.$eval('#panel-month', (p) => p.hidden));
+  await frame.focus('#tab-time');
+  await frame.press('#tab-time', 'ArrowRight');
+  assert.ok(!(await frame.$eval('#panel-reference', (p) => p.hidden)));
+  await frame.press('#tab-reference', 'ArrowLeft');
+  assert.ok(!(await frame.$eval('#panel-time', (p) => p.hidden)));
+  // A column of the chart opens its month, marked in the row too. On a
+  // phone the chart is the narrow one.
+  assert.equal(await frame.$eval('#trend', (svg) => getComputedStyle(svg).display), 'none');
+  await press(frame, '#trend-narrow .col-hit[data-i="2"]');
   await frame.waitForSelector('section.month[data-month="2"]:not([hidden])');
+  assert.ok(!(await frame.$eval('#panel-month', (p) => p.hidden)), 'the column leads back to the month');
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.dataset.month), '2');
-  assert.equal(await frame.$eval('.chart.stack .month.current', (t) => t.dataset.i), '2');
+  assert.equal(await frame.$eval('#trend-narrow .month.current', (t) => t.dataset.i), '2');
   assert.deepEqual(seen.errors, []);
   await page.close();
 });

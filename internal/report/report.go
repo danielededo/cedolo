@@ -54,6 +54,7 @@ type Month struct {
 	SetAside   []Line            // TFR and other amounts that do not change this month's pay
 	GrossTotal string            // the gross pay, next to Earnings
 	AsideTotal string            // the sum of SetAside
+	Leave      []LeaveRow        // the holiday and leave balances the payslip prints
 	Changes    []insights.Change // the most telling changes, at most two
 	More       []insights.Change // the others, behind "show all"
 }
@@ -110,14 +111,19 @@ type Data struct {
 	T        map[string]string
 	Range    string
 	Months   []Month
-	Selected int           // index in Months of the month shown first: the latest
+	Selected int // index in Months of the month shown first: the latest
+	// Tabs splits the page into the month, over time and reference, when
+	// there is something to show over time; Teaser leads from the month to
+	// the payslips over time.
+	Tabs     bool
+	Teaser   string
 	Trend    template.HTML // where the gross pay went, month by month
 	Variable template.HTML // overtime, bonuses and allowances, month by month
 	Years    *YearTable
 	TFR      template.HTML // the TFR accrued in the payslips, added up
-	TFRNote  string        // what the TFR chart adds up, with its total
+	TFRTotal string        // the TFR the chart adds up to
+	TFRSpan  string        // over how many payslips
 	Rows     []Row
-	Leave    []LeaveRow
 	// LeaveCharts follow each kind of leave over the months.
 	LeaveCharts []LeaveChart
 	Contract    *Contract
@@ -158,7 +164,6 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		d.Range = i18n.T(l, "report.range", len(slips), periods[0].Label, periods[len(periods)-1].Label)
 	}
 
-	var monthly []int
 	var prev *payslip.Payslip // previous ordinary month
 	for i, p := range slips {
 		st := status(p)
@@ -181,7 +186,6 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 				m.Summary = compared(l, *prev, p)
 			}
 			prev = &slips[i]
-			monthly = append(monthly, i)
 		}
 		d.Months = append(d.Months, m)
 	}
@@ -192,27 +196,12 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		d.Trend = template.HTML(trend(l, slips))
 		d.Variable = template.HTML(variablePay(l, slips))
 		d.Years = years(l, slips)
-		if svg, total := tfrChart(l, slips); svg != "" {
-			d.TFR, d.TFRNote = svg, i18n.T(l, "report.tfr.note", total)
-		}
+		d.TFR, d.TFRTotal, d.TFRSpan = tfrChart(l, slips)
 	}
 	d.LeaveCharts = leaveCharts(l, slips)
-
-	// Leave balances: the latest payslip that prints any.
-	for _, idx := range slices.Backward(monthly) {
-		if len(slips[idx].Leave) == 0 {
-			continue
-		}
-		for _, lv := range slips[idx].Leave {
-			d.Leave = append(d.Leave, LeaveRow{
-				Label:     lv.Label,
-				Previous:  quantity(lv.Previous, lv.Unit, l),
-				Accrued:   quantity(lv.Accrued, lv.Unit, l),
-				Used:      quantity(lv.Used, lv.Unit, l),
-				Remaining: quantity(lv.Remaining, lv.Unit, l),
-			})
-		}
-		break
+	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" {
+		d.Tabs = true
+		d.Teaser = i18n.T(l, "report.teaser", len(slips))
 	}
 
 	d.Contract = contract(l, slips)
@@ -234,6 +223,15 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	}
 	m.Changes, m.More = telling(per.Changes)
 	m.Reread = reread(l, p)
+	for _, lv := range p.Leave {
+		m.Leave = append(m.Leave, LeaveRow{
+			Label:     lv.Label,
+			Previous:  quantity(lv.Previous, lv.Unit, l),
+			Accrued:   quantity(lv.Accrued, lv.Unit, l),
+			Used:      quantity(lv.Used, lv.Unit, l),
+			Remaining: quantity(lv.Remaining, lv.Unit, l),
+		})
+	}
 	if p.Gross.Found() {
 		m.Gross = i18n.T(l, "report.of_gross", amount(p.Gross))
 		m.GrossTotal = amount(p.Gross)
@@ -332,7 +330,7 @@ func trend(l i18n.Lang, slips []payslip.Payslip) string {
 		}
 		total.Values = append(total.Values, sum)
 	}
-	return stackChart("trend", labels, ss, total)
+	return stackCharts("trend", labels, ss, total)
 }
 
 // LeaveChart is the balance of one kind of leave over the months.

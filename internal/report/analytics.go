@@ -138,12 +138,12 @@ func variablePay(l i18n.Lang, slips []payslip.Payslip) string {
 	if !found {
 		return ""
 	}
-	return stackChart("variable", labels, []series{s}, s)
+	return stackCharts("variable", labels, []series{s}, s)
 }
 
-// tfrChart follows the TFR accrued in the payslips, added up month by month.
-// It needs two payslips that print it.
-func tfrChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total string) {
+// tfrChart follows the TFR accrued in the payslips, added up month by month,
+// as a small line under its total. It needs two payslips that print it.
+func tfrChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total, span string) {
 	var labels []string
 	s := series{Name: i18n.T(l, "report.tfr.series"), Color: "var(--series-1)"}
 	var sum int64
@@ -156,11 +156,11 @@ func tfrChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total st
 		s.Values = append(s.Values, sum)
 	}
 	if len(s.Values) < 2 {
-		return "", ""
+		return "", "", ""
 	}
 	return template.HTML(lineChart("tfr", labels, []series{s}, lineOptions{
-		width: chartW, height: chartH, tick: euros, value: moneyValue, endLabels: true,
-	})), moneyValue(sum)
+		width: 340, height: 170, tick: whole, value: moneyValue,
+	})), moneyValue(sum), i18n.T(l, "report.tfr.span", len(s.Values))
 }
 
 // roundDiv divides rounding half away from zero.
