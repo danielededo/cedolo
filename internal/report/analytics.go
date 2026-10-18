@@ -138,7 +138,7 @@ func variablePay(l i18n.Lang, slips []payslip.Payslip) string {
 	if !found {
 		return ""
 	}
-	return stackChart("variable", labels, []series{s}, s)
+	return stackCharts("variable", labels, []series{s}, s)
 }
 
 // tfrChart follows the TFR accrued in the payslips, added up month by month,

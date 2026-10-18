@@ -185,11 +185,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 .embedded footer { display: none; }
 .embedded main { padding-bottom: 8px; }
+.chart.narrow { display: none; }
 @media (max-width: 520px) {
-  .chart .tick { font-size: 22px; }
-  .mini .chart .tick { font-size: 12px; }
-  .chart .end-label { display: none; }
-  .chart .tick.thin { display: none; }
+  .chart.wide { display: none; }
+  .chart.narrow { display: block; }
 }
 @media print {
   .tooltip, .picker, .hint { display: none; }

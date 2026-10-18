@@ -23,6 +23,19 @@ const (
 	barRadius   = 4.0
 )
 
+// size is the drawing size of a chart. Wide charts scale down on a phone
+// until their text is too small to read, so the columns charts are drawn
+// twice, wide and narrow, and the page shows the one that fits.
+type size struct {
+	w, h float64
+	name string // "wide" or "narrow", a class of the chart
+}
+
+var (
+	wide   = size{chartW, chartH, "wide"}
+	narrow = size{360, 240, "narrow"}
+)
+
 // series is one line or one stacked category; its color is a CSS custom
 // property so that light and dark themes swap in one place.
 type series struct {
@@ -99,8 +112,7 @@ func (p plot) axes(b *strings.Builder, xs func(int) float64) {
 		fmt.Fprintf(b, `<text class="tick" x="%.1f" y="%.1f" text-anchor="end">%s</text>`, padLeft-8, y+4, p.tick(v))
 	}
 	// Labels need about 60 units each: with many months only every k-th is
-	// printed, counting back from the latest, and on narrow screens every
-	// other one of those is hidden too.
+	// printed, counting back from the latest.
 	n := len(p.labels)
 	k := max(1, int(math.Ceil(float64(n)*60/(p.w-padLeft-p.padRight))))
 	for i, l := range p.labels {
@@ -108,9 +120,6 @@ func (p plot) axes(b *strings.Builder, xs func(int) float64) {
 			continue
 		}
 		cls := "tick month"
-		if (n-1-i)/k%2 == 1 {
-			cls += " thin"
-		}
 		// The latest label ends at its point when there is no room after it.
 		anchor := "middle"
 		if i == n-1 && xs(i)+30 > p.w {
@@ -177,23 +186,28 @@ func lineChart(id string, labels []string, ss []series, o lineOptions) string {
 	return b.String()
 }
 
+// stackCharts draws a columns chart in both sizes.
+func stackCharts(id string, labels []string, ss []series, total series) string {
+	return stackChart(id, labels, ss, total, wide) + stackChart(id+"-narrow", labels, ss, total, narrow)
+}
+
 // stackChart draws one column per month, its segments stacked from the
 // first series up with a surface gap between them and a rounded top. The
 // column's height is the sum of its segments, given as totals for the
 // hover layer. A transparent band over each month is its hit target.
-func stackChart(id string, labels []string, ss []series, total series) string {
+func stackChart(id string, labels []string, ss []series, total series, sz size) string {
 	var maxV int64
 	for _, v := range total.Values {
 		maxV = max(maxV, v)
 	}
 	top, step := niceMax(maxV)
-	p := plot{labels: labels, top: top, step: step, w: chartW, h: chartH, padRight: 16, tick: euros}
+	p := plot{labels: labels, top: top, step: step, w: sz.w, h: sz.h, padRight: 16, tick: euros}
 	n := len(labels)
-	slot := (chartW - padLeft - p.padRight) / float64(n)
+	slot := (sz.w - padLeft - p.padRight) / float64(n)
 	w := math.Min(barMaxWidth, slot*0.6)
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg id="%s" class="chart stack" viewBox="0 0 %.0f %.0f" role="img" aria-labelledby="%s-title" data-points="%s">`,
-		id, chartW, chartH, id, html.EscapeString(pointsJSON(labels, ss, moneyValue, &total)))
+	fmt.Fprintf(&b, `<svg id="%s" class="chart stack %s" viewBox="0 0 %.0f %.0f" role="img" aria-labelledby="%s-title" data-points="%s">`,
+		id, sz.name, sz.w, sz.h, id, html.EscapeString(pointsJSON(labels, ss, moneyValue, &total)))
 	p.axes(&b, p.band)
 	for i := range labels {
 		x := p.band(i) - w/2
@@ -225,7 +239,7 @@ func stackChart(id string, labels []string, ss []series, total series) string {
 	}
 	for i := range labels {
 		fmt.Fprintf(&b, `<rect class="col-hit" data-i="%d" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="transparent"/>`,
-			i, p.band(i)-slot/2, padTop, slot, chartH-padTop)
+			i, p.band(i)-slot/2, padTop, slot, sz.h-padTop)
 	}
 	b.WriteString(`</svg>`)
 	return b.String()

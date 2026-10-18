@@ -299,10 +299,13 @@ func TestTrendAndLeaveCharts(t *testing.T) {
 	slips = append(slips, thirteenth)
 	d := Build(i18n.IT, slips, "test")
 	// One column per payslip, the thirteenth month included, each a hit
-	// target that opens its month.
+	// target that opens its month; drawn wide and narrow, for phones.
 	trend := string(d.Trend)
-	if n := strings.Count(trend, `class="col-hit"`); n != 4 {
-		t.Errorf("%d columns, want 4", n)
+	if n := strings.Count(trend, `class="col-hit"`); n != 8 {
+		t.Errorf("%d columns, want 4 in each size", n)
+	}
+	if !strings.Contains(trend, `class="chart stack wide"`) || !strings.Contains(trend, `id="trend-narrow" class="chart stack narrow" viewBox="0 0 360 240"`) {
+		t.Errorf("trend is not drawn in both sizes")
 	}
 	if !strings.Contains(trend, "13ª 26") || !strings.Contains(trend, "3.000 €") {
 		t.Errorf("trend misses the thirteenth month or euro ticks")

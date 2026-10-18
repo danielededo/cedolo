@@ -29,6 +29,9 @@ How to use this file:
   their own, apart from where the gross pay goes.
 - The month by month table opens under the chart it shows, as "Show as a
   table".
+- On a phone the charts are drawn for its width, with text that stays
+  readable, instead of a wide chart scaled down.
+- The TFR shows its total in large type over a small line.
 
 ### Added
 

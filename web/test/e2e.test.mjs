@@ -247,11 +247,13 @@ test('shows the latest of many months first', async () => {
   await frame.waitForSelector('section.month[data-month="7"]:not([hidden])');
   await page.waitForTimeout(300);
   assert.equal(await frame.$eval('.picker', (row) => row.scrollLeft), left);
-  // A column of the chart opens its month, marked in the row too.
-  await press(frame, '.chart.stack .col-hit[data-i="2"]');
+  // A column of the chart opens its month, marked in the row too. On a
+  // phone the chart is the narrow one.
+  assert.equal(await frame.$eval('#trend', (svg) => getComputedStyle(svg).display), 'none');
+  await press(frame, '#trend-narrow .col-hit[data-i="2"]');
   await frame.waitForSelector('section.month[data-month="2"]:not([hidden])');
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.dataset.month), '2');
-  assert.equal(await frame.$eval('.chart.stack .month.current', (t) => t.dataset.i), '2');
+  assert.equal(await frame.$eval('#trend-narrow .month.current', (t) => t.dataset.i), '2');
   assert.deepEqual(seen.errors, []);
   await page.close();
 });

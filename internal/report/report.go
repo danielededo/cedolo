@@ -321,7 +321,7 @@ func trend(l i18n.Lang, slips []payslip.Payslip) string {
 		}
 		total.Values = append(total.Values, sum)
 	}
-	return stackChart("trend", labels, ss, total)
+	return stackCharts("trend", labels, ss, total)
 }
 
 // LeaveChart is the balance of one kind of leave over the months.
