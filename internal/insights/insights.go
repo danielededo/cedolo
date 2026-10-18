@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/danielededo/cedolo/internal/i18n"
 	"github.com/danielededo/cedolo/internal/money"
@@ -21,6 +23,8 @@ type Change struct {
 	// the requested language.
 	Text string   `json:"text"`
 	Why  []string `json:"why,omitempty"`
+	// Key is the taxonomy key of the item a change is about, if any.
+	Key string `json:"key,omitempty"`
 }
 
 // Period is the payslip a list of changes refers to.
@@ -197,7 +201,7 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 		}
 		rel := float64(v.cur.Cents-v.prev.Cents) / float64(v.prev.Cents)
 		if math.Abs(rel) > relativeThreshold {
-			add(v.code, i18n.T(l, v.textKey, money.Format(v.prev.Cents), money.Format(v.cur.Cents), rel*100), reasons...)
+			add(v.code, i18n.T(l, v.textKey, money.Format(v.prev.Cents), money.Format(v.cur.Cents), percent(l, rel*100, 1, true)), reasons...)
 		}
 	}
 
@@ -212,6 +216,7 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 			why = append(why, i18n.T(l, "why.fourteenth"))
 		}
 		add("item_new", i18n.T(l, "change.item_new", i18n.ItemLabel(l, key), money.Format(sumKey(cur, key))), why...)
+		out[len(out)-1].Key = key
 	}
 	for _, key := range sortedKeys(goneKeys) {
 		var why []string
@@ -219,6 +224,7 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 			why = append(why, i18n.T(l, "why.surcharge_end"))
 		}
 		add("item_gone", i18n.T(l, "change.item_gone", i18n.ItemLabel(l, key)), why...)
+		out[len(out)-1].Key = key
 	}
 
 	if pr, cr, ok := rates(taxes(prev), prev.Gross, taxes(cur), cur.Gross); ok && math.Abs(cr-pr) > taxRateThreshold {
@@ -226,10 +232,10 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 		if cur.Month == 12 || cur.Month == 2 || cur.Month == 3 || prev.Month == 12 {
 			why = append(why, i18n.T(l, "why.year_end"))
 		}
-		add("tax_rate", i18n.T(l, "change.tax_rate", pr, cr), why...)
+		add("tax_rate", i18n.T(l, "change.tax_rate", percent(l, pr, 1, false), percent(l, cr, 1, false)), why...)
 	}
 	if pr, cr, ok := rates(inps(prev), prev.INPSBase, inps(cur), cur.INPSBase); ok && math.Abs(cr-pr) > inpsRateThreshold {
-		add("inps_rate", i18n.T(l, "change.inps_rate", pr, cr), i18n.T(l, "why.inps_threshold"))
+		add("inps_rate", i18n.T(l, "change.inps_rate", percent(l, pr, 2, false), percent(l, cr, 2, false)), i18n.T(l, "why.inps_threshold"))
 	}
 
 	for _, lc := range cur.Leave {
@@ -316,6 +322,19 @@ func rates(prevValue int64, prevBase payslip.Amount, curValue int64, curBase pay
 		return 0, 0, false
 	}
 	return 100 * float64(prevValue) / float64(prevBase.Cents), 100 * float64(curValue) / float64(curBase.Cents), true
+}
+
+// percent formats a percentage with the language's decimal mark: "-30,3"
+// in Italian, "-30.3" in English; signed adds a plus to a rise.
+func percent(l i18n.Lang, v float64, decimals int, signed bool) string {
+	s := strconv.FormatFloat(v, 'f', decimals, 64)
+	if signed && v >= 0 {
+		s = "+" + s
+	}
+	if l == i18n.IT {
+		s = strings.Replace(s, ".", ",", 1)
+	}
+	return s
 }
 
 // String renders a change for terminals.

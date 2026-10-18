@@ -48,6 +48,7 @@ type Month struct {
 	Gross      string            // "of 2.194,50 € gross pay"
 	Delta      string            // change of the net from the previous month, empty when unknown
 	Summary    string            // the month in one sentence: what changed and why, or where the gross goes
+	SummaryWhy []string          // likely reasons for the change the summary tells
 	Reread     string            // which totals were read from a less usual place so that they add up
 	Parts      []Part            // where the gross pay goes
 	Earnings   []Line            // what makes up the gross pay
@@ -180,13 +181,21 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		})
 		m := month(l, p, periods[i])
 		m.Summary = share(l, p)
+		changes := periods[i].Changes
 		if p.Kind == payslip.Monthly && p.Month != 0 {
 			if prev != nil && p.Net.Found() && prev.Net.Found() {
 				m.Delta = i18n.T(l, "report.vs_previous", signed(p.Net.Cents-prev.Net.Cents))
-				m.Summary = compared(l, *prev, p)
+				var driver string
+				m.Summary, driver = compared(l, *prev, p)
+				changes, m.SummaryWhy = told(changes, driver)
 			}
 			prev = &slips[i]
 		}
+		if len(m.Leave) > 0 {
+			// The balances are in the month's table.
+			changes = slices.DeleteFunc(slices.Clone(changes), func(c insights.Change) bool { return c.Code == "leave" })
+		}
+		m.Changes, m.More = telling(changes)
 		d.Months = append(d.Months, m)
 	}
 	// The latest payslip opens first, a thirteenth or fourteenth month too.
@@ -221,7 +230,6 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		StatusText: i18n.T(l, "report."+string(st)),
 		Net:        amount(p.Net),
 	}
-	m.Changes, m.More = telling(per.Changes)
 	m.Reread = reread(l, p)
 	for _, lv := range p.Leave {
 		m.Leave = append(m.Leave, LeaveRow{
@@ -516,10 +524,26 @@ func share(l i18n.Lang, p payslip.Payslip) string {
 	return i18n.T(l, "report.summary.share", (p.Net.Cents*100+p.Gross.Cents/2)/p.Gross.Cents)
 }
 
+// told leaves out of the month's changes what the summary already tells: the
+// net pay, whose reasons move under the summary, and the item that moved it
+// most, when it is new or gone.
+func told(changes []insights.Change, driver string) (rest []insights.Change, why []string) {
+	for _, c := range changes {
+		switch {
+		case c.Code == "net":
+			why = c.Why
+		case driver != "" && c.Key == driver:
+		default:
+			rest = append(rest, c)
+		}
+	}
+	return rest, why
+}
+
 // compared sums up a month against the previous one: how much the net pay
 // moved and the item that moved it most, when one item explains at least
-// half of the change.
-func compared(l i18n.Lang, prev, cur payslip.Payslip) string {
+// half of the change. It also returns that item's key.
+func compared(l i18n.Lang, prev, cur payslip.Payslip) (string, string) {
 	since := insights.Label(l, prev)
 	if l == i18n.IT {
 		// "a settembre", but "ad agosto", "ad aprile", "ad ottobre".
@@ -531,7 +555,7 @@ func compared(l i18n.Lang, prev, cur payslip.Payslip) string {
 	}
 	delta := cur.Net.Cents - prev.Net.Cents
 	if delta == 0 {
-		return i18n.T(l, "report.summary.same", since)
+		return i18n.T(l, "report.summary.same", since), ""
 	}
 	dir := "more"
 	if delta < 0 {
@@ -554,9 +578,9 @@ func compared(l i18n.Lang, prev, cur payslip.Payslip) string {
 		}
 	}
 	if key == "" || 2*abs(best) < abs(delta) {
-		return i18n.T(l, "report.summary."+dir, since, money.Format(abs(delta))+" €")
+		return i18n.T(l, "report.summary."+dir, since, money.Format(abs(delta))+" €"), ""
 	}
-	return i18n.T(l, "report.summary."+dir+"_because", since, money.Format(abs(delta))+" €", i18n.ItemLabel(l, key), signed(best))
+	return i18n.T(l, "report.summary."+dir+"_because", since, money.Format(abs(delta))+" €", i18n.ItemLabel(l, key), signed(best)), key
 }
 
 // effects returns how each kind of item moves the net pay: earnings add,

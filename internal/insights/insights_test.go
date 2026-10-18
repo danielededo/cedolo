@@ -164,3 +164,20 @@ func TestAdditionalMonthWithoutMonth(t *testing.T) {
 		t.Errorf("the same fourteenth twice: kept %d, dropped %d", len(kept), dropped)
 	}
 }
+
+func TestPercentFollowsTheLanguage(t *testing.T) {
+	for _, c := range []struct {
+		l      i18n.Lang
+		v      float64
+		d      int
+		signed bool
+		want   string
+	}{
+		{i18n.IT, -30.26, 1, true, "-30,3"}, {i18n.IT, 9.19, 2, false, "9,19"},
+		{i18n.EN, 2.5, 1, true, "+2.5"}, {i18n.EN, 12.5, 1, false, "12.5"},
+	} {
+		if got := percent(c.l, c.v, c.d, c.signed); got != c.want {
+			t.Errorf("percent(%s, %v) = %q, want %q", c.l, c.v, got, c.want)
+		}
+	}
+}

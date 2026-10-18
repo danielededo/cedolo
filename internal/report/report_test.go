@@ -253,7 +253,7 @@ func TestMonthSummary(t *testing.T) {
 			item("earnings.overtime", payslip.Earning, 300), item("tax.irpef", payslip.Deduction, 50000)),
 			"Compared with January 2026 you receive 10,00 € more."},
 	} {
-		if got := compared(i18n.EN, prev, c.cur); got != c.want {
+		if got, _ := compared(i18n.EN, prev, c.cur); got != c.want {
 			t.Errorf("%s: %q, want %q", c.name, got, c.want)
 		}
 	}
@@ -263,11 +263,11 @@ func TestMonthSummaryItalianPreposition(t *testing.T) {
 	prev := payslip.Payslip{Year: 2026, Month: 8, Kind: payslip.Monthly, Net: payslip.Amount{Cents: 100, Status: payslip.Verified}}
 	cur := prev
 	cur.Month = 9
-	if got := compared(i18n.IT, prev, cur); got != "Ricevi quanto ad agosto 2026." {
+	if got, _ := compared(i18n.IT, prev, cur); got != "Ricevi quanto ad agosto 2026." {
 		t.Errorf("got %q", got)
 	}
 	prev.Month, cur.Month = 9, 10
-	if got := compared(i18n.IT, prev, cur); got != "Ricevi quanto a settembre 2026." {
+	if got, _ := compared(i18n.IT, prev, cur); got != "Ricevi quanto a settembre 2026." {
 		t.Errorf("got %q", got)
 	}
 }
@@ -364,7 +364,6 @@ func TestYearsTable(t *testing.T) {
 		"Net pay":                     "4.500,00 € | 1.400,00 €",
 		"Average monthly net":         "1.500,00 € | 1.400,00 €",
 		"Net of every 100 € of gross": "75 € | 70 €",
-		"TFR accrued":                 "420,00 € | 140,00 €",
 	} {
 		if cells[label] != want {
 			t.Errorf("%s = %q, want %q", label, cells[label], want)
@@ -427,5 +426,18 @@ func TestTabs(t *testing.T) {
 	}
 	if strings.Contains(b.String(), `role="tab" id=`) || strings.Contains(b.String(), "went over time") {
 		t.Error("tabs for a single payslip")
+	}
+}
+
+func TestToldChangesAreLeftOut(t *testing.T) {
+	changes := []insights.Change{
+		{Code: "net", Text: "net", Why: []string{"overtime"}},
+		{Code: "item_new", Key: "earnings.overtime", Text: "overtime"},
+		{Code: "item_new", Key: "earnings.bonus", Text: "bonus"},
+		{Code: "leave", Text: "leave"},
+	}
+	rest, why := told(changes, "earnings.overtime")
+	if len(rest) != 2 || rest[0].Text != "bonus" || rest[1].Text != "leave" || len(why) != 1 || why[0] != "overtime" {
+		t.Errorf("rest = %+v, why = %v", rest, why)
 	}
 }

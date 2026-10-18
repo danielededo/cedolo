@@ -18,11 +18,23 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- In the web app, payslips can be added to a report already shown, with
+  "Add payslips" or by dropping them on the page; a payslip already read is
+  pointed out and not counted twice.
+- The report sums the payslips of each year: gross, contributions, taxes,
+  net, the average monthly net and how much of every 100 euros of gross was
+  paid.
+- A chart follows overtime, bonuses and allowances month by month, on a
+  scale of their own, so that the part of the pay that changes shows.
+- A chart follows the TFR accrued in the payslips, added up month by month.
+
 ### Changed
 
 - The report is split into three tabs: the month, "Over time" with the
-  year by year totals and the charts, and "For reference" with the contract
-  and the glossary. A link under the month leads to the payslips over time,
+  year by year totals and the charts, and "Glossary" with the payslip words
+  and the contract, open rather than collapsed. A link under the month leads to the payslips over time,
   and a column of a chart leads back to its month. A single payslip keeps
   one page; printing shows every tab.
 - Holiday and leave balances are shown with the month they belong to,
@@ -34,18 +46,18 @@ How to use this file:
 - On a phone the charts are drawn for its width, with text that stays
   readable, instead of a wide chart scaled down.
 - The TFR shows its total in large type over a small line.
+- A month no longer repeats in its list of changes what its summary already
+  says: the change of the net pay, whose reasons now follow the summary, the
+  item that moved it most, and the leave balances shown in its table. The
+  TFR is no longer a row of the year by year table, as its own section adds
+  it up.
 
-### Added
+- The web app's report keeps two buttons, "Download the report" and "Add
+  payslips"; "Start over" is gone, as reloading the page starts over.
 
-- In the web app, payslips can be added to a report already shown, with
-  "Add payslips" or by dropping them on the page; a payslip already read is
-  pointed out and not counted twice.
-- The report sums the payslips of each year: gross, contributions, taxes,
-  net, the average monthly net, how much of every 100 euros of gross was
-  paid, and the TFR accrued.
-- A chart follows overtime, bonuses and allowances month by month, on a
-  scale of their own, so that the part of the pay that changes shows.
-- A chart follows the TFR accrued in the payslips, added up month by month.
+### Fixed
+
+- Percentages in the changes use the decimal comma in Italian: "-30,3%".
 
 ## [0.8.0] - 2026-10-18
 
