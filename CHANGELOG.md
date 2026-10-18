@@ -25,6 +25,17 @@ How to use this file:
   the payslip adds up. The report says when this happens, so the amount
   can be checked against the payslip.
 
+### Fixed
+
+- Payslips that print the contributions total at the foot of a tall box,
+  the taxes as "IRPEF + IMP. SOST.", or the family allowance outside the
+  item table now add up.
+- A final payslip whose gross already leaves out the pay withheld for an
+  absence, and whose taxes are the separate taxation of TFR plus the
+  end-of-employment IRPEF adjustment, now adds up.
+- The 80 euro bonus ("Credito art.1 DL 66/2014") is recognized as a tax
+  credit.
+
 ## [0.7.0] - 2026-10-17
 
 ### Added

@@ -144,25 +144,33 @@ func amountField(lines []line, pageWidth float64, labels []string) (payslip.Amou
 // amountReadings returns the amounts printed for the labels, most preferred
 // first: the preferred amount of each occurrence of each label, in label
 // order, and then, if asked, the other amounts each occurrence could be read
-// as. The first reading is the one amountField returns.
+// as, the farthest last. The first reading is the one amountField returns.
 func amountReadings(lines []line, pageWidth float64, labels []string, others bool) []payslip.Amount {
-	var first, rest []payslip.Amount
+	var first, rest, far []payslip.Amount
 	for _, label := range labels {
 		for i, l := range lines {
 			occs := l.findAll(label)
 			occs = append(occs, stackedLabel(lines, i, label)...)
 			for _, o := range occs {
-				for k, t := range amountCandidates(lines, i, o.first, o.last, pageWidth) {
+				read := func(t layout.Token) (payslip.Amount, bool) {
 					cents, err := money.Parse(t.Text)
 					if err != nil {
-						continue
+						return payslip.Amount{}, false
 					}
 					src := sourceOf(t, l.page)
-					a := payslip.Amount{Cents: cents, Status: payslip.Extracted, Source: &src}
-					if k == 0 {
+					return payslip.Amount{Cents: cents, Status: payslip.Extracted, Source: &src}, true
+				}
+				cands := amountCandidates(lines, i, o.first, o.last, pageWidth)
+				for k, t := range cands {
+					if a, ok := read(t); ok && k == 0 {
 						first = append(first, a)
-					} else {
+					} else if ok {
 						rest = append(rest, a)
+					}
+				}
+				if t, ok := farBelow(lines, i, o.first, o.last, pageWidth); ok && !slices.Contains(cands, t) {
+					if a, ok := read(t); ok {
+						far = append(far, a)
 					}
 				}
 			}
@@ -171,7 +179,7 @@ func amountReadings(lines []line, pageWidth float64, labels []string, others boo
 	if !others {
 		return first
 	}
-	return append(first, rest...)
+	return append(append(first, rest...), far...)
 }
 
 // stackedLabel finds a label whose first words end line i and whose remaining
@@ -260,6 +268,30 @@ func amountCandidates(lines []line, i, first, last int, pageWidth float64) []lay
 		}
 	}
 	return out
+}
+
+// farBelow returns the first amount in a label's cell beyond the reach of
+// amountCandidates but within farReach, with nothing else in the cell
+// between: the value of a total printed at the foot of a tall box.
+func farBelow(lines []line, i, first, last int, pageWidth float64) (layout.Token, bool) {
+	l := lines[i]
+	x0, x1 := l.cell(first, last, pageWidth)
+	for j := i + 1; j < len(lines); j++ {
+		h := math.Max(l.h, lines[j].h)
+		if lines[j].y-l.y > farReach*h {
+			break
+		}
+		for _, t := range lines[j].toks {
+			if c := center(t); c < x0 || c >= x1 {
+				continue
+			}
+			if lines[j].y-l.y <= belowReach*h || !money.IsAmount(t.Text) || yearToDate(lines, j, x0) {
+				return layout.Token{}, false
+			}
+			return t, true
+		}
+	}
+	return layout.Token{}, false
 }
 
 // yearToDate reports whether line j holds the year's running totals rather

@@ -31,6 +31,10 @@ const (
 const (
 	// belowReach is how far below a label its value may be printed.
 	belowReach = 3.0
+	// farReach is how far below a label a value may still be printed in a
+	// tall box, as a total over a list of contributions. Such a value is
+	// only an alternative reading, taken when the payslip adds up with it.
+	farReach = 6.0
 	// qualifierReach is how far above a label a word qualifying it may be
 	// printed, as "GG." over "CCNL".
 	qualifierReach = 1.6

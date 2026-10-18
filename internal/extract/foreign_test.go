@@ -650,3 +650,91 @@ func TestPartialAgreementKeepsPreferredReadings(t *testing.T) {
 	}
 	wantStatus(t, "net", p.Net, 140000, payslip.Inconsistent)
 }
+
+// TestTallBoxesAndFamilyAllowance covers, with invented values, a layout
+// that prints the contributions total at the foot of a tall box, the taxes
+// as "IRPEF + IMP. SOST.", the family allowance in a strip outside the item
+// table, and the 80 euro bonus as a credit item.
+func TestTallBoxesAndFamilyAllowance(t *testing.T) {
+	pg := page(
+		[]string{"40:ACME SINTETICA SPA", "380:Mese retribuito:"},
+		[]string{"380:03/2016"},
+		[]string{},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:Retribuzione ordinaria", "450>1.900,00"},
+		[]string{"40:Trasferta Italia", "450>150,00"},
+		[]string{"40:Credito art.1 DL 66/2014", "450>80,00"},
+		[]string{}, []string{}, []string{},
+		[]string{"300:Importo assegno", "420:Totale spettante"},
+		[]string{"340>100,00", "500>2.130,00"},
+		[]string{"40:Contributi", "420:Totale contributi"},
+		[]string{"40:INPS", "240>190,35"},
+		[]string{},
+		[]string{"500>190,35"},
+		[]string{"40:Irpef netta", "420:Irpef + imp. sost."},
+		[]string{"100>250,00", "500>250,00"},
+		[]string{"40:Totale competenze", "200:Totale trattenute", "330:Arr. attuale", "430:Netto in busta"},
+		[]string{"130>2.230,00", "290>440,35", "380>0,35", "520>1.790,00"},
+	)
+	got := Document(layout.Document{Pages: []layout.Page{pg}})
+	if len(got) != 1 {
+		t.Fatalf("got %d payslips", len(got))
+	}
+	p := got[0]
+	wantStatus(t, "gross", p.Gross, 223000, payslip.Verified)
+	wantStatus(t, "deductions", p.Deductions, 44035, payslip.Verified)
+	wantStatus(t, "net", p.Net, 179000, payslip.Verified)
+	wantStatus(t, "contributions", p.SocialContributions, 19035, payslip.Verified)
+	wantStatus(t, "taxes", p.Taxes, 25000, payslip.Verified)
+	if !p.SocialContributions.Alternative || p.Taxes.Alternative {
+		t.Errorf("alternative: contributions %v, taxes %v", p.SocialContributions.Alternative, p.Taxes.Alternative)
+	}
+	if it := find(t, p.Items, "earnings.family_allowance"); it.Cents != 10000 {
+		t.Errorf("family allowance = %d", it.Cents)
+	}
+	find(t, p.Items, "tax.credit")
+}
+
+// TestEndOfEmploymentTaxesAndAbsence covers, with invented values, a final
+// payslip whose gross is net of the pay withheld for an absence and whose
+// taxes are the separate taxation of TFR plus the end-of-employment IRPEF
+// adjustment, with the month's IRPEF box left empty.
+func TestEndOfEmploymentTaxesAndAbsence(t *testing.T) {
+	pg := page(
+		[]string{"40:ACME SINTETICA SPA", "380:Mese retribuito:"},
+		[]string{"380:01/2025"},
+		[]string{},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:Assenza per malattia", "540>100,00"},
+		[]string{"40:Ferie non godute", "450>1.500,00"},
+		[]string{"40:Carenza malattia", "450>100,00"},
+		[]string{}, []string{}, []string{},
+		[]string{"40:Totale lordo", "420:Totale contributi sociali"},
+		[]string{"100>1.500,00", "540>150,00"},
+		[]string{"420:Totale trattenute IRPEF T.S."},
+		[]string{"540>50,00"},
+		[]string{"420:Totale trattenute IRPEF"},
+		[]string{},
+		[]string{"420:Totale trattenute"},
+		[]string{"540>500,00"},
+		[]string{"420:Conguaglio IRPEF +/-"},
+		[]string{"540>200,00"},
+		[]string{"420:Netto busta"},
+		[]string{"540>1.100,00"},
+	)
+	got := Document(layout.Document{Pages: []layout.Page{pg}})
+	if len(got) != 1 {
+		t.Fatalf("got %d payslips", len(got))
+	}
+	p := got[0]
+	if it := find(t, p.Items, "deductions.absence"); it.Cents != 10000 {
+		t.Errorf("absence = %d", it.Cents)
+	}
+	wantStatus(t, "gross", p.Gross, 150000, payslip.Verified)
+	wantStatus(t, "deductions", p.Deductions, 50000, payslip.Verified)
+	wantStatus(t, "net", p.Net, 110000, payslip.Verified)
+	wantStatus(t, "taxes", p.Taxes, 25000, payslip.Verified)
+	if !p.Taxes.Alternative {
+		t.Error("taxes not marked as an alternative reading")
+	}
+}
