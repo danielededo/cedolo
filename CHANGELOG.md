@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-18
+
 ### Changed
 
 - When a number next to a total is not its value, cedolo now tries the
@@ -313,7 +315,8 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/danielededo/cedolo/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/danielededo/cedolo/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/danielededo/cedolo/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/danielededo/cedolo/compare/v0.4.0...v0.5.0
