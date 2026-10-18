@@ -256,6 +256,32 @@ test('shows the latest of many months first', async () => {
   await page.close();
 });
 
+test('adds payslips to a report', async () => {
+  const [one, two, three] = [1, 2, 3].map((m) => synth(`add-${m}.pdf`, '-month', String(m)));
+  const { page, seen } = await open();
+  await page.setInputFiles('#files', [one, two]);
+  await statuses(page);
+  await page.waitForSelector('#report:not(.pending)');
+  // The report offers to add files: a new month, and one already read.
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('#add')]);
+  await chooser.setFiles([three, one]);
+  await page.waitForFunction(() => document.querySelectorAll('#file-list li').length === 4);
+  assert.deepEqual(await statuses(page), [
+    'ok: — 1 payslip(s) read',
+    'ok: — 1 payslip(s) read',
+    'ok: — 1 payslip(s) read',
+    'warn: — 1 payslip(s) read, 1 already read in another file and ignored',
+  ]);
+  assert.ok(await page.$eval('#pick', (p) => p.hidden), 'the picker hides again');
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  await frame.waitForFunction(() => document.querySelectorAll('.picker button').length === 3);
+  // The report opens on the latest month again.
+  assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Mar 26');
+  assert.deepEqual(seen.errors, []);
+  onlyThisSite(seen);
+  await page.close();
+});
+
 test('makes an anonymized copy that reads as the same payslip', async () => {
   const { page, seen } = await open();
   await page.setInputFiles('#files', [synth('BIANCHI_ANNA_10-2026.pdf')]);
