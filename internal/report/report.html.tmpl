@@ -261,6 +261,43 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </section>
 {{end}}
 
+{{if .Mix}}
+<section>
+<h2>{{index .T "report.mix"}}</h2>
+<ul class="legend">
+<li><span class="key" style="background:var(--series-1)"></span>{{index .T "report.mix.ordinary"}}</li>
+<li><span class="key" style="background:var(--series-2)"></span>{{index .T "report.mix.variable"}}</li>
+<li><span class="key" style="background:var(--series-3)"></span>{{index .T "report.mix.additional"}}</li>
+<li><span class="key" style="background:var(--series-4)"></span>{{index .T "report.mix.other"}}</li>
+</ul>
+<figure>{{.Mix}}<div class="tooltip" hidden></div></figure>
+<p class="note">{{index .T "report.mix.note"}}</p>
+</section>
+{{end}}
+
+{{with .Years}}
+<section>
+<h2>{{index $.T "report.years"}}</h2>
+<div class="scroll">
+<table class="years">
+<thead><tr><th></th>{{range .Years}}<th class="num">{{.}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .Rows}}<tr><th scope="row">{{.Label}}</th>{{range .Cells}}<td class="num">{{.}}</td>{{end}}</tr>
+{{end}}</tbody>
+</table>
+</div>
+<p class="note">{{index $.T "report.year.note"}}{{if .Partial}} {{index $.T "report.year.partial"}}{{end}}</p>
+</section>
+{{end}}
+
+{{if .TFR}}
+<section>
+<h2>{{index .T "report.tfr"}}</h2>
+<figure>{{.TFR}}<div class="tooltip" hidden></div></figure>
+<p class="note">{{.TFRNote}}</p>
+</section>
+{{end}}
+
 {{if .Rows}}
 <section class="more">
 {{if gt (len .Rows) 1}}<details>

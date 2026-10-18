@@ -333,3 +333,70 @@ func TestRereadTotalsAreNoted(t *testing.T) {
 		t.Errorf("reread without alternatives = %q", got)
 	}
 }
+
+func TestYearsTable(t *testing.T) {
+	a := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Verified} }
+	slip := func(year, month int, kind payslip.Kind, gross, net, tfr int64) payslip.Payslip {
+		return payslip.Payslip{Year: year, Month: month, Kind: kind, Gross: a(gross), Net: a(net), TFR: a(tfr),
+			SocialContributions: a(gross / 10), Taxes: a(gross / 5)}
+	}
+	slips := []payslip.Payslip{
+		slip(2026, 1, payslip.Monthly, 200000, 140000, 14000),
+		slip(2025, 11, payslip.Monthly, 200000, 140000, 14000),
+		slip(2025, 12, payslip.Monthly, 200000, 160000, 14000),
+		slip(2025, 12, payslip.Thirteenth, 200000, 150000, 14000),
+	}
+	got := years(i18n.EN, slips)
+	if got == nil || strings.Join(got.Years, ",") != "2025*,2026*" || !got.Partial {
+		t.Fatalf("years = %+v", got)
+	}
+	cells := map[string]string{}
+	for _, r := range got.Rows {
+		cells[r.Label] = strings.Join(r.Cells, " | ")
+	}
+	for label, want := range map[string]string{
+		"Payslips":                    "2 + 1 | 1",
+		"Gross pay":                   "6.000,00 € | 2.000,00 €",
+		"Taxes":                       "1.200,00 € | 400,00 €",
+		"Net pay":                     "4.500,00 € | 1.400,00 €",
+		"Average monthly net":         "1.500,00 € | 1.400,00 €",
+		"Net of every 100 € of gross": "75 € | 70 €",
+		"TFR accrued":                 "420,00 € | 140,00 €",
+	} {
+		if cells[label] != want {
+			t.Errorf("%s = %q, want %q", label, cells[label], want)
+		}
+	}
+	if years(i18n.EN, []payslip.Payslip{{}}) != nil {
+		t.Error("undated payslips make a table")
+	}
+}
+
+func TestEarningsMixAndTFR(t *testing.T) {
+	slips := months(t, 3)
+	d := Build(i18n.EN, slips, "test")
+	// The synthetic payslips carry overtime and an allowance besides the
+	// base salary, and print the month's TFR.
+	if !strings.Contains(string(d.Mix), `id="mix"`) || !strings.Contains(string(d.Mix), "Overtime, bonuses and allowances") {
+		t.Errorf("mix = %.200s", d.Mix)
+	}
+	if !strings.Contains(string(d.TFR), `id="tfr"`) || !strings.Contains(d.TFRNote, "summed up: ") {
+		t.Errorf("tfr = %.200s, note %q", d.TFR, d.TFRNote)
+	}
+	// Ordinary pay alone says nothing the trend does not.
+	for i := range slips {
+		var base []payslip.Item
+		for _, it := range slips[i].Items {
+			if it.Side != payslip.Earning || it.Key == "earnings.base_salary" {
+				base = append(base, it)
+			}
+		}
+		slips[i].Items = base
+	}
+	if mix := earningsMix(i18n.EN, slips); mix != "" {
+		t.Error("mix drawn for ordinary pay only")
+	}
+	if svg, _ := tfrChart(i18n.EN, slips[:1]); svg != "" {
+		t.Error("TFR chart drawn for one payslip")
+	}
+}
