@@ -335,24 +335,6 @@ function downloadAnon() {
   save(new Blob([state.anonPDF], { type: 'application/pdf' }), t('web.anon.file'));
 }
 
-function restart() {
-  closeAnon();
-  state.files = [];
-  state.report = '';
-  state.tooMany = false;
-  state.passwords = [];
-  $('report').removeAttribute('srcdoc');
-  $('report').classList.remove('pending');
-  $('skeleton').hidden = true;
-  $('files').value = '';
-  $('result').hidden = true;
-  $('intro').hidden = false;
-  $('pick').hidden = false;
-  status('');
-  window.scrollTo({ top: 0 });
-  enter($('intro'), $('pick'));
-}
-
 function save(blob, name) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -409,7 +391,6 @@ window.addEventListener('drop', (ev) => {
   ev.preventDefault();
   if (!drop.classList.contains('busy')) handle(ev.dataTransfer.files);
 });
-$('restart').addEventListener('click', restart);
 $('download').addEventListener('click', download);
 $('anon-amounts').addEventListener('change', () => { if (state.anon) openAnon(state.anon); });
 $('anon-download').addEventListener('click', downloadAnon);

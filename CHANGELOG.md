@@ -52,6 +52,9 @@ How to use this file:
   TFR is no longer a row of the year by year table, as its own section adds
   it up.
 
+- The web app's report keeps two buttons, "Download the report" and "Add
+  payslips"; "Start over" is gone, as reloading the page starts over.
+
 ### Fixed
 
 - Percentages in the changes use the decimal comma in Italian: "-30,3%".

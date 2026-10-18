@@ -333,7 +333,9 @@ test('makes an anonymized copy that reads as the same payslip', async () => {
   await press(page, '#anon-close');
   assert.equal(await page.$eval('#anon', (e) => e.hidden), true);
 
-  await press(page, '#restart');
+  // A fresh page reads the copy alone: nothing is kept across a reload.
+  await page.reload();
+  await page.waitForFunction(() => window.cedoloReady === true, null, { timeout: 30000 });
   await page.setInputFiles('#files', [copy]);
   assert.deepEqual(await statuses(page), ['ok: — 1 payslip(s) read']);
   const frame = page.frames().find((f) => f !== page.mainFrame());
