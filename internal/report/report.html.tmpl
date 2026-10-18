@@ -75,6 +75,14 @@ h2.total { display: flex; gap: 12px; align-items: baseline; }
 h2.total span:first-child { flex: 1; }
 h2.total .amount { font-variant-numeric: tabular-nums; }
 h2.group + .more { margin-top: 8px; border-top: 0; }
+.tabs { display: flex; gap: 4px; margin: 20px -16px 0; padding: 0 16px; border-bottom: 1px solid var(--grid); overflow-x: auto; scrollbar-width: none; }
+.tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.tabs button:focus-visible { outline: 2px solid var(--series-1); outline-offset: -2px; border-radius: 4px; }
+.tabs ~ .panel h2.group { display: none; }
+.tabs ~ #panel-time > section:first-of-type > h3, .tabs ~ #panel-reference > .more { margin-top: 24px; }
+.teaser { margin: 32px 0 0; }
+.link { font: inherit; font-size: 15px; padding: 0; border: 0; background: none; color: var(--series-1); cursor: pointer; text-align: left; }
 .stat { margin: 0 0 8px; color: var(--ink-2); }
 .stat strong { font-size: 28px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 6px; }
 .mini { max-width: 420px; }
@@ -191,7 +199,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   .chart.narrow { display: block; }
 }
 @media print {
-  .tooltip, .picker, .hint { display: none; }
+  .tooltip, .picker, .hint, .tabs, .teaser { display: none; }
+  .panel[hidden] { display: block !important; }
+  .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
 }
 </style>
@@ -203,6 +213,15 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{with .Range}}<p class="sub">{{.}}</p>{{end}}
 </header>
 
+{{if .Tabs}}
+<div class="tabs" role="tablist" aria-label="{{index .T "report.tabs"}}">
+<button type="button" role="tab" id="tab-month" data-tab="month" aria-controls="panel-month" aria-selected="true">{{index .T "report.tab.month"}}</button>
+<button type="button" role="tab" id="tab-time" data-tab="time" aria-controls="panel-time" aria-selected="false" tabindex="-1">{{index .T "report.group.time"}}</button>
+<button type="button" role="tab" id="tab-reference" data-tab="reference" aria-controls="panel-reference" aria-selected="false" tabindex="-1">{{index .T "report.group.reference"}}</button>
+</div>
+{{end}}
+
+<div class="panel" id="panel-month"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-month"{{end}}>
 {{if gt (len .Months) 1}}
 <nav class="picker" aria-label="{{index .T "report.pick"}}">
 {{range $i, $m := .Months}}<button type="button" data-month="{{$i}}" aria-pressed="{{if eq $i $.Selected}}true{{else}}false{{end}}">{{$m.Short}}</button>
@@ -274,7 +293,10 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}
 </section>
 {{end}}
+{{with .Teaser}}<p class="teaser"><button type="button" class="link" data-tab="time">{{.}} →</button></p>{{end}}
+</div>
 
+<div class="panel" id="panel-time"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-time" hidden{{end}}>
 {{if or .Years .Trend .LeaveCharts .TFR}}
 <h2 class="group">{{index .T "report.group.time"}}</h2>
 {{end}}
@@ -360,6 +382,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </section>
 {{end}}
 
+</div>
+
+<div class="panel" id="panel-reference"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-reference" hidden{{end}}>
 {{if .Rows}}
 <h2 class="group">{{index .T "report.group.reference"}}</h2>
 <section class="more">
@@ -385,6 +410,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </details>
 </section>
 {{end}}
+</div>
 
 <footer>
 <p>{{index .T "report.privacy"}}</p>
@@ -475,11 +501,43 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   picks.forEach(function (b) { b.addEventListener("click", function () { mark(b.dataset.month); }); });
   // Bring the month shown to the top: inside the web app the page around
   // the frame scrolls, so ask it to.
-  function toMonth() {
-    var y = document.querySelector(".picker").getBoundingClientRect().top + window.scrollY - 16;
+  function toTop(el) {
+    var y = el.getBoundingClientRect().top + window.scrollY - 16;
     if (window.parent !== window) window.parent.postMessage({ cedoloScroll: y }, "*");
     else window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
+  function toMonth() { toTop(document.querySelector(".picker")); }
+  // Tabs: the month, the payslips over time, and the reference. Arrows
+  // move between them; a link to a tab opens it and scrolls to the tabs.
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function showTab(name) {
+    tabs.forEach(function (t) {
+      var on = t.dataset.tab === name;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById("panel-" + t.dataset.tab).hidden = !on;
+    });
+    // The row of months was hidden with its tab: bring the marked one back
+    // into view.
+    if (name === "month") toCurrent();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { showTab(t.dataset.tab); });
+    t.addEventListener("keydown", function (ev) {
+      var j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[ev.key];
+      if (j === undefined) return;
+      ev.preventDefault();
+      var next = tabs[(j + tabs.length) % tabs.length];
+      showTab(next.dataset.tab);
+      next.focus();
+    });
+  });
+  document.querySelectorAll('button[data-tab]:not([role="tab"])').forEach(function (b) {
+    b.addEventListener("click", function () {
+      showTab(b.dataset.tab);
+      toTop(document.querySelector(".tabs"));
+    });
+  });
   document.querySelectorAll("svg.chart.stack").forEach(function (svg) {
     var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
     var pts = JSON.parse(svg.dataset.points);
@@ -498,7 +556,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       hit.addEventListener("pointerleave", function () { tip.hidden = true; });
       hit.addEventListener("click", function () {
         var b = document.querySelector('.picker button[data-month="' + i + '"]');
-        if (b) { b.click(); toMonth(); }
+        if (b) { if (tabs.length) showTab("month"); b.click(); toMonth(); }
       });
     });
   });

@@ -20,9 +20,11 @@ How to use this file:
 
 ### Changed
 
-- The report is laid out in three parts: the payslip of the month, then
-  "Over time" with the year by year totals and the charts, then "For
-  reference" with the contract and the glossary.
+- The report is split into three tabs: the month, "Over time" with the
+  year by year totals and the charts, and "For reference" with the contract
+  and the glossary. A link under the month leads to the payslips over time,
+  and a column of a chart leads back to its month. A single payslip keeps
+  one page; printing shows every tab.
 - Holiday and leave balances are shown with the month they belong to,
   instead of only the latest ones at the bottom of the page.
 - What makes up the gross pay and the amounts set aside have headings of

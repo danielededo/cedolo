@@ -111,7 +111,12 @@ type Data struct {
 	T        map[string]string
 	Range    string
 	Months   []Month
-	Selected int           // index in Months of the month shown first: the latest
+	Selected int // index in Months of the month shown first: the latest
+	// Tabs splits the page into the month, over time and reference, when
+	// there is something to show over time; Teaser leads from the month to
+	// the payslips over time.
+	Tabs     bool
+	Teaser   string
 	Trend    template.HTML // where the gross pay went, month by month
 	Variable template.HTML // overtime, bonuses and allowances, month by month
 	Years    *YearTable
@@ -194,6 +199,10 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		d.TFR, d.TFRTotal, d.TFRSpan = tfrChart(l, slips)
 	}
 	d.LeaveCharts = leaveCharts(l, slips)
+	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" {
+		d.Tabs = true
+		d.Teaser = i18n.T(l, "report.teaser", len(slips))
+	}
 
 	d.Contract = contract(l, slips)
 	for _, term := range i18n.Terms {

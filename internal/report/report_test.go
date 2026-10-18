@@ -403,3 +403,29 @@ func TestVariablePayAndTFR(t *testing.T) {
 		t.Error("TFR chart drawn for one payslip")
 	}
 }
+
+func TestTabs(t *testing.T) {
+	var b bytes.Buffer
+	if err := Render(&b, i18n.EN, months(t, 2), "test"); err != nil {
+		t.Fatal(err)
+	}
+	page := b.String()
+	if n := strings.Count(page, `role="tab" id=`); n != 3 {
+		t.Errorf("%d tabs, want 3", n)
+	}
+	for _, want := range []string{`id="panel-month" role="tabpanel" aria-labelledby="tab-month">`,
+		`id="panel-time" role="tabpanel" aria-labelledby="tab-time" hidden>`,
+		`data-tab="time">How your 2 payslips went over time →</button>`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("page misses %s", want)
+		}
+	}
+	// A single payslip has nothing over time: one page, no tabs.
+	b.Reset()
+	if err := Render(&b, i18n.EN, months(t, 1), "test"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), `role="tab" id=`) || strings.Contains(b.String(), "went over time") {
+		t.Error("tabs for a single payslip")
+	}
+}
