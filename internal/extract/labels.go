@@ -30,7 +30,7 @@ var (
 	// The family allowance (assegno per il nucleo familiare), printed by some
 	// layouts outside the item table.
 	familyAllowanceLabels = []string{"importo assegno", "importo anf", "assegno nucleo familiare"}
-	inpsLabels = []string{"ctr f p l d", "contributo f p l d", "contributi f p l d", "contributo ivs",
+	inpsLabels            = []string{"ctr f p l d", "contributo f p l d", "contributi f p l d", "contributo ivs",
 		"contributi ivs", "ctr ivs"}
 	roundingPreviousLabels = []string{"arrotondamento mese precedente", "arrotondamento precedente",
 		"arrotond precedente", "arrotond preced", "arr precedente", "arr prec"}
