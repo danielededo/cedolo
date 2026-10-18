@@ -132,6 +132,7 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 	p.IRPEFBase = find(irpefBaseLabels)
 	p.TFR = find(tfrLabels)
 	p.TFRBase = find(tfrBaseLabels)
+	addFamilyAllowance(&p, find(familyAllowanceLabels))
 	if !p.TFR.Found() {
 		// Some layouts print the month's TFR only as a neutral item, such as
 		// its transfer to a pension fund.
@@ -162,12 +163,43 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 		{"total deductions", func(p *payslip.Payslip) *payslip.Amount { return &p.Deductions }, readings(deductionLabels)},
 		{"net pay", func(p *payslip.Payslip) *payslip.Amount { return &p.Net }, readings(netLabels)},
 		{"contributions", func(p *payslip.Payslip) *payslip.Amount { return &p.SocialContributions }, readings(socialLabels)},
-		{"taxes", func(p *payslip.Payslip) *payslip.Amount { return &p.Taxes }, readings(taxLabels)},
+		{"taxes", func(p *payslip.Payslip) *payslip.Amount { return &p.Taxes }, append(readings(taxLabels), otherTaxes(find)...)},
 		{"previous rounding", func(p *payslip.Payslip) *payslip.Amount { return &p.RoundingPrevious }, readings(roundingPreviousLabels)},
 		{"current rounding", func(p *payslip.Payslip) *payslip.Amount { return &p.RoundingCurrent }, readings(roundingCurrentLabels)},
 	})
 	checkLeave(&p)
 	return p
+}
+
+// otherTaxes returns the income tax withheld in boxes of its own, the
+// separate taxation of TFR and the IRPEF adjustment: both added together,
+// then each alone. They are only alternative readings of the month's taxes.
+func otherTaxes(find func([]string) payslip.Amount) []payslip.Amount {
+	sep, adj := find(separateTaxLabels), find(taxAdjustmentLabels)
+	var out []payslip.Amount
+	if sep.Found() && adj.Found() {
+		out = append(out, payslip.Amount{Cents: sep.Cents + adj.Cents, Status: payslip.Extracted, Source: sep.Source})
+	}
+	for _, a := range []payslip.Amount{sep, adj} {
+		if a.Found() {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// addFamilyAllowance adds the family allowance printed outside the item
+// table as an earning, when the table has none and the printed gross is the
+// items plus the allowance.
+func addFamilyAllowance(p *payslip.Payslip, a payslip.Amount) {
+	if !a.Found() || a.Cents <= 0 || !p.Gross.Found() || p.Gross.Cents != p.Sum(payslip.Earning)+a.Cents {
+		return
+	}
+	if _, n := p.SumKey("earnings.family_allowance"); n > 0 {
+		return
+	}
+	p.Items = append(p.Items, payslip.Item{Description: "Importo assegno", Cents: a.Cents, Side: payslip.Earning,
+		Key: "earnings.family_allowance", Source: *a.Source})
 }
 
 func hasLeave(ls []payslip.Leave, k payslip.LeaveKind) bool {

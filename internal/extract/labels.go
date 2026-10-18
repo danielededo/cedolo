@@ -21,8 +21,16 @@ var (
 		"tot contributi"}
 	taxLabels = []string{"totale trattenute irpef", "totale tratt fiscale", "totale trattenute fiscali",
 		"totale ritenute fiscali", "totale ritenute irpef", "totale irpef", "tot trattenute irpef",
-		"tot tratt irpef", "tot trat irpef", "tot irpef"}
-	inpsLabels = []string{"ctr f p l d", "contributo f p l d", "contributi f p l d", "contributo ivs",
+		"tot tratt irpef", "tot trat irpef", "tot irpef", "irpef imp sost"}
+	// Income tax withheld in boxes of its own, beside or instead of the
+	// month's total: the separate taxation of TFR paid out, and the year-end
+	// or end-of-employment adjustment.
+	separateTaxLabels   = []string{"totale trattenute irpef t s", "totale tratt irpef t s", "tot trattenute irpef t s", "tot tratt irpef t s"}
+	taxAdjustmentLabels = []string{"conguaglio irpef"}
+	// The family allowance (assegno per il nucleo familiare), printed by some
+	// layouts outside the item table.
+	familyAllowanceLabels = []string{"importo assegno", "importo anf", "assegno nucleo familiare"}
+	inpsLabels            = []string{"ctr f p l d", "contributo f p l d", "contributi f p l d", "contributo ivs",
 		"contributi ivs", "ctr ivs"}
 	roundingPreviousLabels = []string{"arrotondamento mese precedente", "arrotondamento precedente",
 		"arrotond precedente", "arrotond preced", "arr precedente", "arr prec"}
@@ -97,7 +105,8 @@ var (
 func Vocabulary() []string {
 	var phrases []string
 	for _, list := range [][]string{grossLabels, deductionLabels, netLabels, inpsBaseLabels, irpefBaseLabels,
-		tfrLabels, tfrBaseLabels, socialLabels, taxLabels, inpsLabels, roundingPreviousLabels, roundingCurrentLabels,
+		tfrLabels, tfrBaseLabels, socialLabels, taxLabels, separateTaxLabels, taxAdjustmentLabels, familyAllowanceLabels,
+		inpsLabels, roundingPreviousLabels, roundingCurrentLabels,
 		periodLabels, thirteenthWords, fourteenthWords, additionalWords} {
 		phrases = append(phrases, list...)
 	}

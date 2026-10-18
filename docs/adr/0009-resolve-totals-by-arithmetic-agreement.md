@@ -29,8 +29,12 @@ and by falling back to today's first reading when none does.
 
 - **Candidates.** For each total, every occurrence of each of its labels
   yields its readings in today's order of preference: beside the label on its
-  baseline, in its cell below, beside it on another baseline. At most a few
-  per total, so that the search stays small.
+  baseline, in its cell below, beside it on another baseline. Readings that
+  are never preferred follow: a value at the foot of a tall box below the
+  label, and, for taxes, the sum of boxes of their own (separate taxation of
+  TFR, IRPEF adjustment). A total that today reads as missing can only be
+  found through them. At most a few per total, so that the search stays
+  small.
 - **Choice.** Combinations are tried from the closest to the preferred
   readings, and the first under which every cross-check passes (net balance,
   deductions sum, earnings sum) wins. One that only passes more checks than

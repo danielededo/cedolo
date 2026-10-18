@@ -118,12 +118,16 @@ func (l line) has(phrases ...string) bool {
 
 // cell returns the horizontal extent of the cell a label occupies when labels
 // are laid out in a row with their values below: from the label's left edge
-// to the start of the next token on the same line, or to the page edge.
+// to the start of the next token on the same line that is not punctuation
+// closing the label, such as "+/-", or to the page edge.
 func (l line) cell(first, last int, pageWidth float64) (x0, x1 float64) {
 	x0 = l.toks[first].X - cellMargin
 	x1 = pageWidth
-	if last+1 < len(l.toks) {
-		x1 = l.toks[last+1].X - cellMargin
+	for k := last + 1; k < len(l.toks); k++ {
+		if !isFiller(l.toks[k].Text) {
+			x1 = l.toks[k].X - cellMargin
+			break
+		}
 	}
 	return x0, x1
 }

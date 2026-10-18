@@ -19,6 +19,7 @@ var outsideGross = map[string]bool{
 	"earnings.contribution_relief": true,
 	"tax.credit":                   true,
 	"tax.return":                   true,
+	"earnings.family_allowance":    true,
 	"rounding":                     true,
 }
 
@@ -35,7 +36,8 @@ func validate(p *payslip.Payslip) {
 	earnings, tableDeductions := p.Sum(payslip.Earning), p.Sum(payslip.Deduction)
 	hasItems := len(p.Items) > 0
 
-	// Gross: all earnings, or the taxable ones.
+	// Gross: all earnings, or the taxable ones, either possibly net of the
+	// pay withheld for absences.
 	if hasItems {
 		var taxable int64
 		for _, it := range p.Items {
@@ -43,6 +45,7 @@ func validate(p *payslip.Payslip) {
 				taxable += it.Cents
 			}
 		}
+		absences, _ := p.SumKey("deductions.absence")
 		switch {
 		case !p.Gross.Found():
 			p.Gross = payslip.Amount{Cents: earnings, Status: payslip.Inferred}
@@ -52,7 +55,11 @@ func validate(p *payslip.Payslip) {
 			mark(&p.Gross, true)
 		case p.Gross.Cents == taxable:
 			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: true,
-				Detail: fmt.Sprintf("items other than reimbursements, contribution relief, tax credits and tax return refunds add up to %s, printed gross is %s", money.Format(taxable), money.Format(p.Gross.Cents))})
+				Detail: fmt.Sprintf("items other than reimbursements, contribution relief, tax credits, tax return refunds and family allowance add up to %s, printed gross is %s", money.Format(taxable), money.Format(p.Gross.Cents))})
+			mark(&p.Gross, true)
+		case absences != 0 && (p.Gross.Cents == earnings-absences || p.Gross.Cents == taxable-absences):
+			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: true,
+				Detail: fmt.Sprintf("items add up to %s, less %s withheld for absences; printed gross is %s", money.Format(earnings), money.Format(absences), money.Format(p.Gross.Cents))})
 			mark(&p.Gross, true)
 		default:
 			p.Checks = append(p.Checks, payslip.Check{Name: "earnings_sum", OK: false,
