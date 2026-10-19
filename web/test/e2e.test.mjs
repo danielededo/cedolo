@@ -297,6 +297,37 @@ test('shows the latest of many months first', async () => {
   await page.close();
 });
 
+test('a touch on a chart shows its amounts under it', async () => {
+  const files = [1, 2, 3].map((m) => synth(`touch-${m}.pdf`, '-month', String(m)));
+  const { page, seen } = await open({ viewport: { width: 390, height: 800 } });
+  await page.setInputFiles('#files', files);
+  await statuses(page);
+  await page.waitForSelector('#report:not(.pending)');
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  await press(page, '#tabs [data-tab="time"]');
+  await frame.waitForSelector('#panel-time:not([hidden])');
+  // A finger would cover the amounts beside it: they stay under the chart,
+  // and the tab stays where it is. A finger lifted, as plain events: not
+  // every browser here emulates touch inside a frame.
+  await frame.$eval('#trend-narrow .col-hit[data-i="1"]', (hit) => {
+    const box = hit.getBoundingClientRect();
+    const at = { bubbles: true, pointerType: 'touch', clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 };
+    hit.dispatchEvent(new PointerEvent('pointerdown', at));
+    hit.dispatchEvent(new PointerEvent('pointerup', at));
+    hit.dispatchEvent(new MouseEvent('click', at));
+  });
+  await frame.waitForSelector('#trend-narrow ~ .tooltip.pinned:not([hidden])');
+  assert.match(await frame.$eval('#trend-narrow ~ .tooltip', (t) => t.textContent), /Feb 26/);
+  assert.ok(!(await frame.$eval('#panel-time', (p) => p.hidden)));
+  assert.equal(await frame.$$eval('#trend-narrow .col.dim', (cs) => cs.length), 2);
+  // Its button opens the month.
+  await press(frame, '#trend-narrow ~ .tooltip .open');
+  await frame.waitForSelector('section.month[data-month="1"]:not([hidden])');
+  await page.waitForFunction(() => document.querySelector('#tabs [data-tab="month"]').getAttribute('aria-selected') === 'true');
+  assert.deepEqual(seen.errors, []);
+  await page.close();
+});
+
 test('adds payslips to a report', async () => {
   const [one, two, three] = [1, 2, 3].map((m) => synth(`add-${m}.pdf`, '-month', String(m)));
   const { page, seen } = await open();

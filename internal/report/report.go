@@ -112,11 +112,14 @@ type Contract struct {
 
 // Data is everything the page shows; Render builds it with Build.
 type Data struct {
-	Lang     string
-	T        map[string]string
-	Range    string
-	Months   []Month
-	Selected int // index in Months of the month shown first: the latest
+	Lang string
+	T    map[string]string
+	// OpenMonth is the label of the button under a touched column, with a
+	// %s for the month, filled in by the page.
+	OpenMonth string
+	Range     string
+	Months    []Month
+	Selected  int // index in Months of the month shown first: the latest
 	// Tabs splits the page into the month, over time and reference, when
 	// there is something to show over time.
 	Tabs      bool
@@ -160,7 +163,7 @@ func Render(w io.Writer, l i18n.Lang, slips []payslip.Payslip, version string) e
 // Build computes the page content. The slice is sorted in place.
 func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 	periods := insights.Compare(l, slips) // sorts slips
-	d := Data{Lang: string(l), T: texts(l), Version: version}
+	d := Data{Lang: string(l), T: texts(l), OpenMonth: i18n.Template(l, "report.chart.open"), Version: version}
 	if len(slips) == 0 {
 		return d
 	}
