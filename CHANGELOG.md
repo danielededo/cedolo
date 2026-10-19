@@ -20,6 +20,10 @@ How to use this file:
 
 ### Added
 
+- The year by year table says how much of the pension fund deductible
+  each year used: your contribution and the employer's, without the TFR,
+  against the limit of 5.164,57 € a year, 5.300 € from 2026. A year over
+  the limit comes with what to do about it.
 - What goes into your supplementary pension fund: each month says how much
   it paid in, from you, from the employer and as TFR; "Over time" adds it
   up with a chart of the three parts, and the year by year table has a row

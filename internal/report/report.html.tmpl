@@ -320,6 +320,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </table>
 </div>
 <p class="note">{{index $.T "report.year.note"}}{{if .Partial}} {{index $.T "report.year.partial"}}{{end}}</p>
+{{if .Deductible}}<p class="note">{{index $.T "report.year.deductible.note"}}{{if .Over}} {{index $.T "report.year.deductible.over"}}{{end}}</p>{{end}}
 </section>
 {{end}}
 
