@@ -82,6 +82,7 @@ h2.total .amount { font-variant-numeric: tabular-nums; }
 .when { display: flex; align-items: center; gap: 8px; }
 .when .label { flex: 1; }
 .steps { display: flex; gap: 6px; }
+.fund { margin: 8px 0 0; padding: 10px 14px; border-radius: 8px; background: var(--raised); color: var(--ink-2); font-size: 15px; }
 .leave { list-style: none; padding: 0; margin: 0; }
 .leave li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--grid); }
 .leave .left { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -268,6 +269,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <p class="explain">{{index $.T "report.aside.text"}}</p>
 <ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul>
 {{end}}
+{{with $m.Fund}}<p class="fund">{{.}}</p>{{end}}
 
 {{if $m.Leave}}
 <h2>{{index $.T "report.leave"}}</h2>
@@ -365,6 +367,20 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <h3>{{index .T "report.leave.over"}}</h3>
 <div class="minis">{{range .LeaveCharts}}<figure class="mini"><figcaption>{{.Label}} <strong>{{.Now}}</strong></figcaption>{{.SVG}}<div class="tooltip" hidden></div></figure>
 {{end}}</div>
+</section>
+{{end}}
+
+{{if .Fund}}
+<section>
+<h3>{{index .T "report.fund"}}</h3>
+<p class="stat"><strong>{{.FundTotal}}</strong> {{.FundSpan}}</p>
+<ul class="legend">
+<li><span class="key" style="background:var(--series-1)"></span>{{index .T "report.fund.own"}}</li>
+<li><span class="key" style="background:var(--series-2)"></span>{{index .T "report.fund.employer"}}</li>
+<li><span class="key" style="background:var(--series-3)"></span>{{index .T "report.fund.tfr"}}</li>
+</ul>
+<figure>{{.Fund}}<div class="tooltip" hidden></div></figure>
+<p class="note">{{index .T "report.fund.note"}}</p>
 </section>
 {{end}}
 

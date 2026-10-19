@@ -5,10 +5,12 @@ import (
 	"html/template"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/danielededo/cedolo/internal/i18n"
 	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/payslip"
+	"github.com/danielededo/cedolo/internal/taxonomy"
 )
 
 // YearTable sums the payslips by calendar year: one column per year, the
@@ -29,13 +31,14 @@ type YearRow struct {
 // payslip.
 func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 	type sum struct {
-		year                       int
-		monthly, extra             int
-		gross, contrib, taxes, net int64
-		monthlyNet                 int64
-		netMonths                  int
+		year                             int
+		monthly, extra                   int
+		gross, contrib, taxes, net, fund int64
+		monthlyNet                       int64
+		netMonths                        int
 	}
 	var sums []*sum
+	fundYears := false
 	for _, p := range slips {
 		if p.Year == 0 {
 			continue
@@ -63,6 +66,9 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		}
 		s.contrib += contributions(p)
 		s.taxes += taxes(p)
+		f := fundOf(p)
+		s.fund += f.total()
+		fundYears = fundYears || f.own > 0 || f.employer > 0
 	}
 	if len(sums) == 0 {
 		return nil
@@ -100,6 +106,9 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		}
 		return money.Format(roundDiv(s.monthlyNet, int64(s.netMonths))) + " €"
 	})
+	if fundYears {
+		row("report.year.fund", func(s *sum) string { return optional(s.fund) })
+	}
 	row("report.year.share", func(s *sum) string {
 		if s.gross <= 0 || s.net <= 0 {
 			return "–"
@@ -137,8 +146,77 @@ func variablePay(l i18n.Lang, slips []payslip.Payslip) string {
 	return stackCharts("variable", labels, []series{s}, s)
 }
 
-// tfrChart follows the TFR accrued in the payslips, added up month by month,
-// as a small line under its total. It needs two payslips that print it.
+// fund is what a payslip pays into the supplementary pension fund: your
+// own contribution, the employer's, and the TFR sent to the fund.
+type fund struct{ own, employer, tfr int64 }
+
+func (f fund) total() int64 { return f.own + f.employer + f.tfr }
+
+// fundOf reads a payslip's payments to the pension fund. Your contribution
+// is an information item or a deduction item; the TFR sent to the fund is
+// a TFR item that names the fund.
+func fundOf(p payslip.Payslip) fund {
+	var f fund
+	f.own, _ = p.SumKey("pension_fund.employee")
+	ded, _ := p.SumKey("deductions.pension_fund")
+	f.own += ded
+	f.employer, _ = p.SumKey("pension_fund.contribution")
+	for _, it := range p.Items {
+		if it.Key == "tfr.accrued" && toFund(it.Description) {
+			f.tfr += it.Cents
+		}
+	}
+	return f
+}
+
+// toFund reports whether a TFR item names a pension fund, as in "Storno
+// T.F.R. a F.P.C.", "TFR a fondo" or "TFR previdenza complementare".
+func toFund(desc string) bool {
+	words := " " + taxonomy.Normalize(desc) + " "
+	for _, w := range []string{" fpc ", " f p c ", " fondo ", " fondi ", " previdenza ", " fp "} {
+		if strings.Contains(words, w) {
+			return true
+		}
+	}
+	return false
+}
+
+// fundChart charts what each payslip paid into the pension fund, in its
+// three parts, under the total. It needs two payslips and a fund to which
+// you or your employer contribute.
+func fundChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total, span string) {
+	labels := make([]string, len(slips))
+	ss := []series{
+		{Name: i18n.T(l, "report.fund.own"), Color: "var(--series-1)"},
+		{Name: i18n.T(l, "report.fund.employer"), Color: "var(--series-2)"},
+		{Name: i18n.T(l, "report.fund.tfr"), Color: "var(--series-3)"},
+	}
+	sum := series{Name: i18n.T(l, "report.fund.total")}
+	var all int64
+	n, contributes := 0, false
+	for i, p := range slips {
+		labels[i] = shortLabel(l, p)
+		f := fundOf(p)
+		for k, v := range []int64{f.own, f.employer, f.tfr} {
+			ss[k].Values = append(ss[k].Values, max(v, 0))
+		}
+		sum.Values = append(sum.Values, f.total())
+		all += f.total()
+		if f.total() > 0 {
+			n++
+		}
+		contributes = contributes || f.own > 0 || f.employer > 0
+	}
+	if len(slips) < 2 || !contributes {
+		return "", "", ""
+	}
+	return template.HTML(stackCharts("fund", labels, ss, sum)), moneyValue(all), i18n.T(l, "report.fund.span", n)
+}
+
+// tfrChart follows the TFR accrued in the payslips and kept by the
+// employer, added up month by month, as a small line under its total. It
+// needs two payslips that print it; the TFR sent to a pension fund is in
+// the fund's chart.
 func tfrChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total, span string) {
 	var labels []string
 	s := series{Name: i18n.T(l, "report.tfr.series"), Color: "var(--series-1)"}
@@ -147,11 +225,11 @@ func tfrChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total, s
 		if !p.TFR.Found() {
 			continue
 		}
-		sum += p.TFR.Cents
+		sum += max(p.TFR.Cents-fundOf(p).tfr, 0)
 		labels = append(labels, shortLabel(l, p))
 		s.Values = append(s.Values, sum)
 	}
-	if len(s.Values) < 2 {
+	if len(s.Values) < 2 || sum == 0 {
 		return "", "", ""
 	}
 	return template.HTML(lineChart("tfr", labels, []series{s}, lineOptions{

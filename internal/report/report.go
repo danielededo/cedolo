@@ -55,6 +55,7 @@ type Month struct {
 	Parts      []Part            // where the gross pay goes
 	Earnings   []Line            // what makes up the gross pay
 	SetAside   []Line            // TFR and other amounts that do not change this month's pay
+	Fund       string            // what the month paid into the pension fund, and its parts
 	GrossTotal string            // the gross pay, next to Earnings
 	AsideTotal string            // the sum of SetAside
 	Leave      []LeaveRow        // the holiday and leave balances the payslip prints
@@ -118,14 +119,17 @@ type Data struct {
 	Selected int // index in Months of the month shown first: the latest
 	// Tabs splits the page into the month, over time and reference, when
 	// there is something to show over time.
-	Tabs     bool
-	Trend    template.HTML // where the gross pay went, month by month
-	Variable template.HTML // overtime, bonuses and allowances, month by month
-	Years    *YearTable
-	TFR      template.HTML // the TFR accrued in the payslips, added up
-	TFRTotal string        // the TFR the chart adds up to
-	TFRSpan  string        // over how many payslips
-	Rows     []Row
+	Tabs      bool
+	Trend     template.HTML // where the gross pay went, month by month
+	Variable  template.HTML // overtime, bonuses and allowances, month by month
+	Years     *YearTable
+	Fund      template.HTML // what each payslip paid into the pension fund
+	FundTotal string
+	FundSpan  string
+	TFR       template.HTML // the TFR accrued in the payslips, added up
+	TFRTotal  string        // the TFR the chart adds up to
+	TFRSpan   string        // over how many payslips
+	Rows      []Row
 	// LeaveCharts follow each kind of leave over the months.
 	LeaveCharts []LeaveChart
 	Contract    *Contract
@@ -215,9 +219,10 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		d.Variable = template.HTML(variablePay(l, slips))
 		d.Years = years(l, slips)
 		d.TFR, d.TFRTotal, d.TFRSpan = tfrChart(l, slips)
+		d.Fund, d.FundTotal, d.FundSpan = fundChart(l, slips)
 	}
 	d.LeaveCharts = leaveCharts(l, slips)
-	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" {
+	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" || d.Fund != "" {
 		d.Tabs = true
 	}
 
@@ -239,6 +244,18 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		Net:        amount(p.Net),
 	}
 	m.Reread = reread(l, p)
+	if f := fundOf(p); f.own > 0 || f.employer > 0 {
+		var parts []string
+		for _, pt := range []struct {
+			key string
+			v   int64
+		}{{"report.fund.of.own", f.own}, {"report.fund.of.employer", f.employer}, {"report.fund.of.tfr", f.tfr}} {
+			if pt.v > 0 {
+				parts = append(parts, i18n.T(l, pt.key, moneyValue(pt.v)))
+			}
+		}
+		m.Fund = i18n.T(l, "report.fund.month", moneyValue(f.total()), strings.Join(parts, ", "))
+	}
 	for _, lv := range p.Leave {
 		var moves []string
 		for _, mv := range []struct {

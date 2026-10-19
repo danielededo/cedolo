@@ -454,9 +454,10 @@ func TestPensionFundInContributions(t *testing.T) {
 				{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 300000},
 				{Description: "Contr. FPC dipendente", Key: "pension_fund.employee", Side: payslip.Info, Cents: fund},
 				{Description: "Contr. FPC ditta", Key: "pension_fund.contribution", Side: payslip.Info, Cents: 6000},
+				{Description: "Storno T.F.R. a F.P.C.", Key: "tfr.accrued", Side: payslip.Info, Cents: 20000},
 			},
 			Gross: a(300000), Net: a(net), INPS: a(27570), SocialContributions: a(27570 + fund), Taxes: a(60000),
-			Deductions: a(27570 + fund + 60000)}
+			Deductions: a(27570 + fund + 60000), TFR: a(20000)}
 	}
 	aug, sep := slip(8, 3000, 209430), slip(9, 70000, 142430)
 	if got := contributions(sep); got != 27570 {
@@ -476,8 +477,16 @@ func TestPensionFundInContributions(t *testing.T) {
 			lines = append(lines, pt.Key+":"+l.Description)
 		}
 	}
-	if !slices.Contains(lines, "other:Contr. FPC dipendente") || len(m.SetAside) != 1 {
+	if !slices.Contains(lines, "other:Contr. FPC dipendente") || len(m.SetAside) != 2 {
 		t.Errorf("lines = %v, set aside = %+v", lines, m.SetAside)
+	}
+	// What went into the fund: the month's three parts, and over time a
+	// chart in their place of the TFR's, all of which went to the fund.
+	if m.Fund != "To your pension fund this month: 960,00 € (700,00 € from you, 60,00 € from the employer, 200,00 € of TFR)." {
+		t.Errorf("fund = %q", m.Fund)
+	}
+	if d.Fund == "" || d.FundTotal != "1.250,00 €" || d.FundSpan != "paid in over 2 payslips" || d.TFR != "" {
+		t.Errorf("fund chart %q %q, TFR chart %.40q", d.FundTotal, d.FundSpan, d.TFR)
 	}
 	// A box that cannot hold the contribution beside INPS keeps it all.
 	sep.SocialContributions = a(27570)

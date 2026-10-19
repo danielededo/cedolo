@@ -20,6 +20,10 @@ How to use this file:
 
 ### Added
 
+- What goes into your supplementary pension fund: each month says how much
+  it paid in, from you, from the employer and as TFR; "Over time" adds it
+  up with a chart of the three parts, and the year by year table has a row
+  for it. It is what the payslips show as paid in, not the fund's balance.
 - In the web app, payslips can be added to a report already shown, with
   "Add payslips" or by dropping them on the page; a payslip already read is
   pointed out and not counted twice.
