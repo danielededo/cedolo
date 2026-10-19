@@ -155,6 +155,11 @@ figure { margin: 0; position: relative; }
 .chart .seg { outline: none; }
 .chart .seg:hover, .chart .seg:focus { opacity: .8; }
 .chart.stack .col-hit { cursor: pointer; }
+/* A finger dragged sideways over a chart moves along it; up and down
+   still scroll the page. */
+.chart { touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.chart .col { transition: opacity .15s; }
+.chart .col.dim { opacity: .35; }
 .chart .month.current { fill: var(--ink); font-weight: 600; }
 .minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 24px; margin-bottom: 12px; }
 .mini figcaption { font-size: 14px; color: var(--ink-2); }
@@ -174,6 +179,10 @@ figure { margin: 0; position: relative; }
 .tooltip .key { width: 8px; height: 8px; border-radius: 2px; }
 .tooltip .head { color: var(--ink-2); }
 .tooltip .total { font-weight: 600; }
+/* On a touch screen the amounts stay under the chart, out from under the
+   finger, until another column is touched. */
+.tooltip.pinned { position: static; margin-top: 8px; box-shadow: none; pointer-events: auto; white-space: normal; font-size: 14px; }
+.tooltip .open { margin-top: 6px; font-size: 14px; }
 details { margin-top: 8px; }
 summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
 .scroll { overflow-x: auto; }
@@ -217,7 +226,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </style>
 </head>
 <body>
-<main>
+<main data-open="{{.OpenMonth}}">
 <header>
 <h1>{{index .T "report.title"}}</h1>
 {{with .Range}}<p class="sub">{{.}}</p>{{end}}
@@ -442,6 +451,25 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   function head(text) {
     var h = document.createElement("div"); h.className = "head"; h.textContent = text; return h;
   }
+  // A mouse shows the amounts beside the pointer while it is over a chart.
+  // A finger would hide them, so a touch pins them under the chart instead,
+  // and dragging sideways moves along the months. A touch shows them when
+  // the finger lifts: not when it lands, which may start a scroll.
+  var pointer = "mouse";
+  document.addEventListener("pointerdown", function (ev) { pointer = ev.pointerType; }, true);
+  function pinned(ev) { return ev.pointerType !== "mouse"; }
+  // A finger dragged over a chart moves the amounts already shown.
+  function drags(tip, ev) {
+    return ev.pointerType === "mouse" || (ev.buttons && !tip.hidden && tip.classList.contains("pinned"));
+  }
+  function show(tip, fig, ev) {
+    var pin = pinned(ev);
+    tip.classList.toggle("pinned", pin);
+    tip.hidden = false;
+    if (pin) { tip.style.left = tip.style.top = ""; return; }
+    var box = fig.getBoundingClientRect();
+    place(tip, fig, ev.clientX - box.left, ev.clientY - box.top);
+  }
   document.querySelectorAll("svg.chart.line").forEach(function (svg) {
     var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
     var xs = svg.dataset.x.split(",").map(Number), pts = JSON.parse(svg.dataset.points);
@@ -455,12 +483,14 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       cross.setAttribute("visibility", "visible");
       tip.replaceChildren(head(pts[best].label));
       pts[best].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
-      tip.hidden = false;
-      var box = fig.getBoundingClientRect();
-      place(tip, fig, ev.clientX - box.left, ev.clientY - box.top);
+      show(tip, fig, ev);
     }
-    hit.addEventListener("pointermove", move);
-    hit.addEventListener("pointerleave", function () { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+    hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) move(ev); });
+    hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) move(ev); });
+    hit.addEventListener("pointerleave", function (ev) {
+      if (ev.pointerType !== "mouse") return;
+      tip.hidden = true; cross.setAttribute("visibility", "hidden");
+    });
   });
   // The month picker shows one payslip at a time. It opens on the latest
   // month, at the end of the row: scroll the row so that it is in view.
@@ -563,12 +593,13 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     });
   });
   // A sideways swipe moves to the next or previous tab, except on rows that
-  // scroll sideways themselves.
+  // scroll sideways themselves and on charts, where it moves along the
+  // months.
   if (tabs.length) {
     var sx = null, sy = 0, st = 0;
     document.addEventListener("touchstart", function (ev) {
       sx = null;
-      if (ev.touches.length !== 1 || ev.target.closest(".picker, .scroll, .tabs")) return;
+      if (ev.touches.length !== 1 || ev.target.closest(".picker, .scroll, .tabs, .chart")) return;
       sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; st = Date.now();
     }, { passive: true });
     document.addEventListener("touchend", function (ev) {
@@ -587,26 +618,50 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       if (to) to.click();
     });
   });
+  // A column opens its month: at once with a mouse, which has already
+  // shown its amounts; after a touch, from a button under the amounts.
+  function openMonth(i) {
+    var b = document.querySelector('.picker button[data-month="' + i + '"]');
+    if (b) { if (tabs.length) showTab("month"); b.click(); toMonth(); }
+  }
+  var openLabel = document.querySelector("main").dataset.open || "%s";
   document.querySelectorAll("svg.chart.stack").forEach(function (svg) {
     var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
     var pts = JSON.parse(svg.dataset.points);
-    svg.querySelectorAll(".col-hit").forEach(function (hit) {
+    var cols = svg.querySelectorAll(".col");
+    // Column k of the chart is the month i of the payslips: a chart may
+    // start after the first payslip.
+    function select(k, i, ev) {
+      var head1 = head(pts[k].label);
+      var total = document.createElement("div"); total.className = "row total";
+      total.textContent = pts[k].total.name + ": " + pts[k].total.value;
+      tip.replaceChildren(head1, total);
+      pts[k].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
+      if (pinned(ev) && document.querySelector('.picker button[data-month="' + i + '"]')) {
+        var open = document.createElement("button");
+        open.type = "button"; open.className = "link open";
+        open.textContent = openLabel.replace("%s", pts[k].label) + " ›";
+        open.addEventListener("click", function () { openMonth(i); });
+        tip.appendChild(open);
+      }
+      cols.forEach(function (c) { c.classList.toggle("dim", c.dataset.i !== String(i)); });
+      show(tip, fig, ev);
+    }
+    svg.querySelectorAll(".col-hit").forEach(function (hit, k) {
       var i = Number(hit.dataset.i);
-      hit.addEventListener("pointermove", function (ev) {
-        var head1 = head(pts[i].label);
-        var total = document.createElement("div"); total.className = "row total";
-        total.textContent = pts[i].total.name + ": " + pts[i].total.value;
-        tip.replaceChildren(head1, total);
-        pts[i].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
-        tip.hidden = false;
-        var box = fig.getBoundingClientRect();
-        place(tip, fig, ev.clientX - box.left, ev.clientY - box.top);
+      hit.addEventListener("pointerdown", function (ev) {
+        // A finger keeps the first column it touched: let the columns it
+        // moves over take the pointer in turn.
+        if (hit.hasPointerCapture(ev.pointerId)) hit.releasePointerCapture(ev.pointerId);
       });
-      hit.addEventListener("pointerleave", function () { tip.hidden = true; });
-      hit.addEventListener("click", function () {
-        var b = document.querySelector('.picker button[data-month="' + i + '"]');
-        if (b) { if (tabs.length) showTab("month"); b.click(); toMonth(); }
+      hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) select(k, i, ev); });
+      hit.addEventListener("pointerleave", function (ev) {
+        if (ev.pointerType !== "mouse" || tip.classList.contains("pinned")) return;
+        tip.hidden = true;
+        cols.forEach(function (c) { c.classList.remove("dim"); });
       });
+      hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) select(k, i, ev); });
+      hit.addEventListener("click", function () { if (pointer === "mouse") openMonth(i); });
     });
   });
   // A segment of the bar opens its line below.

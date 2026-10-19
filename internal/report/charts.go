@@ -78,6 +78,7 @@ type plot struct {
 	w, h     float64
 	padRight float64
 	tick     func(int64) string
+	from     int // the payslip of the first column, for data-i
 }
 
 func (p plot) x(i int) float64 {
@@ -125,7 +126,7 @@ func (p plot) axes(b *strings.Builder, xs func(int) float64) {
 		if i == n-1 && xs(i)+30 > p.w {
 			anchor = "end"
 		}
-		fmt.Fprintf(b, `<text class="%s" data-i="%d" x="%.1f" y="%.1f" text-anchor="%s">%s</text>`, cls, i, xs(i), p.h-10, anchor, html.EscapeString(l))
+		fmt.Fprintf(b, `<text class="%s" data-i="%d" x="%.1f" y="%.1f" text-anchor="%s">%s</text>`, cls, p.from+i, xs(i), p.h-10, anchor, html.EscapeString(l))
 	}
 }
 
@@ -186,22 +187,23 @@ func lineChart(id string, labels []string, ss []series, o lineOptions) string {
 	return b.String()
 }
 
-// stackCharts draws a columns chart in both sizes.
-func stackCharts(id string, labels []string, ss []series, total series) string {
-	return stackChart(id, labels, ss, total, wide) + stackChart(id+"-narrow", labels, ss, total, narrow)
+// stackCharts draws a columns chart in both sizes. Its first column is
+// payslip from: a column leads to its payslip's month.
+func stackCharts(id string, labels []string, ss []series, total series, from int) string {
+	return stackChart(id, labels, ss, total, from, wide) + stackChart(id+"-narrow", labels, ss, total, from, narrow)
 }
 
 // stackChart draws one column per month, its segments stacked from the
 // first series up with a surface gap between them and a rounded top. The
 // column's height is the sum of its segments, given as totals for the
 // hover layer. A transparent band over each month is its hit target.
-func stackChart(id string, labels []string, ss []series, total series, sz size) string {
+func stackChart(id string, labels []string, ss []series, total series, from int, sz size) string {
 	var maxV int64
 	for _, v := range total.Values {
 		maxV = max(maxV, v)
 	}
 	top, step := niceMax(maxV)
-	p := plot{labels: labels, top: top, step: step, w: sz.w, h: sz.h, padRight: 16, tick: euros}
+	p := plot{labels: labels, top: top, step: step, w: sz.w, h: sz.h, padRight: 16, tick: euros, from: from}
 	n := len(labels)
 	slot := (sz.w - padLeft - p.padRight) / float64(n)
 	w := math.Min(barMaxWidth, slot*0.6)
@@ -211,7 +213,7 @@ func stackChart(id string, labels []string, ss []series, total series, sz size) 
 	p.axes(&b, p.band)
 	for i := range labels {
 		x := p.band(i) - w/2
-		fmt.Fprintf(&b, `<g class="col" data-i="%d">`, i)
+		fmt.Fprintf(&b, `<g class="col" data-i="%d">`, from+i)
 		var cum int64
 		var drawn []int // indexes of the segments that show
 		for si, s := range ss {
@@ -239,7 +241,7 @@ func stackChart(id string, labels []string, ss []series, total series, sz size) 
 	}
 	for i := range labels {
 		fmt.Fprintf(&b, `<rect class="col-hit" data-i="%d" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="transparent"/>`,
-			i, p.band(i)-slot/2, padTop, slot, sz.h-padTop)
+			from+i, p.band(i)-slot/2, padTop, slot, sz.h-padTop)
 	}
 	b.WriteString(`</svg>`)
 	return b.String()

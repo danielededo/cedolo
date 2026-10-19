@@ -143,7 +143,7 @@ func variablePay(l i18n.Lang, slips []payslip.Payslip) string {
 	if !found {
 		return ""
 	}
-	return stackCharts("variable", labels, []series{s}, s)
+	return stackCharts("variable", labels, []series{s}, s, 0)
 }
 
 // fund is what a payslip pays into the supplementary pension fund: your
@@ -182,10 +182,22 @@ func toFund(desc string) bool {
 }
 
 // fundChart charts what each payslip paid into the pension fund, in its
-// three parts, under the total. It needs two payslips and a fund to which
-// you or your employer contribute.
+// three parts, under the total. The chart starts at the first payslip that
+// paid in: the months before the fund would only be empty columns. It
+// needs two payslips from there and a fund to which you or your employer
+// contribute.
 func fundChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total, span string) {
-	labels := make([]string, len(slips))
+	first := -1
+	for i, p := range slips {
+		if fundOf(p).total() > 0 {
+			first = i
+			break
+		}
+	}
+	if first < 0 || len(slips)-first < 2 {
+		return "", "", ""
+	}
+	var labels []string
 	ss := []series{
 		{Name: i18n.T(l, "report.fund.own"), Color: "var(--series-1)"},
 		{Name: i18n.T(l, "report.fund.employer"), Color: "var(--series-2)"},
@@ -194,8 +206,8 @@ func fundChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total, 
 	sum := series{Name: i18n.T(l, "report.fund.total")}
 	var all int64
 	n, contributes := 0, false
-	for i, p := range slips {
-		labels[i] = shortLabel(l, p)
+	for _, p := range slips[first:] {
+		labels = append(labels, shortLabel(l, p))
 		f := fundOf(p)
 		for k, v := range []int64{f.own, f.employer, f.tfr} {
 			ss[k].Values = append(ss[k].Values, max(v, 0))
@@ -207,10 +219,10 @@ func fundChart(l i18n.Lang, slips []payslip.Payslip) (svg template.HTML, total, 
 		}
 		contributes = contributes || f.own > 0 || f.employer > 0
 	}
-	if len(slips) < 2 || !contributes {
+	if !contributes {
 		return "", "", ""
 	}
-	return template.HTML(stackCharts("fund", labels, ss, sum)), moneyValue(all), i18n.T(l, "report.fund.span", n)
+	return template.HTML(stackCharts("fund", labels, ss, sum, first)), moneyValue(all), i18n.T(l, "report.fund.span", n)
 }
 
 // tfrChart follows the TFR accrued in the payslips and kept by the

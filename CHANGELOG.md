@@ -36,6 +36,12 @@ How to use this file:
 
 ### Changed
 
+- Charts on a phone: a touch shows the amounts of a column under the
+  chart, where the finger does not cover them, with a button to open that
+  month, instead of leaving the chart at once; the other columns fade. A
+  finger dragged sideways moves along the months instead of changing tab.
+- The pension fund chart starts at the first payslip that paid into the
+  fund, without empty columns for the months before.
 - The report is split into three tabs: the month, "Over time" with the
   year by year totals and the charts, and "Glossary" with the payslip words
   and the contract, open rather than collapsed. A link under the month leads to the payslips over time,
