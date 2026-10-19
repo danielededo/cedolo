@@ -538,7 +538,8 @@ func TestYearEndAdjustment(t *testing.T) {
 	taxes := a(60000)
 	taxes.Alternative = true
 	p := payslip.Payslip{Year: 2025, Month: 12, Kind: payslip.Monthly,
-		Items: []payslip.Item{{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 200000}},
+		Items: []payslip.Item{{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 200000},
+			{Description: "Esonero ctr - TFR prev.c.", Key: "info.other", Side: payslip.Info, Cents: 960}},
 		Gross: a(200000), Net: a(121000), SocialContributions: a(19000), Taxes: taxes, Deductions: a(79000),
 		Adjustment: true,
 		TaxParts: []payslip.Item{
@@ -549,6 +550,10 @@ func TestYearEndAdjustment(t *testing.T) {
 	m := Build(i18n.EN, []payslip.Payslip{p}, "test").Months[0]
 	if !strings.Contains(m.Adjustment, "year-end or end-of-employment adjustment") || m.Reread != "" {
 		t.Errorf("adjustment = %q, reread = %q", m.Adjustment, m.Reread)
+	}
+	// A relief of the employer's is information, not set aside for you.
+	if len(m.SetAside) != 0 || m.AsideTotal != "" || len(m.Info) != 1 {
+		t.Errorf("set aside = %v %q, info = %v", m.SetAside, m.AsideTotal, m.Info)
 	}
 	var taxLines []string
 	for _, pt := range m.Parts {

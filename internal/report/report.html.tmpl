@@ -279,6 +279,11 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <p class="explain">{{index $.T "report.aside.text"}}</p>
 <ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul>
 {{end}}
+{{if $m.Info}}
+<h2>{{index $.T "report.info"}}</h2>
+<p class="explain">{{index $.T "report.info.text"}}</p>
+<ul class="lines">{{range $m.Info}}{{template "line" .}}{{end}}</ul>
+{{end}}
 {{with $m.Fund}}<p class="fund">{{.}}</p>{{end}}
 
 {{if $m.Leave}}

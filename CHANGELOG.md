@@ -85,6 +85,10 @@ How to use this file:
 
 ### Fixed
 
+- "Set aside for you" lists only the TFR and the pension fund. Other values
+  printed with the items, such as a contribution relief of the employer's
+  or a tax deduction, are listed apart as "Other information", without a
+  total.
 - A month whose taxes are the year-end or end-of-employment adjustment
   (conguaglio) now says so, and why they are higher than usual; when the
   payslip prints its parts, the taxes list the IRPEF still due and the
