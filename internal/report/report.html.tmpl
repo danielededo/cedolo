@@ -629,36 +629,38 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
     var pts = JSON.parse(svg.dataset.points);
     var cols = svg.querySelectorAll(".col");
-    function select(i, ev) {
-      var head1 = head(pts[i].label);
+    // Column k of the chart is the month i of the payslips: a chart may
+    // start after the first payslip.
+    function select(k, i, ev) {
+      var head1 = head(pts[k].label);
       var total = document.createElement("div"); total.className = "row total";
-      total.textContent = pts[i].total.name + ": " + pts[i].total.value;
+      total.textContent = pts[k].total.name + ": " + pts[k].total.value;
       tip.replaceChildren(head1, total);
-      pts[i].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
+      pts[k].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
       if (pinned(ev) && document.querySelector('.picker button[data-month="' + i + '"]')) {
         var open = document.createElement("button");
         open.type = "button"; open.className = "link open";
-        open.textContent = openLabel.replace("%s", pts[i].label) + " ›";
+        open.textContent = openLabel.replace("%s", pts[k].label) + " ›";
         open.addEventListener("click", function () { openMonth(i); });
         tip.appendChild(open);
       }
       cols.forEach(function (c) { c.classList.toggle("dim", c.dataset.i !== String(i)); });
       show(tip, fig, ev);
     }
-    svg.querySelectorAll(".col-hit").forEach(function (hit) {
+    svg.querySelectorAll(".col-hit").forEach(function (hit, k) {
       var i = Number(hit.dataset.i);
       hit.addEventListener("pointerdown", function (ev) {
         // A finger keeps the first column it touched: let the columns it
         // moves over take the pointer in turn.
         if (hit.hasPointerCapture(ev.pointerId)) hit.releasePointerCapture(ev.pointerId);
       });
-      hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) select(i, ev); });
+      hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) select(k, i, ev); });
       hit.addEventListener("pointerleave", function (ev) {
         if (ev.pointerType !== "mouse" || tip.classList.contains("pinned")) return;
         tip.hidden = true;
         cols.forEach(function (c) { c.classList.remove("dim"); });
       });
-      hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) select(i, ev); });
+      hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) select(k, i, ev); });
       hit.addEventListener("click", function () { if (pointer === "mouse") openMonth(i); });
     });
   });

@@ -488,6 +488,24 @@ func TestPensionFundInContributions(t *testing.T) {
 	if d.Fund == "" || d.FundTotal != "1.250,00 €" || d.FundSpan != "paid in over 2 payslips" || d.TFR != "" {
 		t.Errorf("fund chart %q %q, TFR chart %.40q", d.FundTotal, d.FundSpan, d.TFR)
 	}
+	// The chart starts at the first payslip that paid in, and its columns
+	// still lead to their own months.
+	jul := payslip.Payslip{Year: 2026, Month: 7, Kind: payslip.Monthly,
+		Items: []payslip.Item{{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 300000}},
+		Gross: a(300000), Net: a(212430), INPS: a(27570), SocialContributions: a(27570), Taxes: a(60000),
+		Deductions: a(87570), TFR: a(20000)}
+	d = Build(i18n.EN, []payslip.Payslip{jul, aug, sep}, "test")
+	fund := string(d.Fund)
+	if strings.Contains(fund, "Jul") || strings.Count(fund, `class="col-hit" data-i="1"`) != 2 || strings.Contains(fund, `data-i="0"`) {
+		t.Errorf("fund chart from July: %.300s", fund)
+	}
+	if d.FundTotal != "1.250,00 €" {
+		t.Errorf("fund total = %q", d.FundTotal)
+	}
+	// One payslip from the first payment is not a chart.
+	if d = Build(i18n.EN, []payslip.Payslip{jul, sep}, "test"); d.Fund != "" {
+		t.Errorf("fund chart from one payslip")
+	}
 	// A box that cannot hold the contribution beside INPS keeps it all.
 	sep.SocialContributions = a(27570)
 	if got := contributions(sep); got != 27570 || pensionInContributions(sep) != 0 {
