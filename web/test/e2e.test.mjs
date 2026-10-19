@@ -265,11 +265,17 @@ test('shows the latest of many months first', async () => {
   await frame.waitForSelector('#panel-reference:not([hidden])');
   assert.equal(await tab('reference'), 'true');
   // A sideways swipe moves between tabs, and the page's tabs follow.
+  // Plain events carrying the touch lists: WebKit on a desktop has no Touch
+  // constructor.
   const swipe = (dx) => frame.evaluate((dx) => {
     const el = document.querySelector('.panel:not([hidden]) h3');
-    const at = (x) => new Touch({ identifier: 1, target: el, clientX: x, clientY: 200 });
-    el.dispatchEvent(new TouchEvent('touchstart', { touches: [at(200)], changedTouches: [at(200)], bubbles: true }));
-    el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [at(200 + dx)], bubbles: true }));
+    const fire = (type, touches, changed) => {
+      const ev = new Event(type, { bubbles: true });
+      Object.defineProperties(ev, { touches: { value: touches }, changedTouches: { value: changed } });
+      el.dispatchEvent(ev);
+    };
+    fire('touchstart', [{ clientX: 200, clientY: 200 }], [{ clientX: 200, clientY: 200 }]);
+    fire('touchend', [], [{ clientX: 200 + dx, clientY: 200 }]);
   }, dx);
   await swipe(150);
   await frame.waitForSelector('#panel-time:not([hidden])');
