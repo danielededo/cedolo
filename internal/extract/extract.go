@@ -167,8 +167,50 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 		{"previous rounding", func(p *payslip.Payslip) *payslip.Amount { return &p.RoundingPrevious }, readings(roundingPreviousLabels)},
 		{"current rounding", func(p *payslip.Payslip) *payslip.Amount { return &p.RoundingCurrent }, readings(roundingCurrentLabels)},
 	})
+	adjustment(&p, find)
 	checkLeave(&p)
 	return p
+}
+
+// adjustment marks the taxes of a year-end or end-of-employment adjustment:
+// the month's taxes are the IRPEF adjustment box, with or without the
+// separate taxation of TFR, and no box of the month's own taxes. Its
+// parts, IRPEF and the surtaxes, are kept when they add up to it, after
+// the separate taxation when the taxes include it.
+func adjustment(p *payslip.Payslip, find func([]string) payslip.Amount) {
+	adj := find(taxAdjustmentLabels)
+	if !adj.Found() || adj.Cents <= 0 || !p.Taxes.Found() || find(taxLabels).Found() {
+		return
+	}
+	sep := find(separateTaxLabels)
+	withSeparate := sep.Found() && sep.Cents != 0 && p.Taxes.Cents == adj.Cents+sep.Cents
+	if p.Taxes.Cents != adj.Cents && !withSeparate {
+		return
+	}
+	p.Adjustment = true
+	var parts []payslip.Item
+	var sum int64
+	for _, f := range []struct {
+		desc, key string
+		labels    []string
+	}{
+		{"IRPEF", "tax.irpef", adjustmentIRPEFLabels},
+		{"Addizionale regionale", "tax.surcharge.regional", adjustmentRegionalLabels},
+		{"Addizionale comunale", "tax.surcharge.municipal", adjustmentMunicipalLabels},
+	} {
+		if a := find(f.labels); a.Found() && a.Cents != 0 {
+			parts = append(parts, payslip.Item{Description: f.desc, Key: f.key, Side: payslip.Deduction, Cents: a.Cents, Source: *a.Source})
+			sum += a.Cents
+		}
+	}
+	if len(parts) < 2 || sum != adj.Cents {
+		return
+	}
+	if withSeparate {
+		parts = append([]payslip.Item{{Description: "IRPEF tassazione separata", Key: "tax.irpef", Side: payslip.Deduction,
+			Cents: sep.Cents, Source: *sep.Source}}, parts...)
+	}
+	p.TaxParts = parts
 }
 
 // otherTaxes returns the income tax withheld in boxes of its own, the

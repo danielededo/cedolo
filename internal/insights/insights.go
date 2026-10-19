@@ -232,7 +232,7 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 		if sumKey(prev, "pension_fund.employee") != sumKey(cur, "pension_fund.employee") {
 			why = append(why, i18n.T(l, "why.pension_fund"))
 		}
-		if cur.Month == 12 || cur.Month == 2 || cur.Month == 3 || prev.Month == 12 {
+		if cur.Month == 12 || cur.Month == 2 || cur.Month == 3 || prev.Month == 12 || cur.Adjustment || prev.Adjustment {
 			why = append(why, i18n.T(l, "why.year_end"))
 		}
 		add("tax_rate", i18n.T(l, "change.tax_rate", percent(l, pr, 1, false), percent(l, cr, 1, false)), why...)

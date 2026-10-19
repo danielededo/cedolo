@@ -52,9 +52,11 @@ type Month struct {
 	Summary    string            // the month in one sentence: what changed and why, or where the gross goes
 	SummaryWhy []string          // likely reasons for the change the summary tells
 	Reread     string            // which totals were read from a less usual place so that they add up
+	Adjustment string            // why the taxes of a year-end adjustment differ from the usual
 	Parts      []Part            // where the gross pay goes
 	Earnings   []Line            // what makes up the gross pay
-	SetAside   []Line            // TFR and other amounts that do not change this month's pay
+	SetAside   []Line            // TFR and pension fund amounts, which do not change this month's pay
+	Info       []Line            // other values printed with the items, such as amounts paid by the employer
 	Fund       string            // what the month paid into the pension fund, and its parts
 	GrossTotal string            // the gross pay, next to Earnings
 	AsideTotal string            // the sum of SetAside
@@ -247,6 +249,9 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		Net:        amount(p.Net),
 	}
 	m.Reread = reread(l, p)
+	if p.Adjustment {
+		m.Adjustment = i18n.T(l, "report.adjustment")
+	}
 	if f := fundOf(p); f.own > 0 || f.employer > 0 {
 		var parts []string
 		for _, pt := range []struct {
@@ -288,8 +293,10 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 			// Withheld within the contributions box: it is among the
 			// other deductions, not set aside on top of the pay.
 			other = append(other, line(it))
-		case it.Side == payslip.Info:
+		case it.Side == payslip.Info && setAside(it.Key):
 			m.SetAside = append(m.SetAside, line(it))
+		case it.Side == payslip.Info:
+			m.Info = append(m.Info, line(it))
 		case it.Key == "deductions.inps":
 			contrib = append(contrib, line(it))
 		case strings.HasPrefix(it.Key, "tax.") && it.Key != "tax.credit":
@@ -298,9 +305,16 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 			other = append(other, line(it))
 		}
 	}
+	// The taxes of an adjustment, split into their parts outside the item
+	// table.
+	if len(tax) == 0 {
+		for _, it := range p.TaxParts {
+			tax = append(tax, line(it))
+		}
+	}
 	var aside int64
 	for _, it := range p.Items {
-		if it.Side == payslip.Info && !(it.Key == "pension_fund.employee" && fund > 0) {
+		if it.Side == payslip.Info && setAside(it.Key) && !(it.Key == "pension_fund.employee" && fund > 0) {
 			aside += it.Cents
 		}
 	}
@@ -437,6 +451,13 @@ func texts(l i18n.Lang) map[string]string {
 	return m
 }
 
+// setAside tells the information items that build up for the person: the
+// TFR and the pension fund. Other information, such as a contribution
+// relief of the employer's, is not theirs.
+func setAside(key string) bool {
+	return strings.HasPrefix(key, "tfr.") || strings.HasPrefix(key, "pension_fund.")
+}
+
 // reread names the totals read from a less usual place beside their label
 // because the payslip adds up with them, so that a person can check them.
 func reread(l i18n.Lang, p payslip.Payslip) string {
@@ -449,6 +470,11 @@ func reread(l i18n.Lang, p payslip.Payslip) string {
 		{p.SocialContributions, "report.contrib"}, {p.Taxes, "report.taxes"},
 		{p.RoundingPrevious, "report.rounding"}, {p.RoundingCurrent, "report.rounding"},
 	} {
+		// The taxes of an adjustment are read from its own box, and the
+		// month says why.
+		if t.key == "report.taxes" && p.Adjustment {
+			continue
+		}
 		if n := i18n.T(l, t.key); t.a.Alternative && !slices.Contains(names, n) {
 			names = append(names, n)
 		}

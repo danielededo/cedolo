@@ -255,6 +255,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{if $m.Summary}}<p class="summary">{{$m.Summary}}</p>{{end}}
 {{range $m.SummaryWhy}}<p class="why">{{.}}</p>{{end}}
 {{with $m.Reread}}<p class="note">{{.}}</p>{{end}}
+{{with $m.Adjustment}}<p class="note">{{.}}</p>{{end}}
 
 {{if $m.Parts}}
 <h2>{{index $.T "report.where"}}</h2>
@@ -277,6 +278,11 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <h2 class="total"><span>{{index $.T "report.aside"}}</span><span class="amount">{{$m.AsideTotal}}</span></h2>
 <p class="explain">{{index $.T "report.aside.text"}}</p>
 <ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul>
+{{end}}
+{{if $m.Info}}
+<h2>{{index $.T "report.info"}}</h2>
+<p class="explain">{{index $.T "report.info.text"}}</p>
+<ul class="lines">{{range $m.Info}}{{template "line" .}}{{end}}</ul>
 {{end}}
 {{with $m.Fund}}<p class="fund">{{.}}</p>{{end}}
 

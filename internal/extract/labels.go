@@ -27,6 +27,11 @@ var (
 	// or end-of-employment adjustment.
 	separateTaxLabels   = []string{"totale trattenute irpef t s", "totale tratt irpef t s", "tot trattenute irpef t s", "tot tratt irpef t s"}
 	taxAdjustmentLabels = []string{"conguaglio irpef"}
+	// The parts of the adjustment, in boxes of their own: the IRPEF still
+	// due on the year, and the regional and municipal surtaxes.
+	adjustmentIRPEFLabels     = []string{"irpef erario", "conguaglio irpef erario", "irpef a conguaglio"}
+	adjustmentRegionalLabels  = []string{"addizionale regionale", "add le regionale", "add regionale", "addiz regionale"}
+	adjustmentMunicipalLabels = []string{"addizionale comunale", "add le comunale", "add comunale", "addiz comunale"}
 	// The family allowance (assegno per il nucleo familiare), printed by some
 	// layouts outside the item table.
 	familyAllowanceLabels = []string{"importo assegno", "importo anf", "assegno nucleo familiare"}
@@ -105,7 +110,8 @@ var (
 func Vocabulary() []string {
 	var phrases []string
 	for _, list := range [][]string{grossLabels, deductionLabels, netLabels, inpsBaseLabels, irpefBaseLabels,
-		tfrLabels, tfrBaseLabels, socialLabels, taxLabels, separateTaxLabels, taxAdjustmentLabels, familyAllowanceLabels,
+		tfrLabels, tfrBaseLabels, socialLabels, taxLabels, separateTaxLabels, taxAdjustmentLabels,
+		adjustmentIRPEFLabels, adjustmentRegionalLabels, adjustmentMunicipalLabels, familyAllowanceLabels,
 		inpsLabels, roundingPreviousLabels, roundingCurrentLabels,
 		periodLabels, thirteenthWords, fourteenthWords, additionalWords} {
 		phrases = append(phrases, list...)
