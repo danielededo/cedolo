@@ -488,6 +488,23 @@ func TestPensionFundInContributions(t *testing.T) {
 	if d.Fund == "" || d.FundTotal != "1.250,00 €" || d.FundSpan != "paid in over 2 payslips" || d.TFR != "" {
 		t.Errorf("fund chart %q %q, TFR chart %.40q", d.FundTotal, d.FundSpan, d.TFR)
 	}
+	// The year counts against the deductible limit your contribution and
+	// the employer's, not the TFR.
+	var deductible []string
+	for _, r := range d.Years.Rows {
+		if r.Label == "Pension fund deductible used" {
+			deductible = r.Cells
+		}
+	}
+	if !slices.Equal(deductible, []string{"850,00 €"}) || !d.Years.Deductible || d.Years.Over {
+		t.Errorf("deductible = %v, over = %v", deductible, d.Years.Over)
+	}
+	if over := Build(i18n.EN, []payslip.Payslip{aug, slip(9, 530000, 142430)}, "test"); !over.Years.Over {
+		t.Errorf("no word of a year over the limit")
+	}
+	if deductibleLimit(2025) != 516457 {
+		t.Errorf("2025 limit = %d", deductibleLimit(2025))
+	}
 	// The chart starts at the first payslip that paid in, and its columns
 	// still lead to their own months.
 	jul := payslip.Payslip{Year: 2026, Month: 7, Kind: payslip.Monthly,

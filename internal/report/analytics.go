@@ -19,6 +19,9 @@ type YearTable struct {
 	Years   []string // "2025", with an asterisk when the year is incomplete
 	Rows    []YearRow
 	Partial bool // some year has fewer than twelve monthly payslips
+	// Deductible is set when the table has the row of the pension fund
+	// deductible used; Over when some year goes above the limit.
+	Deductible, Over bool
 }
 
 // YearRow is one measure over the years.
@@ -34,6 +37,7 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		year                             int
 		monthly, extra                   int
 		gross, contrib, taxes, net, fund int64
+		deductible                       int64
 		monthlyNet                       int64
 		netMonths                        int
 	}
@@ -68,6 +72,7 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		s.taxes += taxes(p)
 		f := fundOf(p)
 		s.fund += f.total()
+		s.deductible += f.own + f.employer
 		fundYears = fundYears || f.own > 0 || f.employer > 0
 	}
 	if len(sums) == 0 {
@@ -108,6 +113,11 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 	})
 	if fundYears {
 		row("report.year.fund", func(s *sum) string { return optional(s.fund) })
+		row("report.year.deductible", func(s *sum) string {
+			t.Over = t.Over || s.deductible > deductibleLimit(s.year)
+			return optional(s.deductible)
+		})
+		t.Deductible = true
 	}
 	row("report.year.share", func(s *sum) string {
 		if s.gross <= 0 || s.net <= 0 {
@@ -116,6 +126,17 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		return strconv.FormatInt(roundDiv(s.net*100, s.gross), 10) + " €"
 	})
 	return t
+}
+
+// deductibleLimit is the most that contributions to a supplementary
+// pension fund, yours and the employer's, take off the taxable income in
+// a year (d.lgs. 252/2005, art. 8 c. 4). The TFR paid into the fund is not
+// counted. The 2026 budget law raised it from 5.164,57 € to 5.300 €.
+func deductibleLimit(year int) int64 {
+	if year >= 2026 {
+		return 530000
+	}
+	return 516457
 }
 
 // variableKeys are the earnings that change from one month to the next.
