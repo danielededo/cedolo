@@ -90,7 +90,8 @@ type Row struct {
 
 // LeaveRow is one leave balance.
 type LeaveRow struct {
-	Label, Previous, Accrued, Used, Remaining string
+	Label, Remaining string
+	Moves            string // how the balance moved: before, accrued, used
 }
 
 // Term is a glossary word printed around the items.
@@ -116,10 +117,8 @@ type Data struct {
 	Months   []Month
 	Selected int // index in Months of the month shown first: the latest
 	// Tabs splits the page into the month, over time and reference, when
-	// there is something to show over time; Teaser leads from the month to
-	// the payslips over time.
+	// there is something to show over time.
 	Tabs     bool
-	Teaser   string
 	Trend    template.HTML // where the gross pay went, month by month
 	Variable template.HTML // overtime, bonuses and allowances, month by month
 	Years    *YearTable
@@ -220,7 +219,6 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 	d.LeaveCharts = leaveCharts(l, slips)
 	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" {
 		d.Tabs = true
-		d.Teaser = i18n.T(l, "report.teaser", len(slips))
 	}
 
 	d.Contract = contract(l, slips)
@@ -242,13 +240,16 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	}
 	m.Reread = reread(l, p)
 	for _, lv := range p.Leave {
-		m.Leave = append(m.Leave, LeaveRow{
-			Label:     lv.Label,
-			Previous:  quantity(lv.Previous, lv.Unit, l),
-			Accrued:   quantity(lv.Accrued, lv.Unit, l),
-			Used:      quantity(lv.Used, lv.Unit, l),
-			Remaining: quantity(lv.Remaining, lv.Unit, l),
-		})
+		var moves []string
+		for _, mv := range []struct {
+			key string
+			v   *int64
+		}{{"report.leave.before", lv.Previous}, {"report.leave.accrued", lv.Accrued}, {"report.leave.used", lv.Used}} {
+			if mv.v != nil {
+				moves = append(moves, i18n.T(l, mv.key, money.Format(*mv.v)))
+			}
+		}
+		m.Leave = append(m.Leave, LeaveRow{Label: lv.Label, Remaining: quantity(lv.Remaining, lv.Unit, l), Moves: strings.Join(moves, " · ")})
 	}
 	if p.Gross.Found() {
 		m.Gross = i18n.T(l, "report.of_gross", amount(p.Gross))

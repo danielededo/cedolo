@@ -82,6 +82,10 @@ h2.total .amount { font-variant-numeric: tabular-nums; }
 .when { display: flex; align-items: center; gap: 8px; }
 .when .label { flex: 1; }
 .steps { display: flex; gap: 6px; }
+.leave { list-style: none; padding: 0; margin: 0; }
+.leave li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+.leave .left { font-weight: 600; font-variant-numeric: tabular-nums; }
+.leave .moves { grid-column: 1 / -1; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .steps button { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .steps button:disabled { opacity: .35; cursor: default; }
 .tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; }
@@ -89,7 +93,6 @@ h2.total .amount { font-variant-numeric: tabular-nums; }
 .tabs button:focus-visible { outline: 2px solid var(--series-1); outline-offset: -2px; border-radius: 4px; }
 .tabs ~ .panel h2.group { display: none; }
 .tabs ~ .panel > section:first-of-type > h3 { margin-top: 24px; }
-.teaser { margin: 32px 0 0; }
 .link { font: inherit; font-size: 15px; padding: 0; border: 0; background: none; color: var(--series-1); cursor: pointer; text-align: left; }
 .stat { margin: 0 0 8px; color: var(--ink-2); }
 .stat strong { font-size: 28px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 6px; }
@@ -196,15 +199,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .glossary dt { font-weight: 600; margin-top: 14px; }
 .glossary dd { margin: 4px 0 0; font-size: 15px; color: var(--ink-2); max-width: 70ch; }
 footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
-.embedded footer { display: none; }
-.embedded main { padding-bottom: 8px; }
+.embedded footer, .embedded h1 { display: none; }
+.embedded header .sub { margin-top: 0; }
+.embedded main { padding-top: 8px; padding-bottom: 8px; }
 .chart.narrow { display: none; }
 @media (max-width: 520px) {
   .chart.wide { display: none; }
   .chart.narrow { display: block; }
 }
 @media print {
-  .tooltip, .picker, .hint, .tabs, .teaser, .steps { display: none; }
+  .tooltip, .picker, .hint, .tabs, .steps { display: none; }
   .panel[hidden] { display: block !important; }
   .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
@@ -245,7 +249,6 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{if $m.Parts}}
 <h2>{{index $.T "report.where"}}</h2>
 <div class="bar">{{range $m.Parts}}<button type="button" class="seg part-{{.Key}}" style="width:{{printf "%.2f" .Width}}%" data-part="{{.Key}}" aria-label="{{.Label}} {{.Amount}}"></button>{{end}}</div>
-<p class="hint">{{index $.T "report.tap"}}</p>
 <div class="parts">
 {{range $m.Parts}}<details class="part part-{{.Key}}" data-part="{{.Key}}">
 <summary><span class="key"></span><span class="name">{{.Label}}</span><span class="amount">{{.Amount}}</span></summary>
@@ -257,7 +260,6 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 
 {{if $m.Earnings}}
 <h2 class="total"><span>{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></h2>
-<p class="explain">{{index $.T "report.earnings.text"}}</p>
 <ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul>
 {{end}}
 
@@ -269,20 +271,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 
 {{if $m.Leave}}
 <h2>{{index $.T "report.leave"}}</h2>
-<div class="scroll">
-<table>
-<thead><tr>
-<th>{{index $.T "report.col.kind"}}</th>
-<th class="num">{{index $.T "report.col.previous"}}</th>
-<th class="num">{{index $.T "report.col.accrued"}}</th>
-<th class="num">{{index $.T "report.col.used"}}</th>
-<th class="num">{{index $.T "report.col.remain"}}</th>
-</tr></thead>
-<tbody>
-{{range $m.Leave}}<tr><td>{{.Label}}</td><td class="num">{{.Previous}}</td><td class="num">{{.Accrued}}</td><td class="num">{{.Used}}</td><td class="num">{{.Remaining}}</td></tr>
-{{end}}</tbody>
-</table>
-</div>
+<ul class="leave">
+{{range $m.Leave}}<li><span class="name">{{.Label}}</span><span class="left">{{.Remaining}}</span>{{with .Moves}}<span class="moves">{{.}}</span>{{end}}</li>
+{{end}}</ul>
 {{end}}
 
 {{if $m.Changes}}
@@ -299,7 +290,6 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}
 </section>
 {{end}}
-{{with .Teaser}}<p class="teaser"><button type="button" class="link" data-tab="time">{{.}} →</button></p>{{end}}
 </div>
 
 <div class="panel" id="panel-time"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-time" hidden{{end}}>
@@ -367,7 +357,6 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <section>
 <h3>{{index .T "report.variable"}}</h3>
 <figure>{{.Variable}}<div class="tooltip" hidden></div></figure>
-<p class="note">{{index .T "report.variable.note"}}</p>
 </section>
 {{end}}
 

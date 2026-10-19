@@ -122,6 +122,10 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .files .anon-open { flex: none; white-space: nowrap; font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--line); background: var(--raised); color: var(--ink); }
 .files ul:not(.show-anon) .anon-open.optional, .files ul:not(.show-anon) li.ok { display: none; }
 .link { padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.added { margin: 0 0 16px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--good) 10%, var(--raised)); color: var(--ink); font-size: 15px; }
+.added::before { content: "✓ "; color: var(--good); font-weight: 700; }
+.added.none { background: var(--raised); color: var(--ink-2); }
+.added.none::before { content: ""; }
 .misread { margin: 16px 0 0; text-align: center; }
 .report-tabs { display: flex; gap: 4px; margin: 0 -16px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--line); }
 .report-tabs[hidden] { display: none; }

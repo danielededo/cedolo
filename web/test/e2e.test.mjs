@@ -255,19 +255,27 @@ test('shows the latest of many months first', async () => {
   assert.equal(await frame.$eval('.tabs', (t) => getComputedStyle(t).display), 'none');
   const tab = (name) => page.$eval(`#tabs [data-tab="${name}"]`, (t) => t.getAttribute('aria-selected'));
   assert.equal(await tab('month'), 'true');
-  await press(frame, '.teaser button');
+  await press(page, '#tabs [data-tab="time"]');
   await page.waitForFunction(() => document.querySelector('#tabs [data-tab="time"]').getAttribute('aria-selected') === 'true');
+  // The report gets the page's message a moment later.
+  await frame.waitForSelector('#panel-time:not([hidden])');
   assert.ok(await frame.$eval('#panel-month', (p) => p.hidden));
   await page.focus('#tabs [data-tab="time"]');
   await page.keyboard.press('ArrowRight');
   await frame.waitForSelector('#panel-reference:not([hidden])');
   assert.equal(await tab('reference'), 'true');
   // A sideways swipe moves between tabs, and the page's tabs follow.
+  // Plain events carrying the touch lists: WebKit on a desktop has no Touch
+  // constructor.
   const swipe = (dx) => frame.evaluate((dx) => {
     const el = document.querySelector('.panel:not([hidden]) h3');
-    const at = (x) => new Touch({ identifier: 1, target: el, clientX: x, clientY: 200 });
-    el.dispatchEvent(new TouchEvent('touchstart', { touches: [at(200)], changedTouches: [at(200)], bubbles: true }));
-    el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [at(200 + dx)], bubbles: true }));
+    const fire = (type, touches, changed) => {
+      const ev = new Event(type, { bubbles: true });
+      Object.defineProperties(ev, { touches: { value: touches }, changedTouches: { value: changed } });
+      el.dispatchEvent(ev);
+    };
+    fire('touchstart', [{ clientX: 200, clientY: 200 }], [{ clientX: 200, clientY: 200 }]);
+    fire('touchend', [], [{ clientX: 200 + dx, clientY: 200 }]);
   }, dx);
   await swipe(150);
   await frame.waitForSelector('#panel-time:not([hidden])');
@@ -278,7 +286,7 @@ test('shows the latest of many months first', async () => {
   await press(frame, '#trend-narrow .col-hit[data-i="2"]');
   await frame.waitForSelector('section.month[data-month="2"]:not([hidden])');
   assert.ok(!(await frame.$eval('#panel-month', (p) => p.hidden)), 'the column leads back to the month');
-  assert.equal(await tab('month'), 'true');
+  await page.waitForFunction(() => document.querySelector('#tabs [data-tab="month"]').getAttribute('aria-selected') === 'true');
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.dataset.month), '2');
   assert.equal(await frame.$eval('#trend-narrow .month.current', (t) => t.dataset.i), '2');
   // The arrows beside the month step to the one before.
@@ -306,6 +314,8 @@ test('adds payslips to a report', async () => {
     'warn: — 1 payslip(s) read, 1 already read in another file and ignored',
   ]);
   assert.ok(await page.$eval('#pick', (p) => p.hidden), 'the picker hides again');
+  // The page tells which month was added.
+  assert.equal(await page.$eval('#added', (p) => p.textContent), 'Added: March 2026.');
   const frame = page.frames().find((f) => f !== page.mainFrame());
   await frame.waitForFunction(() => document.querySelectorAll('.picker button').length === 3);
   // The report opens on the latest month again.

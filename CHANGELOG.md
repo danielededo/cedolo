@@ -62,6 +62,13 @@ How to use this file:
 - The list of files shows only when a file needs a look; "Something read
   badly?" sits under the report and opens it to pick the file to copy.
 
+- After "Add payslips" the web app says what was added ("Added: March
+  2026."), or that the files picked held no new payslip.
+- Fewer small texts: the hints and notes that repeated what a heading or a
+  tab already says are gone, and inside the web app the report no longer
+  repeats its title. Holiday and leave balances are a short list, the
+  balance first and how it moved under it, instead of a five-column table.
+
 ### Fixed
 
 - Percentages in the changes use the decimal comma in Italian: "-30,3%".

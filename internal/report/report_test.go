@@ -84,8 +84,8 @@ func TestBuild(t *testing.T) {
 			t.Errorf("line %+v", l)
 		}
 	}
-	if len(m.Leave) == 0 {
-		t.Error("no leave rows in the month")
+	if len(m.Leave) == 0 || m.Leave[0].Remaining == "" || !strings.HasPrefix(m.Leave[0].Moves, "before ") {
+		t.Errorf("leave rows in the month = %+v", m.Leave)
 	}
 	if len(d.Terms) != len(i18n.Terms) || d.Terms[0].Text == "" {
 		t.Errorf("terms = %+v", d.Terms)
@@ -413,8 +413,7 @@ func TestTabs(t *testing.T) {
 		t.Errorf("%d tabs, want 3", n)
 	}
 	for _, want := range []string{`id="panel-month" role="tabpanel" aria-labelledby="tab-month">`,
-		`id="panel-time" role="tabpanel" aria-labelledby="tab-time" hidden>`,
-		`data-tab="time">How your 2 payslips went over time →</button>`} {
+		`id="panel-time" role="tabpanel" aria-labelledby="tab-time" hidden>`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page misses %s", want)
 		}
@@ -424,7 +423,7 @@ func TestTabs(t *testing.T) {
 	if err := Render(&b, i18n.EN, months(t, 1), "test"); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(b.String(), `role="tab" id=`) || strings.Contains(b.String(), "went over time") {
+	if strings.Contains(b.String(), `role="tab" id=`) {
 		t.Error("tabs for a single payslip")
 	}
 }
