@@ -257,6 +257,8 @@ test('shows the latest of many months first', async () => {
   assert.equal(await tab('month'), 'true');
   await press(page, '#tabs [data-tab="time"]');
   await page.waitForFunction(() => document.querySelector('#tabs [data-tab="time"]').getAttribute('aria-selected') === 'true');
+  // The report gets the page's message a moment later.
+  await frame.waitForSelector('#panel-time:not([hidden])');
   assert.ok(await frame.$eval('#panel-month', (p) => p.hidden));
   await page.focus('#tabs [data-tab="time"]');
   await page.keyboard.press('ArrowRight');
@@ -278,7 +280,7 @@ test('shows the latest of many months first', async () => {
   await press(frame, '#trend-narrow .col-hit[data-i="2"]');
   await frame.waitForSelector('section.month[data-month="2"]:not([hidden])');
   assert.ok(!(await frame.$eval('#panel-month', (p) => p.hidden)), 'the column leads back to the month');
-  assert.equal(await tab('month'), 'true');
+  await page.waitForFunction(() => document.querySelector('#tabs [data-tab="month"]').getAttribute('aria-selected') === 'true');
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.dataset.month), '2');
   assert.equal(await frame.$eval('#trend-narrow .month.current', (t) => t.dataset.i), '2');
   // The arrows beside the month step to the one before.
