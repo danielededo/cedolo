@@ -7,7 +7,8 @@
 // It defines a global object cedolo with:
 //
 //	analyze(layoutsJSON, lang) -> {payslips, perDocument, report} or {error};
-//	    perDocument has, for each document, {read, repeated} or {error}
+//	    perDocument has, for each document, {read, repeated, periods} or
+//	    {error}, periods naming the payslips read, such as "marzo 2026"
 //	anonymize(layoutJSON, keepAmounts) -> {text, pdf} or {error}: an
 //	    anonymized copy of one document (ADR 0008), its text for review and
 //	    the rebuilt PDF as a Uint8Array
@@ -70,7 +71,11 @@ func analyze(_ js.Value, args []js.Value) (result any) {
 			continue
 		}
 		kept, dropped := insights.Dedupe(append(append([]payslip.Payslip(nil), slips...), found...))
-		perDoc[i] = map[string]any{"read": len(found), "repeated": dropped}
+		periods := make([]any, len(found))
+		for k, p := range found {
+			periods[k] = insights.Label(l, p)
+		}
+		perDoc[i] = map[string]any{"read": len(found), "repeated": dropped, "periods": periods}
 		slips = kept
 	}
 	var page bytes.Buffer

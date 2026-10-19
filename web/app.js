@@ -181,6 +181,7 @@ function analyze() {
     if (r.error) f.error = r.error;
     f.read = r.read ?? 0;
     f.repeated = r.repeated ?? 0;
+    f.periods = Array.isArray(r.periods) ? r.periods.filter((p) => typeof p === 'string') : [];
   });
   state.report = result.report;
 }
@@ -261,6 +262,18 @@ function render() {
   }
 }
 
+// added confirms what a pick of files added to the report: the months
+// read, or that none was new. Files with problems are listed above it.
+function added(files) {
+  const months = files.filter((f) => f.read > f.repeated).flatMap((f) => f.periods);
+  let text = t('web.added.none');
+  if (months.length === 1) text = t('web.added.one', months[0]);
+  if (months.length > 1) text = t('web.added.many', months.length, months.join(', '));
+  $('added').textContent = text;
+  $('added').classList.toggle('none', months.length === 0);
+  $('added').hidden = false;
+}
+
 // progress shows how many files have been read, or hides the bar.
 function progress(done, total) {
   $('progress').hidden = total === 0;
@@ -281,6 +294,8 @@ async function handle(fileList) {
   // Adding to a report: the picker comes back above it while reading, for
   // the progress and any password.
   const adding = !$('result').hidden;
+  const before = state.files.length;
+  $('added').hidden = true;
   if (adding) {
     $('pick').hidden = false;
     $('pick').scrollIntoView({ block: 'nearest' });
@@ -300,6 +315,7 @@ async function handle(fileList) {
     $('pick').classList.add('leaving');
     await wait(180);
     render();
+    if (adding) added(state.files.slice(before));
   } catch (err) {
     status(t('web.failed', err.message), true);
   } finally {
@@ -474,6 +490,7 @@ for (const b of document.querySelectorAll('[data-lang]')) {
     if (!globalThis.cedolo) return;
     state.lang = b.dataset.lang;
     applyTexts();
+    $('added').hidden = true; // written in the other language
     if (state.files.length) {
       try {
         analyze();

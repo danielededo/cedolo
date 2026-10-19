@@ -255,7 +255,7 @@ test('shows the latest of many months first', async () => {
   assert.equal(await frame.$eval('.tabs', (t) => getComputedStyle(t).display), 'none');
   const tab = (name) => page.$eval(`#tabs [data-tab="${name}"]`, (t) => t.getAttribute('aria-selected'));
   assert.equal(await tab('month'), 'true');
-  await press(frame, '.teaser button');
+  await press(page, '#tabs [data-tab="time"]');
   await page.waitForFunction(() => document.querySelector('#tabs [data-tab="time"]').getAttribute('aria-selected') === 'true');
   assert.ok(await frame.$eval('#panel-month', (p) => p.hidden));
   await page.focus('#tabs [data-tab="time"]');
@@ -306,6 +306,8 @@ test('adds payslips to a report', async () => {
     'warn: — 1 payslip(s) read, 1 already read in another file and ignored',
   ]);
   assert.ok(await page.$eval('#pick', (p) => p.hidden), 'the picker hides again');
+  // The page tells which month was added.
+  assert.equal(await page.$eval('#added', (p) => p.textContent), 'Added: March 2026.');
   const frame = page.frames().find((f) => f !== page.mainFrame());
   await frame.waitForFunction(() => document.querySelectorAll('.picker button').length === 3);
   // The report opens on the latest month again.
