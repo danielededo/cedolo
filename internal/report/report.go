@@ -259,10 +259,15 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		return Line{Description: it.Description, Label: i18n.ItemLabel(l, it.Key), Amount: money.Format(it.Cents) + " €", Text: i18n.ItemText(l, it.Key)}
 	}
 	var contrib, tax, other []Line
+	fund := pensionInContributions(p)
 	for _, it := range p.Items {
 		switch {
 		case it.Side == payslip.Earning:
 			m.Earnings = append(m.Earnings, line(it))
+		case it.Key == "pension_fund.employee" && fund > 0:
+			// Withheld within the contributions box: it is among the
+			// other deductions, not set aside on top of the pay.
+			other = append(other, line(it))
 		case it.Side == payslip.Info:
 			m.SetAside = append(m.SetAside, line(it))
 		case it.Key == "deductions.inps":
@@ -275,7 +280,7 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	}
 	var aside int64
 	for _, it := range p.Items {
-		if it.Side == payslip.Info {
+		if it.Side == payslip.Info && !(it.Key == "pension_fund.employee" && fund > 0) {
 			aside += it.Cents
 		}
 	}
@@ -595,11 +600,16 @@ func compared(l i18n.Lang, prev, cur payslip.Payslip) (string, string) {
 }
 
 // effects returns how each kind of item moves the net pay: earnings add,
-// deductions subtract. Information items and roundings are left out.
+// deductions subtract, and so does your pension fund contribution when the
+// contributions box holds it. Other information items and roundings are
+// left out.
 func effects(p payslip.Payslip) map[string]int64 {
 	out := map[string]int64{}
+	fund := pensionInContributions(p) > 0
 	for _, it := range p.Items {
 		switch {
+		case it.Key == "pension_fund.employee" && fund:
+			out[it.Key] -= it.Cents
 		case it.Key == "rounding" || it.Side == payslip.Info:
 		case it.Side == payslip.Deduction:
 			out[it.Key] -= it.Cents
@@ -618,13 +628,37 @@ func abs(c int64) int64 {
 }
 
 // contributions returns social contributions withheld: the summary box when
-// printed, otherwise the INPS items.
+// printed, without your own pension fund contribution when the box holds
+// it, otherwise the INPS items.
 func contributions(p payslip.Payslip) int64 {
 	if p.SocialContributions.Found() {
-		return p.SocialContributions.Cents
+		return p.SocialContributions.Cents - pensionInContributions(p)
 	}
 	s, _ := p.SumKey("deductions.inps")
 	return s
+}
+
+// pensionInContributions returns your own pension fund contribution when
+// the printed contributions box holds it, as some payroll software prints
+// it there beside INPS rather than as a deduction item: the contribution is
+// an information item, there is no pension fund deduction, and the box is at
+// least INPS plus the contribution. It is zero otherwise.
+func pensionInContributions(p payslip.Payslip) int64 {
+	fund, n := p.SumKey("pension_fund.employee")
+	if n == 0 || fund <= 0 || !p.SocialContributions.Found() {
+		return 0
+	}
+	if _, k := p.SumKey("deductions.pension_fund"); k > 0 {
+		return 0
+	}
+	inps, _ := p.SumKey("deductions.inps")
+	if p.INPS.Found() {
+		inps = p.INPS.Cents
+	}
+	if p.SocialContributions.Cents < inps+fund {
+		return 0
+	}
+	return fund
 }
 
 // taxes returns income taxes withheld: the summary box when printed,

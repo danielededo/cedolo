@@ -229,6 +229,9 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 
 	if pr, cr, ok := rates(taxes(prev), prev.Gross, taxes(cur), cur.Gross); ok && math.Abs(cr-pr) > taxRateThreshold {
 		var why []string
+		if sumKey(prev, "pension_fund.employee") != sumKey(cur, "pension_fund.employee") {
+			why = append(why, i18n.T(l, "why.pension_fund"))
+		}
 		if cur.Month == 12 || cur.Month == 2 || cur.Month == 3 || prev.Month == 12 {
 			why = append(why, i18n.T(l, "why.year_end"))
 		}

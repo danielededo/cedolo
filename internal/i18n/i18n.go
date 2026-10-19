@@ -120,6 +120,7 @@ var catalog = map[Lang]map[string]string{
 		"why.new_contract":     "A change of level or contract usually comes with a change of base pay.",
 		"why.inps_threshold":   "An additional 1%% INPS contribution applies to pay above a yearly threshold.",
 		"why.leave_used":       "Leave taken this month reduces the balance.",
+		"why.pension_fund":     "Your pension fund contribution changed: it is deducted from the income IRPEF is computed on, so a larger one lowers the taxes.",
 		"why.different_employ": "The collective agreement changed: these payslips may come from different employers.",
 
 		"report.title":                "Payslip report",
@@ -289,6 +290,7 @@ var catalog = map[Lang]map[string]string{
 		"why.new_contract":     "Un cambio di livello o di contratto di solito cambia anche la paga base.",
 		"why.inps_threshold":   "Sopra una soglia annuale si applica un contributo INPS aggiuntivo dell'1%%.",
 		"why.leave_used":       "Le ferie o i permessi goduti nel mese riducono il residuo.",
+		"why.pension_fund":     "È cambiato il tuo contributo al fondo pensione: si sottrae dal reddito su cui si calcola l'IRPEF, quindi se cresce le imposte scendono.",
 		"why.different_employ": "Il contratto collettivo è cambiato: questi cedolini potrebbero essere di datori di lavoro diversi.",
 
 		"report.title":                "Report cedolini",

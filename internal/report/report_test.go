@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"html"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -438,5 +439,49 @@ func TestToldChangesAreLeftOut(t *testing.T) {
 	rest, why := told(changes, "earnings.overtime")
 	if len(rest) != 2 || rest[0].Text != "bonus" || rest[1].Text != "leave" || len(why) != 1 || why[0] != "overtime" {
 		t.Errorf("rest = %+v, why = %v", rest, why)
+	}
+}
+
+// TestPensionFundInContributions covers payroll software that prints your
+// own pension fund contribution inside the contributions box, beside INPS:
+// it is no contribution to INPS, so it moves to the other deductions, and
+// it explains a change of the net.
+func TestPensionFundInContributions(t *testing.T) {
+	a := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Verified} }
+	slip := func(month int, fund, net int64) payslip.Payslip {
+		return payslip.Payslip{Year: 2026, Month: month, Kind: payslip.Monthly,
+			Items: []payslip.Item{
+				{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 300000},
+				{Description: "Contr. FPC dipendente", Key: "pension_fund.employee", Side: payslip.Info, Cents: fund},
+				{Description: "Contr. FPC ditta", Key: "pension_fund.contribution", Side: payslip.Info, Cents: 6000},
+			},
+			Gross: a(300000), Net: a(net), INPS: a(27570), SocialContributions: a(27570 + fund), Taxes: a(60000),
+			Deductions: a(27570 + fund + 60000)}
+	}
+	aug, sep := slip(8, 3000, 209430), slip(9, 70000, 142430)
+	if got := contributions(sep); got != 27570 {
+		t.Errorf("contributions = %d, want the INPS part only", got)
+	}
+	if got := split(sep); got[3] != 70000 {
+		t.Errorf("other deductions = %d, want the pension fund contribution", got[3])
+	}
+	d := Build(i18n.EN, []payslip.Payslip{aug, sep}, "test")
+	m := d.Months[1]
+	if !strings.Contains(m.Summary, "Your pension fund contribution") {
+		t.Errorf("summary = %q", m.Summary)
+	}
+	var lines []string
+	for _, pt := range m.Parts {
+		for _, l := range pt.Lines {
+			lines = append(lines, pt.Key+":"+l.Description)
+		}
+	}
+	if !slices.Contains(lines, "other:Contr. FPC dipendente") || len(m.SetAside) != 1 {
+		t.Errorf("lines = %v, set aside = %+v", lines, m.SetAside)
+	}
+	// A box that cannot hold the contribution beside INPS keeps it all.
+	sep.SocialContributions = a(27570)
+	if got := contributions(sep); got != 27570 || pensionInContributions(sep) != 0 {
+		t.Errorf("contributions = %d", got)
 	}
 }

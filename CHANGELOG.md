@@ -71,6 +71,10 @@ How to use this file:
 
 ### Fixed
 
+- Your own pension fund contribution, which some payroll software prints
+  inside the contributions box beside INPS, is no longer counted as a
+  contribution to INPS: it is among the other deductions, a change of it
+  explains a change of the net, and a lower tax share is explained by it.
 - Percentages in the changes use the decimal comma in Italian: "-30,3%".
 
 ## [0.8.0] - 2026-10-18
