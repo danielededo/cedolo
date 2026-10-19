@@ -55,6 +55,7 @@ type Month struct {
 	Parts      []Part            // where the gross pay goes
 	Earnings   []Line            // what makes up the gross pay
 	SetAside   []Line            // TFR and other amounts that do not change this month's pay
+	Fund       string            // what the month paid into the pension fund, and its parts
 	GrossTotal string            // the gross pay, next to Earnings
 	AsideTotal string            // the sum of SetAside
 	Leave      []LeaveRow        // the holiday and leave balances the payslip prints
@@ -118,14 +119,17 @@ type Data struct {
 	Selected int // index in Months of the month shown first: the latest
 	// Tabs splits the page into the month, over time and reference, when
 	// there is something to show over time.
-	Tabs     bool
-	Trend    template.HTML // where the gross pay went, month by month
-	Variable template.HTML // overtime, bonuses and allowances, month by month
-	Years    *YearTable
-	TFR      template.HTML // the TFR accrued in the payslips, added up
-	TFRTotal string        // the TFR the chart adds up to
-	TFRSpan  string        // over how many payslips
-	Rows     []Row
+	Tabs      bool
+	Trend     template.HTML // where the gross pay went, month by month
+	Variable  template.HTML // overtime, bonuses and allowances, month by month
+	Years     *YearTable
+	Fund      template.HTML // what each payslip paid into the pension fund
+	FundTotal string
+	FundSpan  string
+	TFR       template.HTML // the TFR accrued in the payslips, added up
+	TFRTotal  string        // the TFR the chart adds up to
+	TFRSpan   string        // over how many payslips
+	Rows      []Row
 	// LeaveCharts follow each kind of leave over the months.
 	LeaveCharts []LeaveChart
 	Contract    *Contract
@@ -215,9 +219,10 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		d.Variable = template.HTML(variablePay(l, slips))
 		d.Years = years(l, slips)
 		d.TFR, d.TFRTotal, d.TFRSpan = tfrChart(l, slips)
+		d.Fund, d.FundTotal, d.FundSpan = fundChart(l, slips)
 	}
 	d.LeaveCharts = leaveCharts(l, slips)
-	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" {
+	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" || d.Fund != "" {
 		d.Tabs = true
 	}
 
@@ -239,6 +244,18 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		Net:        amount(p.Net),
 	}
 	m.Reread = reread(l, p)
+	if f := fundOf(p); f.own > 0 || f.employer > 0 {
+		var parts []string
+		for _, pt := range []struct {
+			key string
+			v   int64
+		}{{"report.fund.of.own", f.own}, {"report.fund.of.employer", f.employer}, {"report.fund.of.tfr", f.tfr}} {
+			if pt.v > 0 {
+				parts = append(parts, i18n.T(l, pt.key, moneyValue(pt.v)))
+			}
+		}
+		m.Fund = i18n.T(l, "report.fund.month", moneyValue(f.total()), strings.Join(parts, ", "))
+	}
 	for _, lv := range p.Leave {
 		var moves []string
 		for _, mv := range []struct {
@@ -259,10 +276,15 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		return Line{Description: it.Description, Label: i18n.ItemLabel(l, it.Key), Amount: money.Format(it.Cents) + " €", Text: i18n.ItemText(l, it.Key)}
 	}
 	var contrib, tax, other []Line
+	fund := pensionInContributions(p)
 	for _, it := range p.Items {
 		switch {
 		case it.Side == payslip.Earning:
 			m.Earnings = append(m.Earnings, line(it))
+		case it.Key == "pension_fund.employee" && fund > 0:
+			// Withheld within the contributions box: it is among the
+			// other deductions, not set aside on top of the pay.
+			other = append(other, line(it))
 		case it.Side == payslip.Info:
 			m.SetAside = append(m.SetAside, line(it))
 		case it.Key == "deductions.inps":
@@ -275,7 +297,7 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	}
 	var aside int64
 	for _, it := range p.Items {
-		if it.Side == payslip.Info {
+		if it.Side == payslip.Info && !(it.Key == "pension_fund.employee" && fund > 0) {
 			aside += it.Cents
 		}
 	}
@@ -595,11 +617,16 @@ func compared(l i18n.Lang, prev, cur payslip.Payslip) (string, string) {
 }
 
 // effects returns how each kind of item moves the net pay: earnings add,
-// deductions subtract. Information items and roundings are left out.
+// deductions subtract, and so does your pension fund contribution when the
+// contributions box holds it. Other information items and roundings are
+// left out.
 func effects(p payslip.Payslip) map[string]int64 {
 	out := map[string]int64{}
+	fund := pensionInContributions(p) > 0
 	for _, it := range p.Items {
 		switch {
+		case it.Key == "pension_fund.employee" && fund:
+			out[it.Key] -= it.Cents
 		case it.Key == "rounding" || it.Side == payslip.Info:
 		case it.Side == payslip.Deduction:
 			out[it.Key] -= it.Cents
@@ -618,13 +645,37 @@ func abs(c int64) int64 {
 }
 
 // contributions returns social contributions withheld: the summary box when
-// printed, otherwise the INPS items.
+// printed, without your own pension fund contribution when the box holds
+// it, otherwise the INPS items.
 func contributions(p payslip.Payslip) int64 {
 	if p.SocialContributions.Found() {
-		return p.SocialContributions.Cents
+		return p.SocialContributions.Cents - pensionInContributions(p)
 	}
 	s, _ := p.SumKey("deductions.inps")
 	return s
+}
+
+// pensionInContributions returns your own pension fund contribution when
+// the printed contributions box holds it, as some payroll software prints
+// it there beside INPS rather than as a deduction item: the contribution is
+// an information item, there is no pension fund deduction, and the box is at
+// least INPS plus the contribution. It is zero otherwise.
+func pensionInContributions(p payslip.Payslip) int64 {
+	fund, n := p.SumKey("pension_fund.employee")
+	if n == 0 || fund <= 0 || !p.SocialContributions.Found() {
+		return 0
+	}
+	if _, k := p.SumKey("deductions.pension_fund"); k > 0 {
+		return 0
+	}
+	inps, _ := p.SumKey("deductions.inps")
+	if p.INPS.Found() {
+		inps = p.INPS.Cents
+	}
+	if p.SocialContributions.Cents < inps+fund {
+		return 0
+	}
+	return fund
 }
 
 // taxes returns income taxes withheld: the summary box when printed,

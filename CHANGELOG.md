@@ -20,6 +20,10 @@ How to use this file:
 
 ### Added
 
+- What goes into your supplementary pension fund: each month says how much
+  it paid in, from you, from the employer and as TFR; "Over time" adds it
+  up with a chart of the three parts, and the year by year table has a row
+  for it. It is what the payslips show as paid in, not the fund's balance.
 - In the web app, payslips can be added to a report already shown, with
   "Add payslips" or by dropping them on the page; a payslip already read is
   pointed out and not counted twice.
@@ -71,6 +75,10 @@ How to use this file:
 
 ### Fixed
 
+- Your own pension fund contribution, which some payroll software prints
+  inside the contributions box beside INPS, is no longer counted as a
+  contribution to INPS: it is among the other deductions, a change of it
+  explains a change of the net, and a lower tax share is explained by it.
 - Percentages in the changes use the decimal comma in Italian: "-30,3%".
 
 ## [0.8.0] - 2026-10-18

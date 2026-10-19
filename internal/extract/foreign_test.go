@@ -251,7 +251,7 @@ func TestSummaryBoxesWithCalendar(t *testing.T) {
 	if len(p.Items) != 5 {
 		t.Fatalf("items = %+v", p.Items)
 	}
-	if it := find(t, p.Items, "pension_fund.contribution"); it.Side != payslip.Info || it.Cents != 2200 {
+	if it := find(t, p.Items, "pension_fund.employee"); it.Side != payslip.Info || it.Cents != 2200 {
 		t.Errorf("pension contribution = %+v", it)
 	}
 	if it := find(t, p.Items, "tfr.accrued"); it.Side != payslip.Info || it.Cents != 15334 {
