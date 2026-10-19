@@ -255,6 +255,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{if $m.Summary}}<p class="summary">{{$m.Summary}}</p>{{end}}
 {{range $m.SummaryWhy}}<p class="why">{{.}}</p>{{end}}
 {{with $m.Reread}}<p class="note">{{.}}</p>{{end}}
+{{with $m.Adjustment}}<p class="note">{{.}}</p>{{end}}
 
 {{if $m.Parts}}
 <h2>{{index $.T "report.where"}}</h2>

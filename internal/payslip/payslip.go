@@ -159,6 +159,13 @@ type Payslip struct {
 	INPS                Amount `json:"inps"`
 	RoundingPrevious    Amount `json:"rounding_previous"`
 	RoundingCurrent     Amount `json:"rounding_current"`
+	// Adjustment is set when the month's taxes are the year-end or
+	// end-of-employment adjustment (conguaglio), which recomputes the
+	// year's IRPEF and may withhold the regional and municipal surtaxes at
+	// once. TaxParts splits it, when the payslip prints the parts in boxes
+	// of their own and they add up to the taxes.
+	Adjustment bool   `json:"adjustment,omitempty"`
+	TaxParts   []Item `json:"tax_parts,omitempty"`
 
 	Leave []Leave `json:"leave,omitempty"`
 

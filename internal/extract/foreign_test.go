@@ -721,6 +721,8 @@ func TestEndOfEmploymentTaxesAndAbsence(t *testing.T) {
 		[]string{"540>200,00"},
 		[]string{"420:Netto busta"},
 		[]string{"540>1.100,00"},
+		[]string{"40:IRPEF erario", "160:Addizionale regionale"},
+		[]string{"100>150,00", "250>50,00"},
 	)
 	got := Document(layout.Document{Pages: []layout.Page{pg}})
 	if len(got) != 1 {
@@ -736,5 +738,55 @@ func TestEndOfEmploymentTaxesAndAbsence(t *testing.T) {
 	wantStatus(t, "taxes", p.Taxes, 25000, payslip.Verified)
 	if !p.Taxes.Alternative {
 		t.Error("taxes not marked as an alternative reading")
+	}
+	// The adjustment's parts follow the separate taxation, together the
+	// month's taxes.
+	var parts []string
+	for _, it := range p.TaxParts {
+		parts = append(parts, fmt.Sprintf("%s=%d", it.Description, it.Cents))
+	}
+	if !p.Adjustment || strings.Join(parts, " ") != "IRPEF tassazione separata=5000 IRPEF=15000 Addizionale regionale=5000" {
+		t.Errorf("adjustment = %v, parts = %v", p.Adjustment, parts)
+	}
+}
+
+// TestYearEndAdjustmentParts covers a December payslip whose taxes are only
+// the year-end adjustment, printed with its parts in boxes of their own:
+// the IRPEF still due and the surtaxes withheld at once.
+func TestYearEndAdjustmentParts(t *testing.T) {
+	pg := page(
+		[]string{"40:ACME SINTETICA SPA", "380:Mese retribuito:"},
+		[]string{"380:12/2025"},
+		[]string{},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:Retribuzione base", "450>2.000,00"},
+		[]string{}, []string{}, []string{},
+		[]string{"40:Totale lordo", "420:Totale contributi sociali"},
+		[]string{"100>2.000,00", "540>190,00"},
+		[]string{"40:Imponibile IRPEF", "420:Totale trattenute IRPEF"},
+		[]string{"100>1.810,00"},
+		[]string{"420:Totale trattenute"},
+		[]string{"540>790,00"},
+		[]string{"40:Prog. imponibile IRPEF", "420:Conguaglio IRPEF +/-"},
+		[]string{"100>25.000,00", "540>600,00"},
+		[]string{"40:IRPEF erario", "160:Addizionale regionale", "300:Addizionale comunale", "420:Netto busta"},
+		[]string{"100>300,00", "250>220,00", "380>80,00", "540>1.210,00"},
+	)
+	got := Document(layout.Document{Pages: []layout.Page{pg}})
+	if len(got) != 1 {
+		t.Fatalf("got %d payslips", len(got))
+	}
+	p := got[0]
+	wantStatus(t, "taxes", p.Taxes, 60000, payslip.Verified)
+	wantStatus(t, "net", p.Net, 121000, payslip.Verified)
+	if !p.Adjustment {
+		t.Error("not marked as an adjustment")
+	}
+	var parts []string
+	for _, it := range p.TaxParts {
+		parts = append(parts, fmt.Sprintf("%s=%d", it.Key, it.Cents))
+	}
+	if strings.Join(parts, " ") != "tax.irpef=30000 tax.surcharge.regional=22000 tax.surcharge.municipal=8000" {
+		t.Errorf("parts = %v", parts)
 	}
 }

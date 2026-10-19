@@ -85,6 +85,11 @@ How to use this file:
 
 ### Fixed
 
+- A month whose taxes are the year-end or end-of-employment adjustment
+  (conguaglio) now says so, and why they are higher than usual; when the
+  payslip prints its parts, the taxes list the IRPEF still due and the
+  regional and municipal surtaxes withheld at once. The taxes are no
+  longer pointed out as read from an unusual place.
 - Your own pension fund contribution, which some payroll software prints
   inside the contributions box beside INPS, is no longer counted as a
   contribution to INPS: it is among the other deductions, a change of it

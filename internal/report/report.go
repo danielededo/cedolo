@@ -52,6 +52,7 @@ type Month struct {
 	Summary    string            // the month in one sentence: what changed and why, or where the gross goes
 	SummaryWhy []string          // likely reasons for the change the summary tells
 	Reread     string            // which totals were read from a less usual place so that they add up
+	Adjustment string            // why the taxes of a year-end adjustment differ from the usual
 	Parts      []Part            // where the gross pay goes
 	Earnings   []Line            // what makes up the gross pay
 	SetAside   []Line            // TFR and other amounts that do not change this month's pay
@@ -247,6 +248,9 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		Net:        amount(p.Net),
 	}
 	m.Reread = reread(l, p)
+	if p.Adjustment {
+		m.Adjustment = i18n.T(l, "report.adjustment")
+	}
 	if f := fundOf(p); f.own > 0 || f.employer > 0 {
 		var parts []string
 		for _, pt := range []struct {
@@ -296,6 +300,13 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 			tax = append(tax, line(it))
 		default:
 			other = append(other, line(it))
+		}
+	}
+	// The taxes of an adjustment, split into their parts outside the item
+	// table.
+	if len(tax) == 0 {
+		for _, it := range p.TaxParts {
+			tax = append(tax, line(it))
 		}
 	}
 	var aside int64
@@ -449,6 +460,11 @@ func reread(l i18n.Lang, p payslip.Payslip) string {
 		{p.SocialContributions, "report.contrib"}, {p.Taxes, "report.taxes"},
 		{p.RoundingPrevious, "report.rounding"}, {p.RoundingCurrent, "report.rounding"},
 	} {
+		// The taxes of an adjustment are read from its own box, and the
+		// month says why.
+		if t.key == "report.taxes" && p.Adjustment {
+			continue
+		}
 		if n := i18n.T(l, t.key); t.a.Alternative && !slices.Contains(names, n) {
 			names = append(names, n)
 		}

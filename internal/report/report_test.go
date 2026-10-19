@@ -529,3 +529,36 @@ func TestPensionFundInContributions(t *testing.T) {
 		t.Errorf("contributions = %d", got)
 	}
 }
+
+// TestYearEndAdjustment covers a month whose taxes are the year-end
+// adjustment: the month says why they are high and lists their parts, and
+// does not ask to check the taxes read from the adjustment's box.
+func TestYearEndAdjustment(t *testing.T) {
+	a := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Verified} }
+	taxes := a(60000)
+	taxes.Alternative = true
+	p := payslip.Payslip{Year: 2025, Month: 12, Kind: payslip.Monthly,
+		Items: []payslip.Item{{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 200000}},
+		Gross: a(200000), Net: a(121000), SocialContributions: a(19000), Taxes: taxes, Deductions: a(79000),
+		Adjustment: true,
+		TaxParts: []payslip.Item{
+			{Description: "IRPEF", Key: "tax.irpef", Side: payslip.Deduction, Cents: 30000},
+			{Description: "Addizionale regionale", Key: "tax.surcharge.regional", Side: payslip.Deduction, Cents: 22000},
+			{Description: "Addizionale comunale", Key: "tax.surcharge.municipal", Side: payslip.Deduction, Cents: 8000},
+		}}
+	m := Build(i18n.EN, []payslip.Payslip{p}, "test").Months[0]
+	if !strings.Contains(m.Adjustment, "year-end or end-of-employment adjustment") || m.Reread != "" {
+		t.Errorf("adjustment = %q, reread = %q", m.Adjustment, m.Reread)
+	}
+	var taxLines []string
+	for _, pt := range m.Parts {
+		if pt.Key == "taxes" {
+			for _, l := range pt.Lines {
+				taxLines = append(taxLines, l.Description+" "+l.Amount)
+			}
+		}
+	}
+	if !slices.Equal(taxLines, []string{"IRPEF 300,00 €", "Addizionale regionale 220,00 €", "Addizionale comunale 80,00 €"}) {
+		t.Errorf("tax lines = %v", taxLines)
+	}
+}
