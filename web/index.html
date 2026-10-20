@@ -72,23 +72,7 @@
       <button type="button" id="add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-t="web.add"></span></button>
     </div>
     <p class="added" id="added" role="status" hidden></p>
-    <div class="files" id="files-box" hidden>
-      <p class="files-title" id="files-title"></p>
-      <ul id="file-list"></ul>
-    </div>
-    <section class="anon" id="anon" hidden aria-labelledby="anon-title">
-      <h2 id="anon-title"></h2>
-      <p><span data-t="web.anon.lead"></span> <a href="https://github.com/danielededo/cedolo/issues/new?template=misread.yml" rel="noreferrer" target="_blank" data-t="web.anon.report"></a></p>
-      <label class="check"><input type="checkbox" id="anon-amounts" checked> <span data-t="web.anon.amounts"></span></label>
-      <p class="anon-warning" id="anon-warning" data-t="web.anon.warning"></p>
-      <p class="anon-review" data-t="web.anon.review"></p>
-      <pre id="anon-text" tabindex="0"></pre>
-      <p class="anon-error" id="anon-error" role="alert" hidden data-t="web.anon.leak"></p>
-      <div class="toolbar">
-        <button type="button" class="primary" id="anon-download" data-t="web.anon.download"></button>
-        <button type="button" id="anon-close" data-t="web.anon.close"></button>
-      </div>
-    </section>
+    <p class="files-alert" id="files-alert" hidden><button type="button" id="files-open"></button></p>
     <p class="notice" id="none" hidden data-t="web.none"></p>
     <p class="notice" id="too-many" hidden></p>
     <div class="skeleton" id="skeleton" hidden aria-hidden="true">
@@ -97,8 +81,42 @@
       <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
     </div>
     <iframe id="report" title="Report" sandbox="allow-scripts" hidden></iframe>
-    <p class="misread"><button type="button" class="link" id="anon-ask" hidden data-t="web.anon.ask"></button></p>
+    <p class="misread"><button type="button" class="link" id="anon-ask" hidden></button></p>
   </section>
+
+  <!-- The files read, with what needs a look first, and the anonymized
+       copy of one: a sheet over the page, not part of it. -->
+  <dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-head">
+      <h2 id="sheet-title" data-t="web.files.title"></h2>
+      <button type="button" class="close" id="sheet-close" data-t-aria="web.anon.close">✕</button>
+    </div>
+    <div id="sheet-lists">
+      <section id="files-problems" hidden>
+        <h3 data-t="web.files.problems"></h3>
+        <ul class="file-rows" id="problem-list"></ul>
+      </section>
+      <section id="files-read" hidden>
+        <h3 data-t="web.files.read"></h3>
+        <p class="sheet-hint" data-t="web.files.misread"></p>
+        <ul class="file-rows" id="file-list"></ul>
+        <button type="button" class="link" id="files-more" hidden></button>
+      </section>
+    </div>
+      <section class="anon" id="anon" hidden aria-labelledby="anon-title">
+        <h2 id="anon-title"></h2>
+        <p><span data-t="web.anon.lead"></span> <a href="https://github.com/danielededo/cedolo/issues/new?template=misread.yml" rel="noreferrer" target="_blank" data-t="web.anon.report"></a></p>
+        <label class="check"><input type="checkbox" id="anon-amounts" checked> <span data-t="web.anon.amounts"></span></label>
+        <p class="anon-warning" id="anon-warning" data-t="web.anon.warning"></p>
+        <p class="anon-review" data-t="web.anon.review"></p>
+        <pre id="anon-text" tabindex="0"></pre>
+        <p class="anon-error" id="anon-error" role="alert" hidden data-t="web.anon.leak"></p>
+        <div class="toolbar">
+          <button type="button" class="primary" id="anon-download" data-t="web.anon.download"></button>
+          <button type="button" id="anon-close" data-t="web.anon.back"></button>
+        </div>
+      </section>
+  </dialog>
 </main>
 
 <footer class="foot">

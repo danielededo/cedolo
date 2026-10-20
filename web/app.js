@@ -182,6 +182,8 @@ function analyze() {
     f.read = r.read ?? 0;
     f.repeated = r.repeated ?? 0;
     f.periods = Array.isArray(r.periods) ? r.periods.filter((p) => typeof p === 'string') : [];
+    f.people = Array.isArray(r.people) ? r.people.filter((p) => typeof p === 'string') : [];
+    f.latest = Number.isFinite(r.latest) ? r.latest : 0;
   });
   state.report = result.report;
 }
@@ -195,48 +197,98 @@ function describe(f) {
   return ['ok', '✓', t('web.file.ok', f.read)];
 }
 
-function render() {
-  const list = $('file-list');
-  list.replaceChildren();
-  let attention = false;
-  for (const f of state.files) {
-    const [cls, icon, note] = describe(f);
-    attention ||= cls !== 'ok';
-    const li = document.createElement('li');
-    li.className = cls;
-    const i = document.createElement('span');
-    i.className = 'icon';
-    i.textContent = icon;
-    i.setAttribute('aria-hidden', 'true');
-    const name = document.createElement('span');
-    name.className = 'name';
-    name.textContent = f.name;
+// row builds the line of one file in the sheet: what was read in it, or
+// what went wrong, and the file's name; i is its place in the pick, so
+// that tests can follow the files in order.
+function row(f, i) {
+  const [cls, icon, note] = describe(f);
+  const li = document.createElement('li');
+  li.className = cls;
+  li.dataset.i = String(i);
+  li.dataset.note = note;
+  const mark = document.createElement('span');
+  mark.className = 'icon';
+  mark.textContent = icon;
+  mark.setAttribute('aria-hidden', 'true');
+  const text = document.createElement('span');
+  text.className = 'text';
+  if (f.read > 0) {
+    // The months read say more than the name of the file, which is often
+    // "Cedolino (3).pdf".
+    const when = document.createElement('span');
+    when.className = 'when';
+    when.textContent = f.periods.join(', ');
+    text.append(when);
+  }
+  // Whose payslips they are, when there are several people.
+  const who = state.people > 1 && f.people?.length ? `${f.people.join(', ')} · ` : '';
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = who + f.name;
+  text.append(name);
+  if (cls !== 'ok') {
     const n = document.createElement('span');
     n.className = 'note';
-    n.textContent = `— ${note}`;
-    const text = document.createElement('span');
-    text.className = 'text';
-    text.append(name, ' ', n);
-    li.append(i, text);
-    if (f.layout && hasText(f.layout)) {
-      // Offered up front where nothing was read; elsewhere only after
-      // "Something read badly?", to keep the list quiet.
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = f.read === 0 ? 'anon-open' : 'anon-open optional';
-      b.textContent = t('web.anon.button');
-      b.addEventListener('click', () => openAnon(f));
-      li.append(b);
-    }
-    list.append(li);
+    n.textContent = note;
+    text.append(n);
   }
+  li.append(mark, text);
+  if (f.layout && hasText(f.layout)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'anon-open link';
+    b.textContent = t('web.anon.button');
+    b.addEventListener('click', () => openAnon(f));
+    li.append(b);
+  }
+  return li;
+}
+
+// The sheet shows the first payslips read, the latest first, and all of
+// them on request.
+const FIRST_READ = 6;
+
+function render() {
+  // What needs a look comes first; a file whose every payslip was read
+  // before is no problem, and several of them make one line.
+  const problems = [], repeats = [], read = [];
+  state.people = new Set(state.files.flatMap((f) => f.people || [])).size;
+  state.files.forEach((f, i) => {
+    const [cls] = describe(f);
+    if (f.read > 0 && f.repeated >= f.read) repeats.push(row(f, i));
+    else if (f.read > 0) read.push({ f, li: row(f, i) });
+    else if (cls !== 'ok') problems.push(row(f, i));
+  });
+  const problemList = $('problem-list');
+  problemList.replaceChildren(...problems);
+  if (repeats.length === 1) problemList.append(repeats[0]);
+  if (repeats.length > 1) {
+    const li = document.createElement('li');
+    li.className = 'warn repeats';
+    const d = document.createElement('details');
+    const sum = document.createElement('summary');
+    sum.textContent = t('web.files.repeats', repeats.length);
+    const ul = document.createElement('ul');
+    ul.className = 'file-rows';
+    ul.append(...repeats);
+    d.append(sum, ul);
+    li.append(d);
+    problemList.append(li);
+  }
+  $('files-problems').hidden = problemList.children.length === 0;
+  read.sort((a, b) => (b.f.latest || 0) - (a.f.latest || 0));
+  const list = $('file-list');
+  list.replaceChildren(...read.map((r) => r.li));
+  read.forEach((r, k) => { r.li.hidden = !state.allRead && k >= FIRST_READ; });
+  $('files-read').hidden = read.length === 0;
+  $('files-more').hidden = state.allRead || read.length <= FIRST_READ;
+  $('files-more').textContent = t('web.files.more', read.length);
+  // The page itself only says how many files need a look, if any.
+  $('files-alert').hidden = problems.length === 0;
+  $('files-open').textContent = t(problems.length === 1 ? 'web.files.alert.one' : 'web.files.alert.many', problems.length);
   const any = state.report !== '';
-  // The files show only when one needs attention, or when picking the one
-  // read badly.
-  list.classList.remove('show-anon');
-  $('files-title').textContent = t('web.files.attention');
-  $('files-box').hidden = any && !attention;
-  $('anon-ask').hidden = !state.files.some((f) => f.layout && hasText(f.layout) && f.read > 0);
+  $('anon-ask').hidden = state.files.length === 0;
+  $('anon-ask').textContent = t('web.files.open', state.files.length);
   $('none').hidden = any;
   $('too-many').hidden = !state.tooMany;
   $('too-many').textContent = t('web.too_many', MAX_FILES);
@@ -342,8 +394,10 @@ function openAnon(f) {
   if (result.error && result.error !== 'leak') $('anon-error').textContent = t('web.failed', result.error);
   $('anon-warning').hidden = !keep;
   $('anon-download').disabled = Boolean(result.error);
+  openSheet();
+  $('sheet-lists').hidden = true;
   $('anon').hidden = false;
-  $('anon').scrollIntoView({ block: 'nearest' });
+  $('anon').scrollTop = 0;
 }
 
 function closeAnon() {
@@ -351,6 +405,24 @@ function closeAnon() {
   state.anonPDF = null;
   $('anon-text').textContent = '';
   $('anon').hidden = true;
+  $('sheet-lists').hidden = false;
+}
+
+// The sheet of files opens over the page, and the browser's back button
+// closes it, as it would a page of its own.
+function openSheet() {
+  const sheet = $('sheet');
+  if (sheet.open) return;
+  sheet.showModal();
+  history.pushState({ cedoloSheet: true }, '');
+}
+
+function closeSheet(fromHistory) {
+  const sheet = $('sheet');
+  if (!sheet.open) return;
+  closeAnon();
+  sheet.close();
+  if (!fromHistory && history.state?.cedoloSheet) history.back();
 }
 
 function downloadAnon() {
@@ -478,13 +550,13 @@ $('download').addEventListener('click', download);
 $('anon-amounts').addEventListener('change', () => { if (state.anon) openAnon(state.anon); });
 $('anon-download').addEventListener('click', downloadAnon);
 $('anon-close').addEventListener('click', closeAnon);
-$('anon-ask').addEventListener('click', () => {
-  $('file-list').classList.add('show-anon');
-  $('files-title').textContent = t('web.files.pick');
-  $('files-box').hidden = false;
-  $('anon-ask').hidden = true;
-  $('files-box').scrollIntoView({ block: 'nearest', behavior: calm() ? 'auto' : 'smooth' });
-});
+$('anon-ask').addEventListener('click', openSheet);
+$('files-open').addEventListener('click', openSheet);
+$('sheet-close').addEventListener('click', () => closeSheet(false));
+// Escape closes the sheet the same way as its button.
+$('sheet').addEventListener('cancel', (ev) => { ev.preventDefault(); closeSheet(false); });
+window.addEventListener('popstate', () => closeSheet(true));
+$('files-more').addEventListener('click', () => { state.allRead = true; render(); });
 for (const b of document.querySelectorAll('[data-lang]')) {
   b.addEventListener('click', () => {
     if (!globalThis.cedolo) return;

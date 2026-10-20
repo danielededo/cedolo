@@ -7,8 +7,10 @@
 // It defines a global object cedolo with:
 //
 //	analyze(layoutsJSON, lang) -> {payslips, perDocument, report} or {error};
-//	    perDocument has, for each document, {read, repeated, periods} or
-//	    {error}, periods naming the payslips read, such as "marzo 2026"
+//	    perDocument has, for each document, {read, repeated, periods,
+//	    latest, people} or {error}: periods name the payslips read, such as
+//	    "marzo 2026", latest is the latest of them as year*100+month for
+//	    sorting, and people names whose payslips they are
 //	anonymize(layoutJSON, keepAmounts) -> {text, pdf} or {error}: an
 //	    anonymized copy of one document (ADR 0008), its text for review and
 //	    the rebuilt PDF as a Uint8Array
@@ -20,6 +22,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"syscall/js"
 
@@ -72,10 +75,16 @@ func analyze(_ js.Value, args []js.Value) (result any) {
 		}
 		kept, dropped := insights.Dedupe(append(append([]payslip.Payslip(nil), slips...), found...))
 		periods := make([]any, len(found))
+		var latest int
+		var people []any
 		for k, p := range found {
 			periods[k] = insights.Label(l, p)
+			latest = max(latest, p.Year*100+p.Month)
+			if name := report.PersonLabel(l, p.Person); !slices.Contains(people, any(name)) {
+				people = append(people, name)
+			}
 		}
-		perDoc[i] = map[string]any{"read": len(found), "repeated": dropped, "periods": periods}
+		perDoc[i] = map[string]any{"read": len(found), "repeated": dropped, "periods": periods, "latest": latest, "people": people}
 		slips = kept
 	}
 	var page bytes.Buffer
