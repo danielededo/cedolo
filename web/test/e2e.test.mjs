@@ -81,7 +81,8 @@ async function open({ before, viewport } = {}) {
 
 async function statuses(page) {
   await page.waitForSelector('#result:not([hidden])', { timeout: 60000 });
-  return page.$$eval('#file-list li', (ls) => ls.map((l) => `${l.className}: ${l.querySelector('.note').textContent}`));
+  // Every file has a line in the sheet, in the order picked.
+  return page.$$eval('#sheet li[data-i]', (ls) => ls.sort((a, b) => a.dataset.i - b.dataset.i).map((l) => `${l.className}: — ${l.dataset.note}`));
 }
 
 // press clicks a control of the page. The report frame runs in another
@@ -164,6 +165,12 @@ test('handles damaged, oversized, repeated and protected files', async () => {
     'warn: — 1 payslip(s) read, 1 already read in another file and ignored',
     'bad: — protected by a password: skipped',
   ]);
+  // The page says only how many files need a look; the files that were
+  // read before make one line in the sheet.
+  assert.equal(await page.$eval('#files-open', (b) => b.textContent), '3 files to look at ›');
+  await press(page, '#files-open');
+  await page.waitForSelector('#sheet[open]');
+  assert.equal(await page.$eval('#problem-list .repeats summary', (s) => s.textContent), '2 files already read, ignored');
   assert.deepEqual(seen.errors, []);
   onlyThisSite(seen);
   await page.close();
@@ -369,7 +376,7 @@ test('adds payslips to a report', async () => {
   // The report offers to add files: a new month, and one already read.
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('#add')]);
   await chooser.setFiles([three, one]);
-  await page.waitForFunction(() => document.querySelectorAll('#file-list li').length === 4);
+  await page.waitForFunction(() => document.querySelectorAll('#sheet li[data-i]').length === 4);
   assert.deepEqual(await statuses(page), [
     'ok: — 1 payslip(s) read',
     'ok: — 1 payslip(s) read',
@@ -392,12 +399,14 @@ test('makes an anonymized copy that reads as the same payslip', async () => {
   const { page, seen } = await open();
   await page.setInputFiles('#files', [synth('BIANCHI_ANNA_10-2026.pdf')]);
   await statuses(page);
-  // Every file was read: the list of files stays out of the way, and a
-  // file that was read offers the copy only after asking for it.
-  assert.ok(await page.$eval('#files-box', (b) => b.hidden));
-  assert.equal(await page.$eval('.anon-open', (b) => getComputedStyle(b).display), 'none');
+  // Every file was read: the page lists no file, and the files are in a
+  // sheet of their own, opened from the link under the report.
+  assert.ok(await page.$eval('#files-alert', (b) => b.hidden));
+  assert.ok(!(await page.$eval('#sheet', (d) => d.open)));
   await press(page, '#anon-ask');
-  await press(page, '.anon-open');
+  await page.waitForSelector('#sheet[open]');
+  assert.equal(await page.$eval('#file-list li .when', (e) => e.textContent), 'October 2026');
+  await press(page, '#file-list .anon-open');
   await page.waitForSelector('#anon:not([hidden])');
   const text = await page.$eval('#anon-text', (e) => e.textContent);
   for (const secret of ['BIANCHI', 'ANNA', 'ESEMPIO', 'SINTETICO', '000042']) {
@@ -425,6 +434,10 @@ test('makes an anonymized copy that reads as the same payslip', async () => {
   assert.equal(await page.$eval('#anon-warning', (e) => e.hidden), true);
   await press(page, '#anon-close');
   assert.equal(await page.$eval('#anon', (e) => e.hidden), true);
+  assert.ok(!(await page.$eval('#sheet-lists', (e) => e.hidden)), 'back to the files');
+  // The browser's back button closes the sheet, as it would a page.
+  await page.goBack();
+  await page.waitForFunction(() => !document.getElementById('sheet').open);
 
   // A fresh page reads the copy alone: nothing is kept across a reload.
   await page.reload();

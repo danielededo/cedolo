@@ -202,14 +202,7 @@ func BuildPage(l i18n.Lang, slips []payslip.Payslip, version string) Page {
 				break
 			}
 		}
-		switch {
-		case who.Name != "":
-			d.Who = who.Name
-		case who.ID != "":
-			d.Who = masked(who.ID)
-		default:
-			d.Who = i18n.T(l, "report.person.unknown")
-		}
+		d.Who = PersonLabel(l, who)
 		if len(groups) == 1 && who.ID != "" {
 			d.Person = d.Who
 		}
@@ -219,6 +212,18 @@ func BuildPage(l i18n.Lang, slips []payslip.Payslip, version string) Page {
 		pg.People = []Data{Build(l, nil, version)}
 	}
 	return pg
+}
+
+// PersonLabel names a person: by the name read, or else by the masked
+// codice fiscale, or as one without it.
+func PersonLabel(l i18n.Lang, p payslip.Party) string {
+	switch {
+	case p.Name != "":
+		return p.Name
+	case p.ID != "":
+		return masked(p.ID)
+	}
+	return i18n.T(l, "report.person.unknown")
 }
 
 // people groups the payslips by the person's codice fiscale. A payslip

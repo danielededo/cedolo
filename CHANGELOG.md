@@ -46,6 +46,12 @@ How to use this file:
 
 ### Changed
 
+- In the web app the page no longer lists the files: it says only how many
+  need a look, if any. The files are in a sheet of their own, opened from
+  that line or from "Files read" under the report: what needs a look
+  first, the files already read as one line, then the payslips read by
+  month, the latest first, with the anonymized copy of each. The back
+  button closes it.
 - The report has four tabs, each answering one question. "The month" puts
   what changed right under the net pay; the gross pay's items open from a
   row above where it goes; what is set aside, holidays and leave, and other
