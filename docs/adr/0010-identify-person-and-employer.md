@@ -1,6 +1,6 @@
 # ADR 0010: Identify the person and the employer by their fiscal codes
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-20
 - **Deciders:** maintainer (danielededo)
 

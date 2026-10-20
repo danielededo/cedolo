@@ -239,6 +239,8 @@ func runSynth(args []string) error {
 	password := fs.String("password", "", "protect the PDF with this password")
 	rotate := fs.Int("rotate", 0, "turn the page by 90, 180 or 270 degrees")
 	month := fs.Int("month", 10, "month of the payslip, 1 to 12")
+	person := fs.String("person", "", "worker's name, surname first, printed with an invented codice fiscale (classic style)")
+	company := fs.String("employer", "", "employer's name, printed with an invented VAT number (classic style)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -256,6 +258,17 @@ func runSynth(args []string) error {
 	opts := synth.Options{Password: *password, Rotate: *rotate}
 	p := synth.ExampleFor(style)
 	p.Month = time.Month(*month)
+	if *person != "" {
+		p.Employee, p.EmployeeCode = strings.ToUpper(*person), synth.CodiceFiscale(*person)
+	}
+	if *company != "" {
+		// The VAT number follows the name, so that two employers differ.
+		var digits int
+		for _, r := range *company {
+			digits = (digits*31 + int(r)) % 10000000000
+		}
+		p.Employer, p.EmployerCode = strings.ToUpper(*company), synth.VATNumber(fmt.Sprintf("%010d", digits))
+	}
 	if err := synth.WritePDFWith(f, p, style, opts); err != nil {
 		f.Close()
 		return err

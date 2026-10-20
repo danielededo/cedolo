@@ -97,6 +97,13 @@ func renderClassic(c *canvas, p Payslip) {
 	c.text(330, 738, 9, false, p.Qualification)
 	c.text(410, 750, 8, false, "LIVELLO")
 	c.text(410, 738, 9, false, p.Level)
+	if p.EmployeeCode != "" {
+		c.text(460, 750, 8, false, "CODICE FISCALE")
+		c.text(460, 738, 9, false, p.EmployeeCode)
+	}
+	if p.EmployerCode != "" {
+		c.text(250, 780, 9, false, "P.IVA "+p.EmployerCode)
+	}
 	c.text(colCode, 722, 8, false, "CCNL")
 	c.text(colDesc, 722, 9, false, p.CCNL)
 

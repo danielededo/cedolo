@@ -85,9 +85,10 @@ func Sort(slips []payslip.Payslip) {
 // charts. It keeps the order of the rest and returns how many were dropped.
 func Dedupe(slips []payslip.Payslip) ([]payslip.Payslip, int) {
 	type key struct {
-		year, month     int
-		kind            payslip.Kind
-		gross, ded, net int64
+		person, employer string
+		year, month      int
+		kind             payslip.Kind
+		gross, ded, net  int64
 	}
 	seen := map[key]bool{}
 	out := slips[:0:0]
@@ -96,7 +97,7 @@ func Dedupe(slips []payslip.Payslip) ([]payslip.Payslip, int) {
 			out = append(out, p)
 			continue
 		}
-		k := key{p.Year, p.Month, p.Kind, p.Gross.Cents, p.Deductions.Cents, p.Net.Cents}
+		k := key{p.Person.ID, p.Employer.ID, p.Year, p.Month, p.Kind, p.Gross.Cents, p.Deductions.Cents, p.Net.Cents}
 		if seen[k] {
 			continue
 		}
@@ -129,15 +130,11 @@ func Label(l i18n.Lang, p payslip.Payslip) string {
 func Compare(l i18n.Lang, slips []payslip.Payslip) []Period {
 	Sort(slips)
 	var out []Period
-	var prev *payslip.Payslip
 	for i := range slips {
 		cur := &slips[i]
 		per := Period{Year: cur.Year, Month: cur.Month, Kind: cur.Kind, Label: Label(l, *cur), Changes: []Change{}}
-		if cur.Kind == payslip.Monthly && cur.Month != 0 {
-			if prev != nil {
-				per.Changes = append(per.Changes, changes(l, *prev, *cur)...)
-			}
-			prev = cur
+		if prev := Previous(slips, i); prev != nil {
+			per.Changes = append(per.Changes, changes(l, *prev, *cur)...)
 		}
 		if inconsistent(*cur) {
 			per.Changes = append(per.Changes, Change{Code: "unchecked", Text: i18n.T(l, "change.unchecked")})
@@ -146,6 +143,27 @@ func Compare(l i18n.Lang, slips []payslip.Payslip) []Period {
 	}
 	return out
 }
+
+// Previous returns the ordinary month that payslip i is compared with: the
+// latest one before it of the same person and employer (ADR 0010). It is
+// nil for additional months and payslips without a month.
+func Previous(slips []payslip.Payslip, i int) *payslip.Payslip {
+	if !ordinary(slips[i]) {
+		return nil
+	}
+	for j := i - 1; j >= 0; j-- {
+		if ordinary(slips[j]) && Same(slips[j].Person, slips[i].Person) && Same(slips[j].Employer, slips[i].Employer) {
+			return &slips[j]
+		}
+	}
+	return nil
+}
+
+func ordinary(p payslip.Payslip) bool { return p.Kind == payslip.Monthly && p.Month != 0 }
+
+// Same reports whether two parties may be the same: they are unless both
+// codes were read and differ.
+func Same(a, b payslip.Party) bool { return a.ID == "" || b.ID == "" || a.ID == b.ID }
 
 func inconsistent(p payslip.Payslip) bool {
 	for _, a := range []payslip.Amount{p.Gross, p.Deductions, p.Net} {

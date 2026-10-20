@@ -136,6 +136,11 @@ type Payslip struct {
 	// CCNLCode is the CNEL code of the contract, when the payslip prints it.
 	CCNLCode string `json:"ccnl_code,omitempty"`
 	Level    string `json:"level,omitempty"`
+	// Person and Employer tell whose payslip it is and from whom (ADR
+	// 0010): the worker's codice fiscale and the employer's fiscal code or
+	// VAT number, with their names when they can be read.
+	Person   Party `json:"person,omitzero"`
+	Employer Party `json:"employer,omitzero"`
 
 	Items []Item `json:"items"`
 
@@ -170,6 +175,12 @@ type Payslip struct {
 	Leave []Leave `json:"leave,omitempty"`
 
 	Checks []Check `json:"checks"`
+}
+
+// Party is a person or a company named on a payslip.
+type Party struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // Sum returns the total of the items on one side.

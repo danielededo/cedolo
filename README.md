@@ -37,6 +37,9 @@
 - **Follows your pay over time**: where the gross went month by month, the
   overtime, bonuses and allowances, the totals of each year, the TFR accrued
   and your holiday and leave balances.
+- **Keeps people and employers apart**: payslips of two people make two
+  reports, one at a time, told apart by the codice fiscale; a month is
+  compared only with one from the same employer.
 - **Identifies your collective agreement (CCNL)** from its CNEL code: sector,
   latest agreement and signatories.
 - **Works with any payroll software** that produces text PDFs, without
