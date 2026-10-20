@@ -57,7 +57,8 @@ type Month struct {
 	Earnings   []Line            // what makes up the gross pay
 	SetAside   []Line            // TFR and pension fund amounts, which do not change this month's pay
 	Info       []Line            // other values printed with the items, such as amounts paid by the employer
-	Fund       string            // what the month paid into the pension fund, and its parts
+	Withheld   string            // the part of what is set aside that your pay gave
+	Fund       string            // what the month paid into the pension fund, when not all that is set aside
 	GrossTotal string            // the gross pay, next to Earnings
 	AsideTotal string            // the sum of SetAside
 	Leave      []LeaveRow        // the holiday and leave balances the payslip prints
@@ -198,6 +199,11 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 				var driver string
 				m.Summary, driver = compared(l, *prev, p)
 				changes, m.SummaryWhy = told(changes, driver)
+				if p.Adjustment {
+					// The month explains the adjustment in full.
+					yearEnd := i18n.T(l, "why.year_end")
+					m.SummaryWhy = slices.DeleteFunc(m.SummaryWhy, func(w string) bool { return w == yearEnd })
+				}
 			}
 			prev = &slips[i]
 		}
@@ -252,18 +258,6 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	if p.Adjustment {
 		m.Adjustment = i18n.T(l, "report.adjustment")
 	}
-	if f := fundOf(p); f.own > 0 || f.employer > 0 {
-		var parts []string
-		for _, pt := range []struct {
-			key string
-			v   int64
-		}{{"report.fund.of.own", f.own}, {"report.fund.of.employer", f.employer}, {"report.fund.of.tfr", f.tfr}} {
-			if pt.v > 0 {
-				parts = append(parts, i18n.T(l, pt.key, moneyValue(pt.v)))
-			}
-		}
-		m.Fund = i18n.T(l, "report.fund.month", moneyValue(f.total()), strings.Join(parts, ", "))
-	}
 	for _, lv := range p.Leave {
 		var moves []string
 		for _, mv := range []struct {
@@ -285,15 +279,22 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	}
 	var contrib, tax, other []Line
 	fund := pensionInContributions(p)
+	// aside sums what builds up for you; withheld is the part of it that
+	// your own pay gave, also among the other deductions.
+	var aside, withheld int64
 	for _, it := range p.Items {
 		switch {
 		case it.Side == payslip.Earning:
 			m.Earnings = append(m.Earnings, line(it))
-		case it.Key == "pension_fund.employee" && fund > 0:
-			// Withheld within the contributions box: it is among the
-			// other deductions, not set aside on top of the pay.
+		case it.Key == "pension_fund.employee" && fund > 0, it.Key == "deductions.pension_fund":
+			// Withheld from the pay, within the contributions box or as a
+			// deduction: among the other deductions, and set aside.
 			other = append(other, line(it))
+			m.SetAside = append(m.SetAside, line(it))
+			aside += it.Cents
+			withheld += it.Cents
 		case it.Side == payslip.Info && setAside(it.Key):
+			aside += it.Cents
 			m.SetAside = append(m.SetAside, line(it))
 		case it.Side == payslip.Info:
 			m.Info = append(m.Info, line(it))
@@ -312,14 +313,16 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 			tax = append(tax, line(it))
 		}
 	}
-	var aside int64
-	for _, it := range p.Items {
-		if it.Side == payslip.Info && setAside(it.Key) && !(it.Key == "pension_fund.employee" && fund > 0) {
-			aside += it.Cents
-		}
-	}
 	if aside != 0 {
 		m.AsideTotal = money.Format(aside) + " €"
+	}
+	if withheld > 0 {
+		m.Withheld = i18n.T(l, "report.aside.withheld", moneyValue(withheld))
+	}
+	// What went to the pension fund, when it is not all that is set aside:
+	// part of the TFR stays with the employer.
+	if f := fundOf(p); (f.own > 0 || f.employer > 0) && f.total() != aside {
+		m.Fund = i18n.T(l, "report.fund.month", moneyValue(f.total()))
 	}
 	shares := split(p)
 	lines := [][]Line{nil, contrib, tax, other}
@@ -343,9 +346,13 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		if pt.cents == 0 && len(pt.lines) == 0 {
 			continue
 		}
+		label := i18n.T(l, "report.part."+pt.key)
+		if pt.key == "other" && 2*withheld > pt.cents {
+			label = i18n.T(l, "report.part.other.fund")
+		}
 		m.Parts = append(m.Parts, Part{
 			Key:    pt.key,
-			Label:  i18n.T(l, "report.part."+pt.key),
+			Label:  label,
 			Amount: money.Format(pt.cents) + " €",
 			Text:   i18n.T(l, "report.part."+pt.key+".text"),
 			Color:  pt.color,
@@ -594,7 +601,7 @@ func told(changes []insights.Change, driver string) (rest []insights.Change, why
 		switch {
 		case c.Code == "net":
 			why = c.Why
-		case driver != "" && c.Key == driver:
+		case driver != "" && c.Key == driver, driver == "taxes" && c.Code == "tax_rate":
 		default:
 			rest = append(rest, c)
 		}
@@ -642,16 +649,43 @@ func compared(l i18n.Lang, prev, cur payslip.Payslip) (string, string) {
 	if key == "" || 2*abs(best) < abs(delta) {
 		return i18n.T(l, "report.summary."+dir, since, money.Format(abs(delta))+" €"), ""
 	}
-	return i18n.T(l, "report.summary."+dir+"_because", since, money.Format(abs(delta))+" €", i18n.ItemLabel(l, key), signed(best)), key
+	label := i18n.ItemLabel(l, key)
+	if k, ok := boxKeys[key]; ok {
+		label = i18n.T(l, k)
+	}
+	return i18n.T(l, "report.summary."+dir+"_because", since, money.Format(abs(delta))+" €", label, signed(best)), key
 }
+
+// hasTaxItems reports whether the item table withholds income taxes.
+func hasTaxItems(p payslip.Payslip) bool {
+	for _, it := range p.Items {
+		if it.Side == payslip.Deduction && strings.HasPrefix(it.Key, "tax.") {
+			return true
+		}
+	}
+	return false
+}
+
+// boxKeys name, in effects, the taxes and contributions printed in boxes
+// of their own rather than as items, with the label of each.
+var boxKeys = map[string]string{"taxes": "report.taxes", "contributions": "report.contrib"}
 
 // effects returns how each kind of item moves the net pay: earnings add,
 // deductions subtract, and so does your pension fund contribution when the
-// contributions box holds it. Other information items and roundings are
-// left out.
+// contributions box holds it. The taxes and contributions of boxes that
+// add to the items subtract too, under boxKeys. Other information items
+// and roundings are left out.
 func effects(p payslip.Payslip) map[string]int64 {
 	out := map[string]int64{}
 	fund := pensionInContributions(p) > 0
+	// A box adds to the items when the total deductions were checked with
+	// it, or when no item is of its kind.
+	if _, n := p.SumKey("deductions.inps"); p.SocialContributions.Found() && (p.SocialContributions.Status == payslip.Verified || n == 0) {
+		out["contributions"] -= contributions(p)
+	}
+	if p.Taxes.Found() && (p.Taxes.Status == payslip.Verified || !hasTaxItems(p)) {
+		out["taxes"] -= p.Taxes.Cents
+	}
 	for _, it := range p.Items {
 		switch {
 		case it.Key == "pension_fund.employee" && fund:

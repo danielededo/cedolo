@@ -85,6 +85,14 @@ How to use this file:
 
 ### Fixed
 
+- "Set aside for you" includes your own pension fund contribution withheld
+  from the pay, so that it matches what goes to the fund, and says that
+  part is also among the other deductions; "Other deductions" says when it
+  is mostly the pension fund. A separate line about the fund is left only
+  when part of the TFR stays with the employer.
+- The month's summary can name the taxes or the contributions as what
+  moved the net pay, as in a year-end adjustment, and a month that
+  explains its adjustment no longer repeats the general note about it.
 - "Set aside for you" lists only the TFR and the pension fund. Other values
   printed with the items, such as a contribution relief of the employer's
   or a tax deduction, are listed apart as "Other information", without a
