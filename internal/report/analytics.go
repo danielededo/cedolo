@@ -34,15 +34,13 @@ type YearRow struct {
 // payslip.
 func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 	type sum struct {
-		year                             int
-		monthly, extra                   int
-		gross, contrib, taxes, net, fund int64
-		deductible                       int64
-		monthlyNet                       int64
-		netMonths                        int
+		year                       int
+		monthly, extra             int
+		gross, contrib, taxes, net int64
+		monthlyNet                 int64
+		netMonths                  int
 	}
 	var sums []*sum
-	fundYears := false
 	for _, p := range slips {
 		if p.Year == 0 {
 			continue
@@ -70,10 +68,6 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		}
 		s.contrib += contributions(p)
 		s.taxes += taxes(p)
-		f := fundOf(p)
-		s.fund += f.total()
-		s.deductible += f.own + f.employer
-		fundYears = fundYears || f.own > 0 || f.employer > 0
 	}
 	if len(sums) == 0 {
 		return nil
@@ -111,20 +105,45 @@ func years(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 		}
 		return money.Format(roundDiv(s.monthlyNet, int64(s.netMonths))) + " €"
 	})
-	if fundYears {
-		row("report.year.fund", func(s *sum) string { return optional(s.fund) })
-		row("report.year.deductible", func(s *sum) string {
-			t.Over = t.Over || s.deductible > deductibleLimit(s.year)
-			return optional(s.deductible)
-		})
-		t.Deductible = true
+	return t
+}
+
+// fundYears sums by calendar year what went into the pension fund and how
+// much of it counts against the yearly deductible limit, for the years
+// with a payment. It is nil when no payslip paid into a fund.
+func fundYears(l i18n.Lang, slips []payslip.Payslip) *YearTable {
+	type sum struct {
+		year             int
+		fund, deductible int64
 	}
-	row("report.year.share", func(s *sum) string {
-		if s.gross <= 0 || s.net <= 0 {
-			return "–"
+	var sums []*sum
+	for _, p := range slips {
+		f := fundOf(p)
+		if p.Year == 0 || f.total() <= 0 {
+			continue
 		}
-		return strconv.FormatInt(roundDiv(s.net*100, s.gross), 10) + " €"
-	})
+		i := slices.IndexFunc(sums, func(s *sum) bool { return s.year == p.Year })
+		if i < 0 {
+			sums = append(sums, &sum{year: p.Year})
+			i = len(sums) - 1
+		}
+		sums[i].fund += f.total()
+		sums[i].deductible += f.own + f.employer
+	}
+	if len(sums) == 0 {
+		return nil
+	}
+	slices.SortFunc(sums, func(a, b *sum) int { return cmp.Compare(a.year, b.year) })
+	t := &YearTable{Deductible: true}
+	paid := YearRow{Label: i18n.T(l, "report.year.fund")}
+	used := YearRow{Label: i18n.T(l, "report.year.deductible")}
+	for _, s := range sums {
+		t.Years = append(t.Years, strconv.Itoa(s.year))
+		paid.Cells = append(paid.Cells, optional(s.fund))
+		used.Cells = append(used.Cells, optional(s.deductible))
+		t.Over = t.Over || s.deductible > deductibleLimit(s.year)
+	}
+	t.Rows = []YearRow{paid, used}
 	return t
 }
 

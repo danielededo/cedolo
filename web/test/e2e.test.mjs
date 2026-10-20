@@ -262,8 +262,9 @@ test('shows the latest of many months first', async () => {
   assert.ok(await frame.$eval('#panel-month', (p) => p.hidden));
   await page.focus('#tabs [data-tab="time"]');
   await page.keyboard.press('ArrowRight');
-  await frame.waitForSelector('#panel-reference:not([hidden])');
-  assert.equal(await tab('reference'), 'true');
+  // The payslips accrue TFR and leave: the tab after "Over time" is theirs.
+  await frame.waitForSelector('#panel-accrued:not([hidden])');
+  assert.equal(await tab('accrued'), 'true');
   // A sideways swipe moves between tabs, and the page's tabs follow.
   // Plain events carrying the touch lists: WebKit on a desktop has no Touch
   // constructor.
@@ -275,6 +276,7 @@ test('shows the latest of many months first', async () => {
       el.dispatchEvent(ev);
     };
     fire('touchstart', [{ clientX: 200, clientY: 200 }], [{ clientX: 200, clientY: 200 }]);
+    for (const f of [0.25, 0.5, 1]) fire('touchmove', [{ clientX: 200 + dx * f, clientY: 200 }], [{ clientX: 200 + dx * f, clientY: 200 }]);
     fire('touchend', [], [{ clientX: 200 + dx, clientY: 200 }]);
   }, dx);
   await swipe(150);

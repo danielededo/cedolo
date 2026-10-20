@@ -141,13 +141,19 @@ type Data struct {
 	Range     string
 	Months    []Month
 	Selected  int // index in Months of the month shown first: the latest
-	// Tabs splits the page into the month, over time and reference, when
-	// there is something to show over time.
-	Tabs      bool
+	// Tabs splits the page into the month, over time, accrued and
+	// reference, when there is something to show over time or accrued:
+	// Time and Accrued tell which.
+	Tabs, Time, Accrued bool
+	// Leave is the latest leave balances, AsOf the month they are of, for
+	// the accrued tab.
+	Leave     []LeaveRow
+	LeaveAsOf string
 	Trend     template.HTML // where the gross pay went, month by month
 	Variable  template.HTML // overtime, bonuses and allowances, month by month
 	Years     *YearTable
 	Fund      template.HTML // what each payslip paid into the pension fund
+	FundYears *YearTable    // what went into the fund and counted as deductible, year by year
 	FundTotal string
 	FundSpan  string
 	TFR       template.HTML // the TFR accrued in the payslips, added up
@@ -375,10 +381,19 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		d.Years = years(l, slips)
 		d.TFR, d.TFRTotal, d.TFRSpan = tfrChart(l, slips)
 		d.Fund, d.FundTotal, d.FundSpan = fundChart(l, slips)
+		if d.Fund != "" {
+			d.FundYears = fundYears(l, slips)
+		}
 	}
 	d.LeaveCharts = leaveCharts(l, slips)
-	if d.Years != nil || d.Trend != "" || len(d.LeaveCharts) > 0 || d.TFR != "" || d.Fund != "" {
-		d.Tabs = true
+	d.Time = d.Years != nil || d.Trend != "" || d.Variable != ""
+	d.Accrued = len(d.LeaveCharts) > 0 || d.TFR != "" || d.Fund != ""
+	d.Tabs = d.Time || d.Accrued
+	for _, m := range slices.Backward(d.Months) {
+		if len(m.Leave) > 0 {
+			d.Leave, d.LeaveAsOf = m.Leave, i18n.T(l, "report.leave.asof", m.Label)
+			break
+		}
 	}
 
 	d.Contract = contract(l, slips)

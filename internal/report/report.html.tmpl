@@ -77,6 +77,10 @@ h2.total .amount { font-variant-numeric: tabular-nums; }
 .tabs { display: flex; gap: 4px; margin: 20px -16px 0; padding: 0 16px; border-bottom: 1px solid var(--grid); overflow-x: auto; scrollbar-width: none; position: sticky; top: 0; z-index: 1; background: var(--surface); }
 .embedded .tabs { display: none; }
 .panel:not([hidden]) { animation: panel-in .18s ease-out; }
+/* The page scrolls up and down; sideways, a finger moves between tabs,
+   except on rows that scroll sideways themselves. */
+.panel { touch-action: pan-y pinch-zoom; }
+.panel .scroll, .panel .picker { touch-action: pan-x pan-y pinch-zoom; }
 @keyframes panel-in { from { opacity: 0; transform: translateX(var(--from, 0)); } }
 @media (prefers-reduced-motion: reduce) { .panel:not([hidden]) { animation: none; } }
 .when { display: flex; align-items: center; gap: 8px; }
@@ -135,6 +139,11 @@ p { margin: 0 0 12px; }
 .part > summary::after { content: "›"; color: var(--muted); transition: transform .15s; }
 .part[open] > summary::after { transform: rotate(90deg); }
 .part .body { padding: 0 0 12px 22px; }
+.part.gross > summary { font-weight: 600; }
+.part.gross .body, .extra .part .body { padding-left: 0; }
+.parts.extra { margin-top: 32px; }
+.part > summary .name small { display: block; font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.changes { margin-top: 16px; }
 .explain { font-size: 15px; color: var(--ink-2); margin: 0 0 8px; max-width: 70ch; }
 .lines { list-style: none; padding: 0; margin: 0; }
 .lines details { margin: 0; }
@@ -265,9 +274,13 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   // A finger would hide them, so a touch pins them under the chart instead,
   // and dragging sideways moves along the months. A touch shows them when
   // the finger lifts: not when it lands, which may start a scroll.
-  var pointer = "mouse";
-  document.addEventListener("pointerdown", function (ev) { pointer = ev.pointerType; }, true);
+  var pointer = "mouse", downX = 0, downY = 0;
+  document.addEventListener("pointerdown", function (ev) {
+    pointer = ev.pointerType; downX = ev.clientX; downY = ev.clientY;
+  }, true);
   function pinned(ev) { return ev.pointerType !== "mouse"; }
+  // A finger lifted where it landed: not the end of a swipe or a scroll.
+  function tapped(ev) { return pinned(ev) && Math.abs(ev.clientX - downX) < 10 && Math.abs(ev.clientY - downY) < 10; }
   // A finger dragged over a chart moves the amounts already shown.
   function drags(tip, ev) {
     return ev.pointerType === "mouse" || (ev.buttons && !tip.hidden && tip.classList.contains("pinned"));
@@ -296,7 +309,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
         pts[best].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
         show(tip, fig, ev);
       }
-      hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) move(ev); });
+      hit.addEventListener("pointerup", function (ev) { if (tapped(ev)) move(ev); });
       hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) move(ev); });
       hit.addEventListener("pointerleave", function (ev) {
         if (ev.pointerType !== "mouse") return;
@@ -404,24 +417,70 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
         toTab(b.dataset.tab);
       });
     });
-    // A sideways swipe moves to the next or previous tab, except on rows that
-    // scroll sideways themselves and on charts, where it moves along the
-    // months.
+    // A sideways swipe moves to the next or previous tab. The tab follows
+    // the finger, and goes once it has moved a quarter of the way or was
+    // flicked; else it springs back. A swipe starts anywhere but on a row
+    // that can still scroll that way, such as the months, and on a chart
+    // whose amounts are shown, where the finger moves along the months.
     if (tabs.length) {
-      var sx = null, sy = 0, st = 0;
+      var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var sx = null, sy = 0, st = 0, dx = 0, lock = null, from = null, moving = null;
+      var scrolls = function (el, dir) {
+        for (; el && el !== document.body; el = el.parentElement) {
+          if (el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)) {
+            if (dir < 0 ? el.scrollLeft + el.clientWidth < el.scrollWidth - 1 : el.scrollLeft > 1) return true;
+          }
+        }
+        return false;
+      };
+      var pinnedChart = function (el) {
+        var fig = el.closest && el.closest("figure");
+        var tip = fig && fig.querySelector(".tooltip.pinned");
+        return Boolean(tip && !tip.hidden && el.closest(".chart"));
+      };
+      var slide = function (x, animate) {
+        if (!moving) return;
+        moving.style.transition = animate && !still ? "transform .18s ease-out, opacity .18s ease-out" : "none";
+        moving.style.transform = x ? "translateX(" + x + "px)" : "";
+        moving.style.opacity = x ? String(Math.max(0.4, 1 - Math.abs(x) / innerWidth)) : "";
+      };
       document.addEventListener("touchstart", function (ev) {
         sx = null;
-        if (ev.touches.length !== 1 || ev.target.closest(".picker, .scroll, .tabs, .chart")) return;
+        if (ev.touches.length !== 1 || ev.target.closest(".tabs, .people") || pinnedChart(ev.target)) return;
         sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; st = Date.now();
+        dx = 0; lock = null; from = ev.target;
+        moving = document.getElementById("panel-" + current());
       }, { passive: true, signal: signal });
-      document.addEventListener("touchend", function (ev) {
-        if (sx === null) return;
-        var dx = ev.changedTouches[0].clientX - sx, dy = ev.changedTouches[0].clientY - sy;
-        sx = null;
-        if (Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy) || Date.now() - st > 800) return;
+      document.addEventListener("touchmove", function (ev) {
+        if (sx === null || ev.touches.length !== 1) return;
+        var mx = ev.touches[0].clientX - sx, my = ev.touches[0].clientY - sy;
+        if (lock === null) {
+          if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+          lock = Math.abs(mx) > 1.2 * Math.abs(my) && !scrolls(from, mx < 0 ? -1 : 1) ? "x" : "y";
+        }
+        if (lock !== "x") return;
+        dx = mx;
+        // Past the first or the last tab the page resists.
         var next = names[names.indexOf(current()) + (dx < 0 ? 1 : -1)];
-        if (next) { showTab(next); toTab(next); }
+        slide(next ? dx : dx / 4, false);
       }, { passive: true, signal: signal });
+      var end = function () {
+        if (sx === null) return;
+        sx = null;
+        if (lock !== "x") return;
+        var next = names[names.indexOf(current()) + (dx < 0 ? 1 : -1)];
+        var fast = Math.abs(dx) / Math.max(1, Date.now() - st) > 0.5 && Math.abs(dx) > 40;
+        if (!next || (Math.abs(dx) < innerWidth / 4 && !fast)) { slide(0, true); return; }
+        var gone = moving;
+        slide(dx < 0 ? -innerWidth / 3 : innerWidth / 3, true);
+        setTimeout(function () {
+          gone.style.transition = gone.style.transform = gone.style.opacity = "";
+          showTab(next);
+          toTab(next);
+        }, still ? 0 : 120);
+      };
+      document.addEventListener("touchend", end, { passive: true, signal: signal });
+      document.addEventListener("touchcancel", function () { if (lock === "x") slide(0, true); sx = null; }, { passive: true, signal: signal });
     }
     // The arrows beside a month step to the one before or after.
     document.querySelectorAll(".steps button").forEach(function (b) {
@@ -472,7 +531,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
           tip.hidden = true;
           cols.forEach(function (c) { c.classList.remove("dim"); });
         });
-        hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) select(k, i, ev); });
+        hit.addEventListener("pointerup", function (ev) { if (tapped(ev)) select(k, i, ev); });
         hit.addEventListener("click", function () { if (pointer === "mouse") openMonth(i); });
       });
     });
@@ -546,8 +605,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{if .Tabs}}
 <div class="tabs" role="tablist" aria-label="{{index .T "report.tabs"}}">
 <button type="button" role="tab" id="tab-month" data-tab="month" aria-controls="panel-month" aria-selected="true">{{index .T "report.tab.month"}}</button>
-<button type="button" role="tab" id="tab-time" data-tab="time" aria-controls="panel-time" aria-selected="false" tabindex="-1">{{index .T "report.group.time"}}</button>
-<button type="button" role="tab" id="tab-reference" data-tab="reference" aria-controls="panel-reference" aria-selected="false" tabindex="-1">{{index .T "report.group.reference"}}</button>
+{{if .Time}}<button type="button" role="tab" id="tab-time" data-tab="time" aria-controls="panel-time" aria-selected="false" tabindex="-1">{{index .T "report.group.time"}}</button>
+{{end}}{{if .Accrued}}<button type="button" role="tab" id="tab-accrued" data-tab="accrued" aria-controls="panel-accrued" aria-selected="false" tabindex="-1">{{index .T "report.group.accrued"}}</button>
+{{end}}<button type="button" role="tab" id="tab-reference" data-tab="reference" aria-controls="panel-reference" aria-selected="false" tabindex="-1">{{index .T "report.group.reference"}}</button>
 </div>
 {{end}}
 
@@ -568,45 +628,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{with $m.Reread}}<p class="note">{{.}}</p>{{end}}
 {{with $m.Adjustment}}<p class="note">{{.}}</p>{{end}}
 
-{{if $m.Parts}}
-<h2>{{index $.T "report.where"}}</h2>
-<div class="bar">{{range $m.Parts}}<button type="button" class="seg part-{{.Key}}" style="width:{{printf "%.2f" .Width}}%" data-part="{{.Key}}" aria-label="{{.Label}} {{.Amount}}"></button>{{end}}</div>
-<div class="parts">
-{{range $m.Parts}}<details class="part part-{{.Key}}" data-part="{{.Key}}">
-<summary><span class="key"></span><span class="name">{{.Label}}</span><span class="amount">{{.Amount}}</span></summary>
-<div class="body"><p class="explain">{{.Text}}</p>
-{{if .Lines}}<ul class="lines">{{range .Lines}}{{template "line" .}}{{end}}</ul>{{end}}</div>
-</details>
-{{end}}</div>
-{{end}}
-
-{{if $m.Earnings}}
-<h2 class="total"><span>{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></h2>
-<ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul>
-{{end}}
-
-{{if $m.SetAside}}
-<h2 class="total"><span>{{index $.T "report.aside"}}</span><span class="amount">{{$m.AsideTotal}}</span></h2>
-<p class="explain">{{index $.T "report.aside.text"}}</p>
-<ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul>
-{{with $m.Withheld}}<p class="explain">{{.}}</p>{{end}}
-{{with $m.Fund}}<p class="explain">{{.}}</p>{{end}}
-{{end}}
-{{if $m.Info}}
-<h2>{{index $.T "report.info"}}</h2>
-<p class="explain">{{index $.T "report.info.text"}}</p>
-<ul class="lines">{{range $m.Info}}{{template "line" .}}{{end}}</ul>
-{{end}}
-
-{{if $m.Leave}}
-<h2>{{index $.T "report.leave"}}</h2>
-<ul class="leave">
-{{range $m.Leave}}<li><span class="name">{{.Label}}</span><span class="left">{{.Remaining}}</span>{{with .Moves}}<span class="moves">{{.}}</span>{{end}}</li>
-{{end}}</ul>
-{{end}}
-
 {{if $m.Changes}}
-<h2>{{index $.T "report.changes"}}</h2>
 <ul class="changes">
 {{range $m.Changes}}<li>{{.Text}}{{range .Why}}<div class="why">{{.}}</div>{{end}}</li>
 {{end}}</ul>
@@ -617,30 +639,56 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}</ul>
 </details>{{end}}
 {{end}}
+
+{{if $m.Parts}}
+<h2>{{index $.T "report.where"}}</h2>
+{{if $m.Earnings}}<details class="part gross">
+<summary><span class="name">{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></summary>
+<div class="body"><ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul></div>
+</details>{{end}}
+<div class="bar">{{range $m.Parts}}<button type="button" class="seg part-{{.Key}}" style="width:{{printf "%.2f" .Width}}%" data-part="{{.Key}}" aria-label="{{.Label}} {{.Amount}}"></button>{{end}}</div>
+<div class="parts">
+{{range $m.Parts}}<details class="part part-{{.Key}}" data-part="{{.Key}}">
+<summary><span class="key"></span><span class="name">{{.Label}}</span><span class="amount">{{.Amount}}</span></summary>
+<div class="body"><p class="explain">{{.Text}}</p>
+{{if .Lines}}<ul class="lines">{{range .Lines}}{{template "line" .}}{{end}}</ul>{{end}}</div>
+</details>
+{{end}}</div>
+{{else if $m.Earnings}}
+<h2 class="total"><span>{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></h2>
+<ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul>
+{{end}}
+
+{{if or $m.SetAside $m.Leave $m.Info}}
+<div class="parts extra">
+{{if $m.SetAside}}<details class="part">
+<summary><span class="name">{{index $.T "report.aside"}}</span><span class="amount">{{$m.AsideTotal}}</span></summary>
+<div class="body"><p class="explain">{{index $.T "report.aside.text"}}</p>
+<ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul>
+{{with $m.Withheld}}<p class="explain">{{.}}</p>{{end}}
+{{with $m.Fund}}<p class="explain">{{.}}</p>{{end}}
+{{if $.Accrued}}<button type="button" class="link" data-tab="accrued">{{index $.T "report.accrued.link"}}</button>{{end}}</div>
+</details>{{end}}
+{{if $m.Leave}}<details class="part">
+<summary><span class="name">{{index $.T "report.leave"}}<small>{{range $k, $lv := $m.Leave}}{{if $k}} · {{end}}{{$lv.Label}} {{$lv.Remaining}}{{end}}</small></span></summary>
+<div class="body"><ul class="leave">
+{{range $m.Leave}}<li><span class="name">{{.Label}}</span><span class="left">{{.Remaining}}</span>{{with .Moves}}<span class="moves">{{.}}</span>{{end}}</li>
+{{end}}</ul>
+{{if $.Accrued}}<button type="button" class="link" data-tab="accrued">{{index $.T "report.accrued.link"}}</button>{{end}}</div>
+</details>{{end}}
+{{if $m.Info}}<details class="part">
+<summary><span class="name">{{index $.T "report.info"}}</span></summary>
+<div class="body"><p class="explain">{{index $.T "report.info.text"}}</p>
+<ul class="lines">{{range $m.Info}}{{template "line" .}}{{end}}</ul></div>
+</details>{{end}}
+</div>
+{{end}}
 </section>
 {{end}}
 </div>
 
-<div class="panel" id="panel-time"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-time" hidden{{end}}>
-{{if or .Years .Trend .LeaveCharts .TFR}}
+{{if .Time}}<div class="panel" id="panel-time" role="tabpanel" aria-labelledby="tab-time" hidden>
 <h2 class="group">{{index .T "report.group.time"}}</h2>
-{{end}}
-
-{{with .Years}}
-<section>
-<h3>{{index $.T "report.years"}}</h3>
-<div class="scroll">
-<table class="years">
-<thead><tr><th></th>{{range .Years}}<th class="num">{{.}}</th>{{end}}</tr></thead>
-<tbody>
-{{range .Rows}}<tr><th scope="row">{{.Label}}</th>{{range .Cells}}<td class="num">{{.}}</td>{{end}}</tr>
-{{end}}</tbody>
-</table>
-</div>
-<p class="note">{{index $.T "report.year.note"}}{{if .Partial}} {{index $.T "report.year.partial"}}{{end}}</p>
-{{if .Deductible}}<p class="note">{{index $.T "report.year.deductible.note"}}{{if .Over}} {{index $.T "report.year.deductible.over"}}{{end}}</p>{{end}}
-</section>
-{{end}}
 
 {{if .Trend}}
 <section>
@@ -690,11 +738,26 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </section>
 {{end}}
 
-{{if .LeaveCharts}}
+{{with .Years}}
 <section>
-<h3>{{index .T "report.leave.over"}}</h3>
-<div class="minis">{{range .LeaveCharts}}<figure class="mini"><figcaption>{{.Label}} <strong>{{.Now}}</strong></figcaption>{{.SVG}}<div class="tooltip" hidden></div></figure>
-{{end}}</div>
+<h3>{{index $.T "report.years"}}</h3>
+{{template "years" .}}
+<p class="note">{{index $.T "report.year.note"}}{{if .Partial}} {{index $.T "report.year.partial"}}{{end}}</p>
+</section>
+{{end}}
+</div>{{end}}
+
+{{if .Accrued}}<div class="panel" id="panel-accrued" role="tabpanel" aria-labelledby="tab-accrued" hidden>
+<h2 class="group">{{index .T "report.group.accrued"}}</h2>
+
+{{if or .Leave .LeaveCharts}}
+<section>
+<h3>{{index .T "report.leave"}}</h3>
+{{with .LeaveAsOf}}<p class="note">{{.}}</p>{{end}}
+{{if .LeaveCharts}}<div class="minis">{{range .LeaveCharts}}<figure class="mini"><figcaption>{{.Label}} <strong>{{.Now}}</strong></figcaption>{{.SVG}}<div class="tooltip" hidden></div></figure>
+{{end}}</div>{{else}}<ul class="leave">
+{{range .Leave}}<li><span class="name">{{.Label}}</span><span class="left">{{.Remaining}}</span>{{with .Moves}}<span class="moves">{{.}}</span>{{end}}</li>
+{{end}}</ul>{{end}}
 </section>
 {{end}}
 
@@ -709,6 +772,8 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </ul>
 <figure>{{.Fund}}<div class="tooltip" hidden></div></figure>
 <p class="note">{{index .T "report.fund.note"}}</p>
+{{with .FundYears}}{{template "years" .}}
+<p class="note">{{index $.T "report.year.deductible.note"}}{{if .Over}} {{index $.T "report.year.deductible.over"}}{{end}}</p>{{end}}
 </section>
 {{end}}
 
@@ -720,8 +785,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <p class="note">{{index .T "report.tfr.note"}}</p>
 </section>
 {{end}}
-
-</div>
+</div>{{end}}
 
 <div class="panel" id="panel-reference"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-reference" hidden{{end}}>
 {{if .Rows}}
@@ -749,3 +813,11 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </div>
 
 {{end}}
+{{define "years"}}<div class="scroll">
+<table class="years">
+<thead><tr><th></th>{{range .Years}}<th class="num">{{.}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .Rows}}<tr><th scope="row">{{.Label}}</th>{{range .Cells}}<td class="num">{{.}}</td>{{end}}</tr>
+{{end}}</tbody>
+</table>
+</div>{{end}}
