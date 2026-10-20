@@ -477,12 +477,22 @@ func TestPensionFundInContributions(t *testing.T) {
 			lines = append(lines, pt.Key+":"+l.Description)
 		}
 	}
-	if !slices.Contains(lines, "other:Contr. FPC dipendente") || len(m.SetAside) != 2 {
+	if !slices.Contains(lines, "other:Contr. FPC dipendente") || len(m.SetAside) != 3 {
 		t.Errorf("lines = %v, set aside = %+v", lines, m.SetAside)
 	}
-	// What went into the fund: the month's three parts, and over time a
-	// chart in their place of the TFR's, all of which went to the fund.
-	if m.Fund != "To your pension fund this month: 960,00 € (700,00 € from you, 60,00 € from the employer, 200,00 € of TFR)." {
+	// What went into the fund is all set aside, your part withheld from the
+	// pay; the other deductions are mostly the fund. Over time a chart of
+	// the fund takes the place of the TFR's, all of which went to it.
+	if m.AsideTotal != "960,00 €" || m.Withheld != "Of this, 700,00 € is withheld from your pay: you also find it among the other deductions." || m.Fund != "" {
+		t.Errorf("set aside %q, withheld %q, fund %q", m.AsideTotal, m.Withheld, m.Fund)
+	}
+	if other := m.Parts[len(m.Parts)-1]; other.Label != "Other deductions, mostly the pension fund" {
+		t.Errorf("other deductions labeled %q", other.Label)
+	}
+	// A TFR kept by the employer is set aside but not paid into the fund.
+	kept := slip(9, 70000, 142430)
+	kept.Items[3].Description = "Quota TFR"
+	if m := Build(i18n.EN, []payslip.Payslip{kept}, "test").Months[0]; m.Fund != "Of this, 760,00 € goes to your pension fund; the rest of the TFR stays with the employer." {
 		t.Errorf("fund = %q", m.Fund)
 	}
 	if d.Fund == "" || d.FundTotal != "1.250,00 €" || d.FundSpan != "paid in over 2 payslips" || d.TFR != "" {

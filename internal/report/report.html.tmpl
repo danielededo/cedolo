@@ -82,7 +82,6 @@ h2.total .amount { font-variant-numeric: tabular-nums; }
 .when { display: flex; align-items: center; gap: 8px; }
 .when .label { flex: 1; }
 .steps { display: flex; gap: 6px; }
-.fund { margin: 8px 0 0; padding: 10px 14px; border-radius: 8px; background: var(--raised); color: var(--ink-2); font-size: 15px; }
 .leave { list-style: none; padding: 0; margin: 0; }
 .leave li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--grid); }
 .leave .left { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -278,13 +277,14 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <h2 class="total"><span>{{index $.T "report.aside"}}</span><span class="amount">{{$m.AsideTotal}}</span></h2>
 <p class="explain">{{index $.T "report.aside.text"}}</p>
 <ul class="lines">{{range $m.SetAside}}{{template "line" .}}{{end}}</ul>
+{{with $m.Withheld}}<p class="explain">{{.}}</p>{{end}}
+{{with $m.Fund}}<p class="explain">{{.}}</p>{{end}}
 {{end}}
 {{if $m.Info}}
 <h2>{{index $.T "report.info"}}</h2>
 <p class="explain">{{index $.T "report.info.text"}}</p>
 <ul class="lines">{{range $m.Info}}{{template "line" .}}{{end}}</ul>
 {{end}}
-{{with $m.Fund}}<p class="fund">{{.}}</p>{{end}}
 
 {{if $m.Leave}}
 <h2>{{index $.T "report.leave"}}</h2>
