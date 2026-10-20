@@ -53,3 +53,4 @@ makes onboarding trivial if the project ever gains collaborators.
 | [0007](0007-embed-cnel-contract-list.md) | Embed the CNEL list of national collective agreements | Accepted |
 | [0008](0008-rebuild-anonymized-payslips.md) | Share payslips as rebuilt, allowlist-anonymized PDFs | Accepted |
 | [0009](0009-resolve-totals-by-arithmetic-agreement.md) | Resolve totals by the reading that adds up | Accepted |
+| [0010](0010-identify-person-and-employer.md) | Identify the person and the employer by their fiscal codes | Proposed |
