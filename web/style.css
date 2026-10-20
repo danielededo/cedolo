@@ -147,8 +147,9 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .added::before { content: "✓ "; color: var(--good); font-weight: 700; }
 .added.none { background: var(--raised); color: var(--ink-2); }
 .added.none::before { content: ""; }
-.added.going { overflow: hidden; opacity: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;
-  transition: height .3s ease, opacity .3s ease, margin .3s ease, padding .3s ease; }
+.added.fading { opacity: 0; transition: opacity .6s ease; }
+.added.going { overflow: hidden; margin-bottom: 0; padding-top: 0; padding-bottom: 0;
+  transition: height .25s ease, margin .25s ease, padding .25s ease; }
 .misread { margin: 16px 0 0; text-align: center; }
 .report-tabs { display: flex; gap: 4px; margin: 0 -16px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--line); }
 .report-tabs[hidden] { display: none; }
