@@ -359,12 +359,11 @@ func TestYearsTable(t *testing.T) {
 		cells[r.Label] = strings.Join(r.Cells, " | ")
 	}
 	for label, want := range map[string]string{
-		"Payslips":                    "2 + 1 | 1",
-		"Gross pay":                   "6.000,00 € | 2.000,00 €",
-		"Taxes":                       "1.200,00 € | 400,00 €",
-		"Net pay":                     "4.500,00 € | 1.400,00 €",
-		"Average monthly net":         "1.500,00 € | 1.400,00 €",
-		"Net of every 100 € of gross": "75 € | 70 €",
+		"Payslips":            "2 + 1 | 1",
+		"Gross pay":           "6.000,00 € | 2.000,00 €",
+		"Taxes":               "1.200,00 € | 400,00 €",
+		"Net pay":             "4.500,00 € | 1.400,00 €",
+		"Average monthly net": "1.500,00 € | 1.400,00 €",
 	} {
 		if cells[label] != want {
 			t.Errorf("%s = %q, want %q", label, cells[label], want)
@@ -410,11 +409,14 @@ func TestTabs(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := b.String()
-	if n := strings.Count(page, `role="tab" id=`); n != 3 {
-		t.Errorf("%d tabs, want 3", n)
+	// The synthetic payslips accrue TFR and leave: the month, over time,
+	// accrued and the glossary.
+	if n := strings.Count(page, `role="tab" id=`); n != 4 {
+		t.Errorf("%d tabs, want 4", n)
 	}
 	for _, want := range []string{`id="panel-month" role="tabpanel" aria-labelledby="tab-month">`,
-		`id="panel-time" role="tabpanel" aria-labelledby="tab-time" hidden>`} {
+		`id="panel-time" role="tabpanel" aria-labelledby="tab-time" hidden>`,
+		`id="panel-accrued" role="tabpanel" aria-labelledby="tab-accrued" hidden>`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page misses %s", want)
 		}
@@ -498,18 +500,13 @@ func TestPensionFundInContributions(t *testing.T) {
 	if d.Fund == "" || d.FundTotal != "1.250,00 €" || d.FundSpan != "paid in over 2 payslips" || d.TFR != "" {
 		t.Errorf("fund chart %q %q, TFR chart %.40q", d.FundTotal, d.FundSpan, d.TFR)
 	}
-	// The year counts against the deductible limit your contribution and
-	// the employer's, not the TFR.
-	var deductible []string
-	for _, r := range d.Years.Rows {
-		if r.Label == "Pension fund deductible used" {
-			deductible = r.Cells
-		}
+	// Year by year, what went into the fund and what counts against the
+	// deductible limit: your contribution and the employer's, not the TFR.
+	if fy := d.FundYears; fy == nil || len(fy.Rows) != 2 || !slices.Equal(fy.Rows[0].Cells, []string{"1.250,00 €"}) ||
+		!slices.Equal(fy.Rows[1].Cells, []string{"850,00 €"}) || fy.Over {
+		t.Errorf("fund years = %+v", fy)
 	}
-	if !slices.Equal(deductible, []string{"850,00 €"}) || !d.Years.Deductible || d.Years.Over {
-		t.Errorf("deductible = %v, over = %v", deductible, d.Years.Over)
-	}
-	if over := Build(i18n.EN, []payslip.Payslip{aug, slip(9, 530000, 142430)}, "test"); !over.Years.Over {
+	if over := Build(i18n.EN, []payslip.Payslip{aug, slip(9, 530000, 142430)}, "test"); !over.FundYears.Over {
 		t.Errorf("no word of a year over the limit")
 	}
 	if deductibleLimit(2025) != 516457 {

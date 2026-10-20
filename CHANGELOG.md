@@ -46,6 +46,16 @@ How to use this file:
 
 ### Changed
 
+- The report has four tabs, each answering one question. "The month" puts
+  what changed right under the net pay; the gross pay's items open from a
+  row above where it goes; what is set aside, holidays and leave, and other
+  information are rows that open. "Over time" keeps the charts and the year
+  by year totals. "Accrued", new, gathers what builds up for you: holidays
+  and leave, the pension fund with its yearly deductible, and the TFR.
+  The "net of every 100 € of gross" row is gone, and the notes are shorter.
+- Swiping between tabs follows the finger, goes on a flick or past a
+  quarter of the screen and springs back otherwise; it works over charts
+  and over the months row once it can scroll no further.
 - Charts on a phone: a touch shows the amounts of a column under the
   chart, where the finger does not cover them, with a button to open that
   month, instead of leaving the chart at once; the other columns fade. A
