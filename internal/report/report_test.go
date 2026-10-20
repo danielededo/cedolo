@@ -577,3 +577,40 @@ func TestYearEndAdjustment(t *testing.T) {
 		t.Errorf("tax lines = %v", taxLines)
 	}
 }
+
+// TestPeople covers ADR 0010: one report per person, named by the name
+// read or else the masked code, a payslip without a code joining the only
+// person, and the employer named beside the month when there are several.
+func TestPeople(t *testing.T) {
+	a := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Verified} }
+	slip := func(month int, person payslip.Party, employer string) payslip.Payslip {
+		return payslip.Payslip{Year: 2026, Month: month, Kind: payslip.Monthly, Person: person,
+			Employer: payslip.Party{ID: employer, Name: employer + " S.r.l."},
+			Items:    []payslip.Item{{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 200000}},
+			Gross:    a(200000), Net: a(150000), Deductions: a(50000)}
+	}
+	rossi := payslip.Party{ID: "RSSMRA80A01H501X", Name: "Mario Rossi"}
+	verdi := payslip.Party{ID: "VRDLCU80A41H501X"}
+	pg := BuildPage(i18n.EN, []payslip.Payslip{
+		slip(1, rossi, "ALFA"), slip(2, rossi, "ALFA"), slip(2, rossi, "BETA"), slip(3, verdi, "ALFA"),
+	}, "test")
+	if len(pg.People) != 2 || pg.People[0].Who != "Mario Rossi" || pg.People[1].Who != "VRD…01X" || pg.People[0].Person != "" {
+		t.Fatalf("people = %d, %q %q %q", len(pg.People), pg.People[0].Who, pg.People[1].Who, pg.People[0].Person)
+	}
+	var shorts, labels []string
+	for _, m := range pg.People[0].Months {
+		shorts, labels = append(shorts, m.Short), append(labels, m.Label)
+	}
+	if strings.Join(shorts, "|") != "Jan 26|Feb 26 · ALFA|Feb 26 · BETA" || labels[0] != "January 2026 · ALFA" {
+		t.Errorf("shorts = %v, labels = %v", shorts, labels)
+	}
+	// February of BETA is compared with nothing: its employer's first.
+	if m := pg.People[0].Months[2]; strings.Contains(m.Summary, "January") {
+		t.Errorf("BETA compared with ALFA: %q", m.Summary)
+	}
+	// One person, and a payslip without a code: one report, named at the top.
+	one := BuildPage(i18n.EN, []payslip.Payslip{slip(1, rossi, "ALFA"), slip(2, payslip.Party{}, "ALFA")}, "test")
+	if len(one.People) != 1 || one.People[0].Person != "Mario Rossi" || len(one.People[0].Months) != 2 {
+		t.Errorf("one person: %d, %q", len(one.People), one.People[0].Person)
+	}
+}

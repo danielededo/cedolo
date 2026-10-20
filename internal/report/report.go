@@ -23,6 +23,7 @@ import (
 	"github.com/danielededo/cedolo/internal/insights"
 	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/payslip"
+	"github.com/danielededo/cedolo/internal/taxonomy"
 )
 
 //go:embed report.html.tmpl
@@ -41,7 +42,7 @@ const (
 
 // Month is one payslip as the page shows it.
 type Month struct {
-	Label      string // "ottobre 2026"
+	Label      string // "ottobre 2026", with the employer when the person has several
 	Short      string // "ott 26", for the month picker
 	Prev, Next string // the index of the month before and after, empty at either end
 	Status     Status
@@ -113,10 +114,27 @@ type Contract struct {
 	Source  string
 }
 
-// Data is everything the page shows; Render builds it with Build.
+// Page is the report of every person the payslips belong to (ADR 0010):
+// the first is shown, the others are a choice away.
+type Page struct {
+	Lang string
+	T    map[string]string
+	// OpenMonth is the label of the button under a touched column, with a
+	// %s for the month, filled in by the page.
+	OpenMonth string
+	People    []Data
+	Version   string
+}
+
+// Data is everything the page shows of one person; BuildPage builds it
+// with Build.
 type Data struct {
 	Lang string
 	T    map[string]string
+	// Who names the person on the button that shows them, when there are
+	// several; Person names them at the top of their report when there is
+	// one.
+	Who, Person string
 	// OpenMonth is the label of the button under a touched column, with a
 	// %s for the month, filled in by the page.
 	OpenMonth string
@@ -160,7 +178,128 @@ func ScriptHash() string {
 
 // Render writes the report for the payslips. The slice is sorted in place.
 func Render(w io.Writer, l i18n.Lang, slips []payslip.Payslip, version string) error {
-	return page.Execute(w, Build(l, slips, version))
+	return page.Execute(w, BuildPage(l, slips, version))
+}
+
+// BuildPage builds the report of each person, in the order they first
+// appear once the payslips are sorted. The slice is sorted in place.
+func BuildPage(l i18n.Lang, slips []payslip.Payslip, version string) Page {
+	insights.Sort(slips)
+	pg := Page{Lang: string(l), T: texts(l), OpenMonth: i18n.Template(l, "report.chart.open"), Version: version}
+	groups := people(slips)
+	for _, g := range groups {
+		d := Build(l, g, version)
+		who := g[0].Person
+		for _, p := range g {
+			if p.Person.ID != "" {
+				who = p.Person
+				break
+			}
+		}
+		switch {
+		case who.Name != "":
+			d.Who = who.Name
+		case who.ID != "":
+			d.Who = masked(who.ID)
+		default:
+			d.Who = i18n.T(l, "report.person.unknown")
+		}
+		if len(groups) == 1 && who.ID != "" {
+			d.Person = d.Who
+		}
+		pg.People = append(pg.People, d)
+	}
+	if len(pg.People) == 0 {
+		pg.People = []Data{Build(l, nil, version)}
+	}
+	return pg
+}
+
+// people groups the payslips by the person's codice fiscale. A payslip
+// without one joins the only person there is, or else a group of its own.
+func people(slips []payslip.Payslip) [][]payslip.Payslip {
+	var ids []string
+	byID := map[string][]payslip.Payslip{}
+	var unknown []payslip.Payslip
+	for _, p := range slips {
+		if p.Person.ID == "" {
+			unknown = append(unknown, p)
+			continue
+		}
+		if _, ok := byID[p.Person.ID]; !ok {
+			ids = append(ids, p.Person.ID)
+		}
+		byID[p.Person.ID] = append(byID[p.Person.ID], p)
+	}
+	if len(ids) == 1 {
+		g := append(byID[ids[0]], unknown...)
+		insights.Sort(g)
+		return [][]payslip.Payslip{g}
+	}
+	var out [][]payslip.Payslip
+	for _, id := range ids {
+		out = append(out, byID[id])
+	}
+	if len(unknown) > 0 {
+		out = append(out, unknown)
+	}
+	return out
+}
+
+// sameShort reports whether another payslip has the same short label as
+// payslip i, as two employers' payslips of one month do.
+func sameShort(slips []payslip.Payslip, i int) bool {
+	for j, p := range slips {
+		if j != i && p.Year == slips[i].Year && p.Month == slips[i].Month && p.Kind == slips[i].Kind {
+			return true
+		}
+	}
+	return false
+}
+
+// masked shows the first and last three characters of a code.
+func masked(id string) string {
+	if len(id) <= 6 {
+		return id
+	}
+	return id[:3] + "…" + id[len(id)-3:]
+}
+
+// employers names, when the payslips come from more than one employer, the
+// employer of each payslip, short: its name without the company form, or
+// else its masked code.
+func employers(slips []payslip.Payslip) map[string]string {
+	names := map[string]string{}
+	for _, p := range slips {
+		if p.Employer.ID == "" {
+			continue
+		}
+		if _, ok := names[p.Employer.ID]; !ok || names[p.Employer.ID] == masked(p.Employer.ID) {
+			names[p.Employer.ID] = shortEmployer(p.Employer)
+		}
+	}
+	if len(names) < 2 {
+		return nil
+	}
+	return names
+}
+
+func shortEmployer(e payslip.Party) string {
+	var words []string
+	for _, w := range strings.Fields(e.Name) {
+		n := taxonomy.Normalize(w)
+		if slices.Contains([]string{"srl", "spa", "sas", "snc", "srls", "scarl", "scrl", "s", "soc", "societa", "con"}, n) || strings.HasPrefix(n, "s ") {
+			break
+		}
+		words = append(words, w)
+		if len(words) == 2 {
+			break
+		}
+	}
+	if len(words) == 0 {
+		return masked(e.ID)
+	}
+	return strings.Join(words, " ")
 }
 
 // Build computes the page content. The slice is sorted in place.
@@ -176,7 +315,7 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		d.Range = i18n.T(l, "report.range", len(slips), periods[0].Label, periods[len(periods)-1].Label)
 	}
 
-	var prev *payslip.Payslip // previous ordinary month
+	names := employers(slips)
 	for i, p := range slips {
 		st := status(p)
 		d.Rows = append(d.Rows, Row{
@@ -191,10 +330,16 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 			Changes:       periods[i].Changes,
 		})
 		m := month(l, p, periods[i])
+		if name, ok := names[p.Employer.ID]; ok {
+			m.Label += " · " + name
+			if sameShort(slips, i) {
+				m.Short += " · " + name
+			}
+		}
 		m.Summary = share(l, p)
 		changes := periods[i].Changes
-		if p.Kind == payslip.Monthly && p.Month != 0 {
-			if prev != nil && p.Net.Found() && prev.Net.Found() {
+		if prev := insights.Previous(slips, i); prev != nil {
+			if p.Net.Found() && prev.Net.Found() {
 				m.Delta = i18n.T(l, "report.vs_previous", signed(p.Net.Cents-prev.Net.Cents))
 				var driver string
 				m.Summary, driver = compared(l, *prev, p)
@@ -205,7 +350,6 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 					m.SummaryWhy = slices.DeleteFunc(m.SummaryWhy, func(w string) bool { return w == yearEnd })
 				}
 			}
-			prev = &slips[i]
 		}
 		if len(m.Leave) > 0 {
 			// The balances are in the month's table.

@@ -20,6 +20,12 @@ How to use this file:
 
 ### Added
 
+- The report knows whose payslips they are: it reads the worker's codice
+  fiscale and name and the employer's fiscal code or VAT number and name
+  (ADR 0010). The name is at the top of the report. Payslips of two or more
+  people make a report for each, chosen at the top; a month is compared only
+  with the previous one of the same person and employer, and when a person
+  has several employers each month names its employer.
 - The year by year table says how much of the pension fund deductible
   each year used: your contribution and the employer's, without the TFR,
   against the limit of 5.164,57 € a year, 5.300 € from 2026. A year over

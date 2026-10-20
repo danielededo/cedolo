@@ -108,6 +108,8 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 		p.CCNLCode = c.Code
 	}
 	p.Level = levelField(header, pages[0].Width)
+	p.Person = person(all)
+	p.Employer = employer(header)
 
 	// Totals usually close the payslip, so later pages are searched first.
 	find := func(labels []string) payslip.Amount {

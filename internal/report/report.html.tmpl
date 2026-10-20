@@ -105,6 +105,10 @@ p { margin: 0 0 12px; }
 .picker { display: flex; gap: 6px; overflow-x: auto; margin: 20px -16px 0; padding: 2px 16px 6px; scrollbar-width: none; }
 .picker button { flex: none; font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); cursor: pointer; }
 .picker button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.people { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+.people button { font: inherit; font-size: 15px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); cursor: pointer; }
+.people button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.who .person { font-size: 17px; font-weight: 600; margin: 4px 0 0; }
 .month { margin-top: 24px; }
 .when { color: var(--ink-2); margin: 0; }
 .when .status { font-size: 14px; margin-left: 8px; }
@@ -209,7 +213,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .glossary dd { margin: 4px 0 0; font-size: 15px; color: var(--ink-2); max-width: 70ch; }
 footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 .embedded footer, .embedded h1 { display: none; }
-.embedded header .sub { margin-top: 0; }
+.embedded .who .sub, .embedded .who .person { margin-top: 0; }
 .embedded main { padding-top: 8px; padding-bottom: 8px; }
 .chart.narrow { display: none; }
 @media (max-width: 520px) {
@@ -217,7 +221,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   .chart.narrow { display: block; }
 }
 @media print {
-  .tooltip, .picker, .hint, .tabs, .steps { display: none; }
+  .tooltip, .picker, .hint, .tabs, .steps, .people { display: none; }
   .panel[hidden] { display: block !important; }
   .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
@@ -228,8 +232,316 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <main data-open="{{.OpenMonth}}">
 <header>
 <h1>{{index .T "report.title"}}</h1>
+{{if gt (len .People) 1}}<nav class="people" aria-label="{{index .T "report.people"}}">
+{{range $i, $p := .People}}<button type="button" data-person="{{$i}}" aria-pressed="{{if eq $i 0}}true{{else}}false{{end}}">{{$p.Who}}</button>
+{{end}}</nav>
+{{end}}</header>
+<div id="person">{{template "person" index .People 0}}</div>
+{{if gt (len .People) 1}}{{range $i, $p := .People}}<template data-person="{{$i}}">{{template "person" $p}}</template>
+{{end}}{{end}}
+<footer>
+<p>{{index .T "report.privacy"}}</p>
+<p>{{index .T "report.disclaimer"}}</p>
+<p>{{index .T "report.generated"}}{{with .Version}} {{.}}{{end}}</p>
+</footer>
+</main>
+<script>
+(function () {
+  function place(tip, fig, x, y) {
+    var w = fig.clientWidth, tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(w - tw, x + 12)) + "px";
+    tip.style.top = Math.max(0, y - tip.offsetHeight - 8) + "px";
+  }
+  function row(color, name, value) {
+    var r = document.createElement("div"); r.className = "row";
+    var k = document.createElement("span"); k.className = "key"; k.style.background = color;
+    var t = document.createElement("span"); t.textContent = name + ": " + value;
+    r.appendChild(k); r.appendChild(t); return r;
+  }
+  function head(text) {
+    var h = document.createElement("div"); h.className = "head"; h.textContent = text; return h;
+  }
+  // A mouse shows the amounts beside the pointer while it is over a chart.
+  // A finger would hide them, so a touch pins them under the chart instead,
+  // and dragging sideways moves along the months. A touch shows them when
+  // the finger lifts: not when it lands, which may start a scroll.
+  var pointer = "mouse";
+  document.addEventListener("pointerdown", function (ev) { pointer = ev.pointerType; }, true);
+  function pinned(ev) { return ev.pointerType !== "mouse"; }
+  // A finger dragged over a chart moves the amounts already shown.
+  function drags(tip, ev) {
+    return ev.pointerType === "mouse" || (ev.buttons && !tip.hidden && tip.classList.contains("pinned"));
+  }
+  function show(tip, fig, ev) {
+    var pin = pinned(ev);
+    tip.classList.toggle("pinned", pin);
+    tip.hidden = false;
+    if (pin) { tip.style.left = tip.style.top = ""; return; }
+    var box = fig.getBoundingClientRect();
+    place(tip, fig, ev.clientX - box.left, ev.clientY - box.top);
+  }
+  function init(signal) {
+    document.querySelectorAll("svg.chart.line").forEach(function (svg) {
+      var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
+      var xs = svg.dataset.x.split(",").map(Number), pts = JSON.parse(svg.dataset.points);
+      var cross = svg.querySelector(".crosshair"), hit = svg.querySelector(".hit");
+      function move(ev) {
+        var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+        var p = pt.matrixTransform(svg.getScreenCTM().inverse());
+        var best = 0;
+        xs.forEach(function (x, i) { if (Math.abs(x - p.x) < Math.abs(xs[best] - p.x)) best = i; });
+        cross.setAttribute("x1", xs[best]); cross.setAttribute("x2", xs[best]);
+        cross.setAttribute("visibility", "visible");
+        tip.replaceChildren(head(pts[best].label));
+        pts[best].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
+        show(tip, fig, ev);
+      }
+      hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) move(ev); });
+      hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) move(ev); });
+      hit.addEventListener("pointerleave", function (ev) {
+        if (ev.pointerType !== "mouse") return;
+        tip.hidden = true; cross.setAttribute("visibility", "hidden");
+      });
+    });
+    // The month picker shows one payslip at a time. It opens on the latest
+    // month, at the end of the row: scroll the row so that it is in view.
+    var picks = document.querySelectorAll(".picker button");
+    var picker = document.querySelector(".picker");
+    // The page may lay the report out before showing it, or the phone may
+    // turn: scroll again when the width changes. Not on every resize: inside
+    // the web app the frame grows or shrinks with each month shown, and the
+    // row must not jump under the finger that picked one.
+    function toCurrent() {
+      var current = document.querySelector('.picker button[aria-pressed="true"]');
+      if (picker && current) {
+        picker.scrollLeft = current.offsetLeft + current.offsetWidth - picker.clientWidth + 16;
+      }
+    }
+    toCurrent();
+    if (picker && window.ResizeObserver) {
+      // Called after layout, before the row is painted at its new width.
+      var width = picker.clientWidth;
+      var ro = new ResizeObserver(function () {
+        if (picker.clientWidth !== width) { width = picker.clientWidth; toCurrent(); }
+      });
+      ro.observe(picker);
+      signal.addEventListener("abort", function () { ro.disconnect(); });
+    }
+    // A month picked at the edge of the row slides fully into view.
+    function reveal(b) {
+      var left = b.offsetLeft - 16, right = b.offsetLeft + b.offsetWidth + 16 - picker.clientWidth;
+      var to = picker.scrollLeft < right ? right : picker.scrollLeft > left ? left : null;
+      if (to !== null) picker.scrollTo({ left: to, behavior: "smooth" });
+    }
+    picks.forEach(function (b) {
+      b.addEventListener("click", function () {
+        picks.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+        document.querySelectorAll("section.month").forEach(function (m) { m.hidden = m.dataset.month !== b.dataset.month; });
+        reveal(b);
+      });
+    });
+    // The columns of the trend follow the month shown: its label stands out,
+    // a column tells its amounts under the pointer and opens its month.
+    function mark(i) {
+      document.querySelectorAll(".chart.stack .month, .chart.stack .col").forEach(function (e) {
+        e.classList.toggle("current", e.dataset.i === String(i));
+      });
+    }
+    var shown = document.querySelector("section.month:not([hidden])");
+    if (shown) mark(shown.dataset.month);
+    picks.forEach(function (b) { b.addEventListener("click", function () { mark(b.dataset.month); }); });
+    // Bring the month shown to the top: inside the web app the page around
+    // the frame scrolls, so ask it to.
+    function toTop(el) {
+      var y = el.getBoundingClientRect().top + window.scrollY - 16;
+      if (window.parent !== window) window.parent.postMessage({ cedoloScroll: y }, "*");
+      else window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    }
+    function toMonth() { toTop(document.querySelector(".picker")); }
+    // Tabs: the month, the payslips over time, and the reference. Arrows
+    // move between them; a link to a tab opens it and scrolls to the tabs.
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+    var names = tabs.map(function (t) { return t.dataset.tab; });
+    function current() {
+      for (var i = 0; i < tabs.length; i++) if (tabs[i].getAttribute("aria-selected") === "true") return names[i];
+      return "";
+    }
+    // Inside the web app the tabs are the page's, which stay in view: the
+    // report tells it which tab it shows, unless the page asked for it.
+    function showTab(name, fromPage) {
+      if (names.indexOf(name) < 0) return;
+      var from = names.indexOf(current()) < names.indexOf(name) ? "24px" : "-24px";
+      if (embedded && !fromPage) window.parent.postMessage({ cedoloTab: name }, "*");
+      tabs.forEach(function (t) {
+        var on = t.dataset.tab === name;
+        t.setAttribute("aria-selected", String(on));
+        t.tabIndex = on ? 0 : -1;
+        var panel = document.getElementById("panel-" + t.dataset.tab);
+        if (on && panel.hidden) panel.style.setProperty("--from", from);
+        panel.hidden = !on;
+      });
+      // The row of months was hidden with its tab: bring the marked one back
+      // into view.
+      if (name === "month") toCurrent();
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener("click", function () { showTab(t.dataset.tab); });
+      t.addEventListener("keydown", function (ev) {
+        var j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[ev.key];
+        if (j === undefined) return;
+        ev.preventDefault();
+        var next = tabs[(j + tabs.length) % tabs.length];
+        showTab(next.dataset.tab);
+        next.focus();
+      });
+    });
+    // The top of a tab: under the page's tabs inside the web app, else the
+    // report's own tabs, which stay at the top of the window.
+    function toTab(name) { toTop(embedded ? document.getElementById("panel-" + name) : document.querySelector(".tabs")); }
+    document.querySelectorAll('button[data-tab]:not([role="tab"])').forEach(function (b) {
+      b.addEventListener("click", function () {
+        showTab(b.dataset.tab);
+        toTab(b.dataset.tab);
+      });
+    });
+    // A sideways swipe moves to the next or previous tab, except on rows that
+    // scroll sideways themselves and on charts, where it moves along the
+    // months.
+    if (tabs.length) {
+      var sx = null, sy = 0, st = 0;
+      document.addEventListener("touchstart", function (ev) {
+        sx = null;
+        if (ev.touches.length !== 1 || ev.target.closest(".picker, .scroll, .tabs, .chart")) return;
+        sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; st = Date.now();
+      }, { passive: true, signal: signal });
+      document.addEventListener("touchend", function (ev) {
+        if (sx === null) return;
+        var dx = ev.changedTouches[0].clientX - sx, dy = ev.changedTouches[0].clientY - sy;
+        sx = null;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy) || Date.now() - st > 800) return;
+        var next = names[names.indexOf(current()) + (dx < 0 ? 1 : -1)];
+        if (next) { showTab(next); toTab(next); }
+      }, { passive: true, signal: signal });
+    }
+    // The arrows beside a month step to the one before or after.
+    document.querySelectorAll(".steps button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var to = document.querySelector('.picker button[data-month="' + b.dataset.to + '"]');
+        if (to) to.click();
+      });
+    });
+    // A column opens its month: at once with a mouse, which has already
+    // shown its amounts; after a touch, from a button under the amounts.
+    function openMonth(i) {
+      var b = document.querySelector('.picker button[data-month="' + i + '"]');
+      if (b) { if (tabs.length) showTab("month"); b.click(); toMonth(); }
+    }
+    var openLabel = document.querySelector("main").dataset.open || "%s";
+    document.querySelectorAll("svg.chart.stack").forEach(function (svg) {
+      var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
+      var pts = JSON.parse(svg.dataset.points);
+      var cols = svg.querySelectorAll(".col");
+      // Column k of the chart is the month i of the payslips: a chart may
+      // start after the first payslip.
+      function select(k, i, ev) {
+        var head1 = head(pts[k].label);
+        var total = document.createElement("div"); total.className = "row total";
+        total.textContent = pts[k].total.name + ": " + pts[k].total.value;
+        tip.replaceChildren(head1, total);
+        pts[k].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
+        if (pinned(ev) && document.querySelector('.picker button[data-month="' + i + '"]')) {
+          var open = document.createElement("button");
+          open.type = "button"; open.className = "link open";
+          open.textContent = openLabel.replace("%s", pts[k].label) + " ›";
+          open.addEventListener("click", function () { openMonth(i); });
+          tip.appendChild(open);
+        }
+        cols.forEach(function (c) { c.classList.toggle("dim", c.dataset.i !== String(i)); });
+        show(tip, fig, ev);
+      }
+      svg.querySelectorAll(".col-hit").forEach(function (hit, k) {
+        var i = Number(hit.dataset.i);
+        hit.addEventListener("pointerdown", function (ev) {
+          // A finger keeps the first column it touched: let the columns it
+          // moves over take the pointer in turn.
+          if (hit.hasPointerCapture(ev.pointerId)) hit.releasePointerCapture(ev.pointerId);
+        });
+        hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) select(k, i, ev); });
+        hit.addEventListener("pointerleave", function (ev) {
+          if (ev.pointerType !== "mouse" || tip.classList.contains("pinned")) return;
+          tip.hidden = true;
+          cols.forEach(function (c) { c.classList.remove("dim"); });
+        });
+        hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) select(k, i, ev); });
+        hit.addEventListener("click", function () { if (pointer === "mouse") openMonth(i); });
+      });
+    });
+    // A segment of the bar opens its line below.
+    document.querySelectorAll(".bar .seg").forEach(function (seg) {
+      seg.addEventListener("click", function () {
+        var month = seg.closest("section.month");
+        month.querySelectorAll("details.part").forEach(function (d) { d.open = d.dataset.part === seg.dataset.part; });
+        month.querySelector('details.part[data-part="' + seg.dataset.part + '"]').scrollIntoView({ block: "nearest" });
+      });
+    });
+    // Inside the web app the page shows the tabs: it is told which there
+    // are, and asks for one in turn.
+    if (embedded && tabs.length) {
+      var labels = tabs.map(function (t) { return t.textContent; });
+      var tellTabs = function () {
+        window.parent.postMessage({ cedoloTabs: { names: names, labels: labels, current: current() } }, "*");
+      };
+      if (document.readyState === "complete") tellTabs();
+      else window.addEventListener("load", tellTabs, { signal: signal });
+      window.addEventListener("message", function (ev) {
+        if (ev.source === window.parent && ev.data && typeof ev.data.cedoloShowTab === "string") showTab(ev.data.cedoloShowTab, true);
+      }, { signal: signal });
+    }
+  }
+  // The report of one person at a time: the others wait in templates, and
+  // a person chosen replaces the one shown. Listeners of the page as a
+  // whole end with the person they were added for.
+  var embedded = window.parent !== window;
+  var person = document.getElementById("person");
+  var shown = new AbortController();
+  init(shown.signal);
+  var who = document.querySelectorAll(".people button");
+  who.forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (b.getAttribute("aria-pressed") === "true") return;
+      shown.abort();
+      who.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+      var t = document.querySelector('template[data-person="' + b.dataset.person + '"]');
+      person.replaceChildren(t.content.cloneNode(true));
+      shown = new AbortController();
+      init(shown.signal);
+    });
+  });
+  // Printing shows everything.
+  window.addEventListener("beforeprint", function () {
+    document.querySelectorAll("details").forEach(function (d) { d.open = true; });
+  });
+  // Inside the web app the report sits in a frame: tell it the height of
+  // the content. Not the document's scroll height: that is never less than
+  // the frame, so each resize of the frame would ask for a larger one.
+  if (embedded) {
+    // The page around it already shows the disclaimer and the version.
+    document.documentElement.classList.add("embedded");
+    var tell = function () { window.parent.postMessage({ cedoloHeight: document.body.getBoundingClientRect().height }, "*"); };
+    window.addEventListener("load", tell);
+    window.addEventListener("resize", tell);
+    // Content can also change height later, as text reflows with a late font.
+    if (window.ResizeObserver) new ResizeObserver(tell).observe(document.body);
+  }
+})();
+</script>
+</body>
+</html>
+{{define "line"}}<li><details><summary><span class="desc">{{.Description}}</span><span class="amount">{{.Amount}}</span></summary><p class="explain"><strong>{{.Label}}</strong> · {{.Text}}</p></details></li>{{end}}
+{{define "person"}}<div class="who">
+{{with .Person}}<p class="person">{{.}}</p>{{end}}
 {{with .Range}}<p class="sub">{{.}}</p>{{end}}
-</header>
+</div>
 
 {{if .Tabs}}
 <div class="tabs" role="tablist" aria-label="{{index .T "report.tabs"}}">
@@ -436,278 +748,4 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}
 </div>
 
-<footer>
-<p>{{index .T "report.privacy"}}</p>
-<p>{{index .T "report.disclaimer"}}</p>
-<p>{{index .T "report.generated"}}{{with .Version}} {{.}}{{end}}</p>
-</footer>
-</main>
-<script>
-(function () {
-  function place(tip, fig, x, y) {
-    var w = fig.clientWidth, tw = tip.offsetWidth;
-    tip.style.left = Math.max(0, Math.min(w - tw, x + 12)) + "px";
-    tip.style.top = Math.max(0, y - tip.offsetHeight - 8) + "px";
-  }
-  function row(color, name, value) {
-    var r = document.createElement("div"); r.className = "row";
-    var k = document.createElement("span"); k.className = "key"; k.style.background = color;
-    var t = document.createElement("span"); t.textContent = name + ": " + value;
-    r.appendChild(k); r.appendChild(t); return r;
-  }
-  function head(text) {
-    var h = document.createElement("div"); h.className = "head"; h.textContent = text; return h;
-  }
-  // A mouse shows the amounts beside the pointer while it is over a chart.
-  // A finger would hide them, so a touch pins them under the chart instead,
-  // and dragging sideways moves along the months. A touch shows them when
-  // the finger lifts: not when it lands, which may start a scroll.
-  var pointer = "mouse";
-  document.addEventListener("pointerdown", function (ev) { pointer = ev.pointerType; }, true);
-  function pinned(ev) { return ev.pointerType !== "mouse"; }
-  // A finger dragged over a chart moves the amounts already shown.
-  function drags(tip, ev) {
-    return ev.pointerType === "mouse" || (ev.buttons && !tip.hidden && tip.classList.contains("pinned"));
-  }
-  function show(tip, fig, ev) {
-    var pin = pinned(ev);
-    tip.classList.toggle("pinned", pin);
-    tip.hidden = false;
-    if (pin) { tip.style.left = tip.style.top = ""; return; }
-    var box = fig.getBoundingClientRect();
-    place(tip, fig, ev.clientX - box.left, ev.clientY - box.top);
-  }
-  document.querySelectorAll("svg.chart.line").forEach(function (svg) {
-    var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
-    var xs = svg.dataset.x.split(",").map(Number), pts = JSON.parse(svg.dataset.points);
-    var cross = svg.querySelector(".crosshair"), hit = svg.querySelector(".hit");
-    function move(ev) {
-      var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
-      var p = pt.matrixTransform(svg.getScreenCTM().inverse());
-      var best = 0;
-      xs.forEach(function (x, i) { if (Math.abs(x - p.x) < Math.abs(xs[best] - p.x)) best = i; });
-      cross.setAttribute("x1", xs[best]); cross.setAttribute("x2", xs[best]);
-      cross.setAttribute("visibility", "visible");
-      tip.replaceChildren(head(pts[best].label));
-      pts[best].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
-      show(tip, fig, ev);
-    }
-    hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) move(ev); });
-    hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) move(ev); });
-    hit.addEventListener("pointerleave", function (ev) {
-      if (ev.pointerType !== "mouse") return;
-      tip.hidden = true; cross.setAttribute("visibility", "hidden");
-    });
-  });
-  // The month picker shows one payslip at a time. It opens on the latest
-  // month, at the end of the row: scroll the row so that it is in view.
-  var picks = document.querySelectorAll(".picker button");
-  var picker = document.querySelector(".picker");
-  // The page may lay the report out before showing it, or the phone may
-  // turn: scroll again when the width changes. Not on every resize: inside
-  // the web app the frame grows or shrinks with each month shown, and the
-  // row must not jump under the finger that picked one.
-  function toCurrent() {
-    var current = document.querySelector('.picker button[aria-pressed="true"]');
-    if (picker && current) {
-      picker.scrollLeft = current.offsetLeft + current.offsetWidth - picker.clientWidth + 16;
-    }
-  }
-  toCurrent();
-  if (picker && window.ResizeObserver) {
-    // Called after layout, before the row is painted at its new width.
-    var width = picker.clientWidth;
-    new ResizeObserver(function () {
-      if (picker.clientWidth !== width) { width = picker.clientWidth; toCurrent(); }
-    }).observe(picker);
-  }
-  // A month picked at the edge of the row slides fully into view.
-  function reveal(b) {
-    var left = b.offsetLeft - 16, right = b.offsetLeft + b.offsetWidth + 16 - picker.clientWidth;
-    var to = picker.scrollLeft < right ? right : picker.scrollLeft > left ? left : null;
-    if (to !== null) picker.scrollTo({ left: to, behavior: "smooth" });
-  }
-  picks.forEach(function (b) {
-    b.addEventListener("click", function () {
-      picks.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
-      document.querySelectorAll("section.month").forEach(function (m) { m.hidden = m.dataset.month !== b.dataset.month; });
-      reveal(b);
-    });
-  });
-  // The columns of the trend follow the month shown: its label stands out,
-  // a column tells its amounts under the pointer and opens its month.
-  function mark(i) {
-    document.querySelectorAll(".chart.stack .month, .chart.stack .col").forEach(function (e) {
-      e.classList.toggle("current", e.dataset.i === String(i));
-    });
-  }
-  var shown = document.querySelector("section.month:not([hidden])");
-  if (shown) mark(shown.dataset.month);
-  picks.forEach(function (b) { b.addEventListener("click", function () { mark(b.dataset.month); }); });
-  // Bring the month shown to the top: inside the web app the page around
-  // the frame scrolls, so ask it to.
-  function toTop(el) {
-    var y = el.getBoundingClientRect().top + window.scrollY - 16;
-    if (window.parent !== window) window.parent.postMessage({ cedoloScroll: y }, "*");
-    else window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  }
-  function toMonth() { toTop(document.querySelector(".picker")); }
-  // Tabs: the month, the payslips over time, and the reference. Arrows
-  // move between them; a link to a tab opens it and scrolls to the tabs.
-  var embedded = window.parent !== window;
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
-  var names = tabs.map(function (t) { return t.dataset.tab; });
-  function current() {
-    for (var i = 0; i < tabs.length; i++) if (tabs[i].getAttribute("aria-selected") === "true") return names[i];
-    return "";
-  }
-  // Inside the web app the tabs are the page's, which stay in view: the
-  // report tells it which tab it shows, unless the page asked for it.
-  function showTab(name, fromPage) {
-    if (names.indexOf(name) < 0) return;
-    var from = names.indexOf(current()) < names.indexOf(name) ? "24px" : "-24px";
-    if (embedded && !fromPage) window.parent.postMessage({ cedoloTab: name }, "*");
-    tabs.forEach(function (t) {
-      var on = t.dataset.tab === name;
-      t.setAttribute("aria-selected", String(on));
-      t.tabIndex = on ? 0 : -1;
-      var panel = document.getElementById("panel-" + t.dataset.tab);
-      if (on && panel.hidden) panel.style.setProperty("--from", from);
-      panel.hidden = !on;
-    });
-    // The row of months was hidden with its tab: bring the marked one back
-    // into view.
-    if (name === "month") toCurrent();
-  }
-  tabs.forEach(function (t, i) {
-    t.addEventListener("click", function () { showTab(t.dataset.tab); });
-    t.addEventListener("keydown", function (ev) {
-      var j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[ev.key];
-      if (j === undefined) return;
-      ev.preventDefault();
-      var next = tabs[(j + tabs.length) % tabs.length];
-      showTab(next.dataset.tab);
-      next.focus();
-    });
-  });
-  // The top of a tab: under the page's tabs inside the web app, else the
-  // report's own tabs, which stay at the top of the window.
-  function toTab(name) { toTop(embedded ? document.getElementById("panel-" + name) : document.querySelector(".tabs")); }
-  document.querySelectorAll('button[data-tab]:not([role="tab"])').forEach(function (b) {
-    b.addEventListener("click", function () {
-      showTab(b.dataset.tab);
-      toTab(b.dataset.tab);
-    });
-  });
-  // A sideways swipe moves to the next or previous tab, except on rows that
-  // scroll sideways themselves and on charts, where it moves along the
-  // months.
-  if (tabs.length) {
-    var sx = null, sy = 0, st = 0;
-    document.addEventListener("touchstart", function (ev) {
-      sx = null;
-      if (ev.touches.length !== 1 || ev.target.closest(".picker, .scroll, .tabs, .chart")) return;
-      sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; st = Date.now();
-    }, { passive: true });
-    document.addEventListener("touchend", function (ev) {
-      if (sx === null) return;
-      var dx = ev.changedTouches[0].clientX - sx, dy = ev.changedTouches[0].clientY - sy;
-      sx = null;
-      if (Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy) || Date.now() - st > 800) return;
-      var next = names[names.indexOf(current()) + (dx < 0 ? 1 : -1)];
-      if (next) { showTab(next); toTab(next); }
-    }, { passive: true });
-  }
-  // The arrows beside a month step to the one before or after.
-  document.querySelectorAll(".steps button").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var to = document.querySelector('.picker button[data-month="' + b.dataset.to + '"]');
-      if (to) to.click();
-    });
-  });
-  // A column opens its month: at once with a mouse, which has already
-  // shown its amounts; after a touch, from a button under the amounts.
-  function openMonth(i) {
-    var b = document.querySelector('.picker button[data-month="' + i + '"]');
-    if (b) { if (tabs.length) showTab("month"); b.click(); toMonth(); }
-  }
-  var openLabel = document.querySelector("main").dataset.open || "%s";
-  document.querySelectorAll("svg.chart.stack").forEach(function (svg) {
-    var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
-    var pts = JSON.parse(svg.dataset.points);
-    var cols = svg.querySelectorAll(".col");
-    // Column k of the chart is the month i of the payslips: a chart may
-    // start after the first payslip.
-    function select(k, i, ev) {
-      var head1 = head(pts[k].label);
-      var total = document.createElement("div"); total.className = "row total";
-      total.textContent = pts[k].total.name + ": " + pts[k].total.value;
-      tip.replaceChildren(head1, total);
-      pts[k].values.forEach(function (v) { tip.appendChild(row(v.color, v.name, v.value)); });
-      if (pinned(ev) && document.querySelector('.picker button[data-month="' + i + '"]')) {
-        var open = document.createElement("button");
-        open.type = "button"; open.className = "link open";
-        open.textContent = openLabel.replace("%s", pts[k].label) + " ›";
-        open.addEventListener("click", function () { openMonth(i); });
-        tip.appendChild(open);
-      }
-      cols.forEach(function (c) { c.classList.toggle("dim", c.dataset.i !== String(i)); });
-      show(tip, fig, ev);
-    }
-    svg.querySelectorAll(".col-hit").forEach(function (hit, k) {
-      var i = Number(hit.dataset.i);
-      hit.addEventListener("pointerdown", function (ev) {
-        // A finger keeps the first column it touched: let the columns it
-        // moves over take the pointer in turn.
-        if (hit.hasPointerCapture(ev.pointerId)) hit.releasePointerCapture(ev.pointerId);
-      });
-      hit.addEventListener("pointermove", function (ev) { if (drags(tip, ev)) select(k, i, ev); });
-      hit.addEventListener("pointerleave", function (ev) {
-        if (ev.pointerType !== "mouse" || tip.classList.contains("pinned")) return;
-        tip.hidden = true;
-        cols.forEach(function (c) { c.classList.remove("dim"); });
-      });
-      hit.addEventListener("pointerup", function (ev) { if (pinned(ev)) select(k, i, ev); });
-      hit.addEventListener("click", function () { if (pointer === "mouse") openMonth(i); });
-    });
-  });
-  // A segment of the bar opens its line below.
-  document.querySelectorAll(".bar .seg").forEach(function (seg) {
-    seg.addEventListener("click", function () {
-      var month = seg.closest("section.month");
-      month.querySelectorAll("details.part").forEach(function (d) { d.open = d.dataset.part === seg.dataset.part; });
-      month.querySelector('details.part[data-part="' + seg.dataset.part + '"]').scrollIntoView({ block: "nearest" });
-    });
-  });
-  // Printing shows everything.
-  window.addEventListener("beforeprint", function () {
-    document.querySelectorAll("details").forEach(function (d) { d.open = true; });
-  });
-  // Inside the web app the report sits in a frame: tell it the height of
-  // the content. Not the document's scroll height: that is never less than
-  // the frame, so each resize of the frame would ask for a larger one.
-  if (embedded) {
-    // The page around it already shows the disclaimer, the version and,
-    // when there are tabs, the tabs: it is told which there are, and asks
-    // for one in turn.
-    document.documentElement.classList.add("embedded");
-    if (tabs.length) {
-      var labels = tabs.map(function (t) { return t.textContent; });
-      window.addEventListener("load", function () {
-        window.parent.postMessage({ cedoloTabs: { names: names, labels: labels, current: current() } }, "*");
-      });
-    }
-    window.addEventListener("message", function (ev) {
-      if (ev.source === window.parent && ev.data && typeof ev.data.cedoloShowTab === "string") showTab(ev.data.cedoloShowTab, true);
-    });
-    var tell = function () { window.parent.postMessage({ cedoloHeight: document.body.getBoundingClientRect().height }, "*"); };
-    window.addEventListener("load", tell);
-    window.addEventListener("resize", tell);
-    // Content can also change height later, as text reflows with a late font.
-    if (window.ResizeObserver) new ResizeObserver(tell).observe(document.body);
-  }
-})();
-</script>
-</body>
-</html>
-{{define "line"}}<li><details><summary><span class="desc">{{.Description}}</span><span class="amount">{{.Amount}}</span></summary><p class="explain"><strong>{{.Label}}</strong> · {{.Text}}</p></details></li>{{end}}
+{{end}}

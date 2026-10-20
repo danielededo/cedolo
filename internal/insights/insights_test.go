@@ -181,3 +181,21 @@ func TestPercentFollowsTheLanguage(t *testing.T) {
 		}
 	}
 }
+
+// TestPreviousOfSameEmployer compares a month with the latest one of the same
+// person and employer, a payslip without codes with any, and nothing across
+// people (ADR 0010).
+func TestPreviousOfSameEmployer(t *testing.T) {
+	slip := func(month int, person, employer string) payslip.Payslip {
+		return payslip.Payslip{Year: 2026, Month: month, Kind: payslip.Monthly,
+			Person: payslip.Party{ID: person}, Employer: payslip.Party{ID: employer}}
+	}
+	slips := []payslip.Payslip{slip(1, "A", "X"), slip(2, "A", "Y"), slip(3, "A", "X"), slip(4, "B", "X"), slip(5, "", "")}
+	want := []int{-1, -1, 0, -1, 3}
+	for i, w := range want {
+		got := Previous(slips, i)
+		if (w < 0) != (got == nil) || (got != nil && got != &slips[w]) {
+			t.Errorf("Previous(%d) = %v, want %d", i, got, w)
+		}
+	}
+}

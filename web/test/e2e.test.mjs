@@ -328,6 +328,36 @@ test('a touch on a chart shows its amounts under it', async () => {
   await page.close();
 });
 
+test('shows one person at a time', async () => {
+  // Two people, the first with two employers in one month.
+  const files = [
+    synth('rossi-1.pdf', '-month', '1', '-person', 'ROSSI MARIO', '-employer', 'ALFA SRL'),
+    synth('rossi-2a.pdf', '-month', '2', '-person', 'ROSSI MARIO', '-employer', 'ALFA SRL'),
+    synth('rossi-2b.pdf', '-month', '2', '-person', 'ROSSI MARIO', '-employer', 'BETA SRL'),
+    synth('verdi-2.pdf', '-month', '2', '-person', 'VERDI LUCIA', '-employer', 'ALFA SRL'),
+  ];
+  const { page, seen } = await open({ viewport: { width: 390, height: 800 } });
+  await page.setInputFiles('#files', files);
+  await statuses(page);
+  await page.waitForSelector('#report:not(.pending)');
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  assert.deepEqual(await frame.$$eval('.people button', (bs) => bs.map((b) => b.textContent)), ['Mario Rossi', 'Lucia Verdi']);
+  // The month with two employers names them; the other does not need to.
+  assert.deepEqual(await frame.$$eval('.picker button', (bs) => bs.map((b) => b.textContent)), ['Jan 26', 'Feb 26 · ALFA', 'Feb 26 · BETA']);
+  // The other person's report replaces the first, and the page's tabs
+  // still lead into it.
+  await press(frame, '.people button[data-person="1"]');
+  await frame.waitForSelector('.people button[data-person="1"][aria-pressed="true"]');
+  assert.equal(await frame.$$eval('section.month', (ms) => ms.length), 1);
+  assert.match(await frame.$eval('.who .sub', (e) => e.textContent), /February 2026/);
+  await press(frame, '.people button[data-person="0"]');
+  await press(page, '#tabs [data-tab="time"]');
+  await frame.waitForSelector('#panel-time:not([hidden])');
+  assert.equal(await frame.$$eval('section.month', (ms) => ms.length), 3);
+  assert.deepEqual(seen.errors, []);
+  await page.close();
+});
+
 test('adds payslips to a report', async () => {
   const [one, two, three] = [1, 2, 3].map((m) => synth(`add-${m}.pdf`, '-month', String(m)));
   const { page, seen } = await open();
