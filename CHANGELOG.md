@@ -46,6 +46,8 @@ How to use this file:
 
 ### Changed
 
+- The note confirming the payslips added goes after five seconds, folding
+  away smoothly; not while the pointer or the focus is on it.
 - In the web app the page no longer lists the files: it says only how many
   need a look, if any. The files are in a sheet of their own, opened from
   that line or from "Files read" under the report: what needs a look

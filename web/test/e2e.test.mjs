@@ -390,6 +390,8 @@ test('adds payslips to a report', async () => {
   await frame.waitForFunction(() => document.querySelectorAll('.picker button').length === 3);
   // The report opens on the latest month again.
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Mar 26');
+  // The confirmation goes by itself after a few seconds.
+  await page.waitForSelector('#added', { state: 'hidden', timeout: 8000 });
   assert.deepEqual(seen.errors, []);
   onlyThisSite(seen);
   await page.close();
