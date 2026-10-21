@@ -321,9 +321,51 @@ function added(files) {
   let text = t('web.added.none');
   if (months.length === 1) text = t('web.added.one', months[0]);
   if (months.length > 1) text = t('web.added.many', months.length, months.join(', '));
-  $('added').textContent = text;
-  $('added').classList.toggle('none', months.length === 0);
-  $('added').hidden = false;
+  const note = $('added');
+  note.textContent = text;
+  note.classList.toggle('none', months.length === 0);
+  note.classList.remove('fading', 'going');
+  note.style.height = '';
+  note.hidden = false;
+  fadeAdded();
+}
+
+// The confirmation goes after a few seconds, dissolving and then folding
+// away so that the report rises smoothly under it; not while the pointer
+// or the focus is on it, so that it can be read.
+const ADDED_FOR = 5000;
+let addedTimer = 0, addedTurn = 0;
+function fadeAdded() {
+  clearTimeout(addedTimer);
+  // A note shown again ends the fading of the one before.
+  const turn = ++addedTurn;
+  addedTimer = setTimeout(() => {
+    const note = $('added');
+    if (note.hidden) return;
+    if (note.matches(':hover, :focus-within')) {
+      fadeAdded();
+      return;
+    }
+    if (calm()) {
+      note.hidden = true;
+      return;
+    }
+    // First it dissolves, then the room it took closes.
+    note.classList.add('fading');
+    note.addEventListener('transitionend', () => {
+      if (turn !== addedTurn) return;
+      note.style.height = `${note.offsetHeight}px`;
+      note.getBoundingClientRect();
+      note.classList.add('going');
+      note.style.height = '0px';
+      note.addEventListener('transitionend', () => {
+        if (turn !== addedTurn) return;
+        note.hidden = true;
+        note.classList.remove('fading', 'going');
+        note.style.height = '';
+      }, { once: true });
+    }, { once: true });
+  }, ADDED_FOR);
 }
 
 // progress shows how many files have been read, or hides the bar.
@@ -347,6 +389,8 @@ async function handle(fileList) {
   // the progress and any password.
   const adding = !$('result').hidden;
   const before = state.files.length;
+  clearTimeout(addedTimer);
+  addedTurn++;
   $('added').hidden = true;
   if (adding) {
     $('pick').hidden = false;
