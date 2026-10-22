@@ -112,17 +112,17 @@ test('reads payslips in every style and rotation and shows the report', async ()
     'ok: — 1 payslip(s) read',
   ]);
   const frame = page.frames().find((f) => f !== page.mainFrame());
-  await frame.waitForSelector('section.month:not([hidden]) .bar');
+  await frame.waitForSelector('section.month:not([hidden]) .parts');
   // The frame grows to its content: shorter on this wide window, where
   // the month takes two columns.
   await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 400);
-  // One payslip at a time: the picker switches, and a segment of the bar
+  // One payslip at a time: the picker switches, and a step from the gross
   // opens its explanation.
   const shown = () => frame.$$eval('section.month', (ms) => ms.filter((m) => !m.hidden).map((m) => m.dataset.month));
   assert.deepEqual(await shown(), ['1']);
   await frame.click('.picker button[data-month="0"]');
   assert.deepEqual(await shown(), ['0']);
-  await frame.click('section.month:not([hidden]) .bar .seg.part-taxes');
+  await frame.click('section.month:not([hidden]) details.part-taxes summary');
   assert.equal(await frame.$eval('section.month:not([hidden]) details.part-taxes', (d) => d.open), true);
   assert.match(await frame.$eval('section.month:not([hidden]) details.part-taxes', (d) => d.textContent), /IRPEF/);
   assert.deepEqual(seen.errors, []);
@@ -208,7 +208,7 @@ test('the report frame fits its content on a phone', async () => {
   await page.setInputFiles('#files', [synth('phone.pdf')]);
   await statuses(page);
   const frame = page.frames().find((f) => f !== page.mainFrame());
-  await frame.waitForSelector('section.month:not([hidden]) .bar');
+  await frame.waitForSelector('section.month:not([hidden]) .parts');
   const height = () => page.$eval('#report', (f) => parseInt(f.style.height, 10) || 0);
   await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 500);
   const first = await height();
@@ -234,7 +234,7 @@ test('shows the latest of many months first', async () => {
   await page.setInputFiles('#files', files);
   await statuses(page);
   const frame = page.frames().find((f) => f !== page.mainFrame());
-  await frame.waitForSelector('section.month:not([hidden]) .bar');
+  await frame.waitForSelector('section.month:not([hidden]) .parts');
   // The frame is laid out hidden first; what counts is the report shown.
   await page.waitForSelector('#report:not(.pending)');
   const visible = await frame.$$eval('section.month', (ms) => ms.filter((m) => getComputedStyle(m).display !== 'none').map((m) => m.querySelector('.when').textContent));
@@ -475,7 +475,7 @@ test('makes an anonymized copy that reads as the same payslip', async () => {
   await page.setInputFiles('#files', [copy]);
   assert.deepEqual(await statuses(page), ['ok: — 1 payslip(s) read']);
   const frame = page.frames().find((f) => f !== page.mainFrame());
-  await frame.waitForSelector('section.month:not([hidden]) .bar');
+  await frame.waitForSelector('section.month:not([hidden]) .parts');
   assert.match(await frame.content(), /1\.667,40/);
   assert.deepEqual(seen.errors, []);
   onlyThisSite(seen);

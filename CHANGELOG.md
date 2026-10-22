@@ -27,6 +27,11 @@ How to use this file:
 
 ### Changed
 
+- "Where your gross pay goes" reads as a waterfall: from the gross pay,
+  what is added to it, such as an expense refund or a contribution relief,
+  then each deduction, down to the net pay, each with a span that starts
+  where the one before it ended. The gross pay's items open from its row,
+  and what is added is no longer counted in it.
 - On a wide screen the month takes two columns, what it is beside where the
   gross pay went, and the glossary two; the charts over time keep a size at
   which their text reads well, and the web app widens with the report.

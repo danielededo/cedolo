@@ -70,9 +70,11 @@ type Month struct {
 // Part is one share of the gross pay: the net or a kind of deduction.
 type Part struct {
 	Key, Label, Amount, Text string
-	Color                    string
-	Width                    float64 // percent of the bar
-	Lines                    []Line
+	// From and Width place the part's span on its track, in percent of
+	// the gross pay and what is added to it: the parts step down from the
+	// gross pay to the net, like a waterfall.
+	From, Width float64
+	Lines       []Line
 }
 
 // Line is one printed item with its explanation.
@@ -496,13 +498,15 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 	line := func(it payslip.Item) Line {
 		return Line{Description: it.Description, Label: i18n.ItemLabel(l, it.Key), Amount: money.Format(it.Cents) + " €", Text: i18n.ItemText(l, it.Key)}
 	}
-	var contrib, tax, other []Line
+	var contrib, tax, other, plus []Line
 	fund := pensionInContributions(p)
 	// aside sums what builds up for you; withheld is the part of it that
 	// your own pay gave, also among the other deductions.
 	var aside, withheld int64
 	for _, it := range p.Items {
 		switch {
+		case it.Side == payslip.Earning && payslip.OutsideGross(it.Key) && outside(p):
+			plus = append(plus, line(it))
 		case it.Side == payslip.Earning:
 			m.Earnings = append(m.Earnings, line(it))
 		case it.Key == "pension_fund.employee" && fund > 0, it.Key == "deductions.pension_fund":
@@ -544,42 +548,72 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		m.Fund = i18n.T(l, "report.fund.month", moneyValue(f.total()))
 	}
 	shares := split(p)
-	lines := [][]Line{nil, contrib, tax, other}
-	parts := make([]struct {
+	// From the gross pay, what is added to it, then each deduction, down
+	// to the net pay.
+	var added int64
+	if p.Gross.Found() && p.Net.Found() && p.Deductions.Found() {
+		added = max(p.Net.Cents+p.Deductions.Cents-p.Gross.Cents, 0)
+	}
+	// Less than a euro with no item of its own is a rounding: no step.
+	if added < 100 && len(plus) == 0 {
+		added = 0
+	}
+	steps := []struct {
 		key   string
 		cents int64
-		color string
+		sign  string
 		lines []Line
-	}, len(partKeys))
-	for i, key := range partKeys {
-		parts[i].key, parts[i].cents, parts[i].color, parts[i].lines = key, shares[i], partColors[i], lines[i]
+	}{
+		{"contrib", shares[1], "−", contrib},
+		{"taxes", shares[2], "−", tax},
+		{"other", shares[3], "−", other},
 	}
-	var total int64
-	for _, pt := range parts {
-		total += pt.cents
+	top := shares[0] + shares[1] + shares[2] + shares[3]
+	if p.Gross.Found() {
+		top = p.Gross.Cents + added
 	}
-	if total == 0 {
+	if top <= 0 {
 		return m
 	}
-	for _, pt := range parts {
-		if pt.cents == 0 && len(pt.lines) == 0 {
+	pct := func(c int64) float64 { return float64(c) * 100 / float64(top) }
+	if p.Gross.Found() {
+		m.Parts = append(m.Parts, Part{Key: "gross", Label: i18n.T(l, "report.earnings"), Amount: money.Format(p.Gross.Cents) + " €", Width: pct(p.Gross.Cents), Lines: m.Earnings})
+		if added > 0 {
+			m.Parts = append(m.Parts, Part{Key: "plus", Label: i18n.T(l, "report.part.plus"), Amount: "+" + money.Format(added) + " €",
+				Text: i18n.T(l, "report.part.plus.text"), From: pct(p.Gross.Cents), Width: pct(added), Lines: plus})
+		}
+	}
+	at := top
+	for _, st := range steps {
+		if st.cents == 0 && len(st.lines) == 0 {
 			continue
 		}
-		label := i18n.T(l, "report.part."+pt.key)
-		if pt.key == "other" && 2*withheld > pt.cents {
+		label := i18n.T(l, "report.part."+st.key)
+		if st.key == "other" && 2*withheld > st.cents {
 			label = i18n.T(l, "report.part.other.fund")
 		}
-		m.Parts = append(m.Parts, Part{
-			Key:    pt.key,
-			Label:  label,
-			Amount: money.Format(pt.cents) + " €",
-			Text:   i18n.T(l, "report.part."+pt.key+".text"),
-			Color:  pt.color,
-			Width:  float64(pt.cents) * 100 / float64(total),
-			Lines:  pt.lines,
-		})
+		at -= st.cents
+		m.Parts = append(m.Parts, Part{Key: st.key, Label: label, Amount: st.sign + money.Format(st.cents) + " €",
+			Text: i18n.T(l, "report.part."+st.key+".text"), From: pct(at), Width: pct(st.cents), Lines: st.lines})
 	}
+	m.Parts = append(m.Parts, Part{Key: "net", Label: i18n.T(l, "report.part.net"), Amount: money.Format(shares[0]) + " €",
+		Text: i18n.T(l, "report.part.net.text"), Width: pct(shares[0])})
 	return m
+}
+
+// outside reports whether the payslip's printed gross leaves out the items
+// that some payroll software leaves out: the other earnings add up to it.
+func outside(p payslip.Payslip) bool {
+	if !p.Gross.Found() {
+		return false
+	}
+	var in int64
+	for _, it := range p.Items {
+		if it.Side == payslip.Earning && !payslip.OutsideGross(it.Key) {
+			in += it.Cents
+		}
+	}
+	return in == p.Gross.Cents
 }
 
 // The shares of the gross pay, in the order the bar and the columns stack

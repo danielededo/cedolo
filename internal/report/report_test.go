@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"html"
+	"math"
 	"slices"
 	"strings"
 	"testing"
@@ -62,21 +63,37 @@ func TestBuild(t *testing.T) {
 	if d.Trend == "" {
 		t.Error("no trend for three months")
 	}
+	// The parts step down from the gross pay to the net, each starting
+	// where the one before it ended, and the net pay with the deductions
+	// make up the whole.
 	var width float64
 	keys := map[string]bool{}
+	at := 100.0
 	for _, p := range m.Parts {
-		width += p.Width
 		keys[p.Key] = true
-		if p.Text == "" || p.Amount == "" {
+		if p.Amount == "" || (p.Text == "" && p.Key != "gross") {
 			t.Errorf("part %+v", p)
 		}
+		switch p.Key {
+		case "gross", "plus":
+		case "net":
+			width += p.Width
+		default:
+			width += p.Width
+			if math.Abs(p.From+p.Width-at) > 0.01 {
+				t.Errorf("%s spans %.2f+%.2f, want to end at %.2f", p.Key, p.From, p.Width, at)
+			}
+			at = p.From
+		}
 	}
-	if !keys["net"] || !keys["contrib"] || !keys["taxes"] || width < 99.9 || width > 100.1 {
+	if m.Parts[0].Key != "gross" || m.Parts[len(m.Parts)-1].Key != "net" || !keys["contrib"] || !keys["taxes"] || width < 99.9 || width > 100.1 {
 		t.Errorf("parts %+v sum to %.2f%%", m.Parts, width)
 	}
 	lines := len(m.Earnings) + len(m.SetAside)
 	for _, p := range m.Parts {
-		lines += len(p.Lines)
+		if p.Key != "gross" {
+			lines += len(p.Lines)
+		}
 	}
 	if lines != len(slips[2].Items) {
 		t.Errorf("%d lines for %d items", lines, len(slips[2].Items))
@@ -489,8 +506,10 @@ func TestPensionFundInContributions(t *testing.T) {
 	if m.AsideTotal != "960,00 €" || m.Withheld != "Of this, 700,00 € is withheld from your pay: you also find it among the other deductions." || m.Fund != "" {
 		t.Errorf("set aside %q, withheld %q, fund %q", m.AsideTotal, m.Withheld, m.Fund)
 	}
-	if other := m.Parts[len(m.Parts)-1]; other.Label != "Other deductions, mostly the pension fund" {
-		t.Errorf("other deductions labeled %q", other.Label)
+	for _, pt := range m.Parts {
+		if pt.Key == "other" && pt.Label != "Other deductions, mostly the pension fund" {
+			t.Errorf("other deductions labeled %q", pt.Label)
+		}
 	}
 	// A TFR kept by the employer is set aside but not paid into the fund.
 	kept := slip(9, 70000, 142430)
@@ -640,5 +659,26 @@ func TestYears(t *testing.T) {
 	}
 	if one := BuildPage(i18n.EN, []payslip.Payslip{slip(2026, 1, 140000), slip(2026, 2, 140000)}, "test"); len(one.Views) != 1 || one.People[0].Choices != nil {
 		t.Errorf("one year: %d views", len(one.Views))
+	}
+}
+
+// TestAddedToGross shows what reaches the net pay without being part of
+// the gross, such as a contribution relief, as a step up after the gross.
+func TestAddedToGross(t *testing.T) {
+	a := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Verified} }
+	p := payslip.Payslip{Year: 2026, Month: 3, Kind: payslip.Monthly,
+		Items: []payslip.Item{
+			{Description: "Retribuzione", Key: "earnings.base_salary", Side: payslip.Earning, Cents: 200000},
+			{Description: "Esonero contributivo", Key: "earnings.contribution_relief", Side: payslip.Earning, Cents: 10000},
+		},
+		Gross: a(200000), Net: a(160000), Deductions: a(50000), SocialContributions: a(18000), Taxes: a(32000)}
+	m := Build(i18n.EN, []payslip.Payslip{p}, "test").Months[0]
+	var got []string
+	for _, pt := range m.Parts {
+		got = append(got, fmt.Sprintf("%s %s %.0f+%.0f %d", pt.Key, pt.Amount, pt.From, pt.Width, len(pt.Lines)))
+	}
+	want := []string{"gross 2.000,00 € 0+95 1", "plus +100,00 € 95+5 1", "contrib −180,00 € 91+9 0", "taxes −320,00 € 76+15 0", "net 1.600,00 € 0+76 0"}
+	if !slices.Equal(got, want) {
+		t.Errorf("parts =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
