@@ -367,6 +367,32 @@ test('shows one person at a time', async () => {
   await page.close();
 });
 
+test('shows one year at a time, or all', async () => {
+  const files = [
+    synth('y-2025-11.pdf', '-year', '2025', '-month', '11'),
+    synth('y-2025-12.pdf', '-year', '2025', '-month', '12'),
+    synth('y-2026-01.pdf', '-year', '2026', '-month', '1'),
+  ];
+  const { page, seen } = await open({ viewport: { width: 390, height: 800 } });
+  await page.setInputFiles('#files', files);
+  await statuses(page);
+  await page.waitForSelector('#report:not(.pending)');
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  assert.deepEqual(await frame.$$eval('.yearpick button', (bs) => bs.map((b) => b.textContent)), ['All', '2025', '2026']);
+  // A year keeps the tab shown, and its months only.
+  await press(page, '#tabs [data-tab="time"]');
+  await frame.waitForSelector('#panel-time:not([hidden])');
+  await press(frame, '.yearpick button[data-year="2025"]');
+  await frame.waitForSelector('.yearpick button[data-year="2025"][aria-pressed="true"]');
+  assert.ok(!(await frame.$eval('#panel-time', (p) => p.hidden)), 'still over time');
+  assert.equal(await frame.$$eval('section.month', (ms) => ms.length), 2);
+  await press(frame, '.yearpick button[data-year=""]');
+  await frame.waitForSelector('.yearpick button[data-year=""][aria-pressed="true"]');
+  assert.equal(await frame.$$eval('section.month', (ms) => ms.length), 3);
+  assert.deepEqual(seen.errors, []);
+  await page.close();
+});
+
 test('adds payslips to a report', async () => {
   const [one, two, three] = [1, 2, 3].map((m) => synth(`add-${m}.pdf`, '-month', String(m)));
   const { page, seen } = await open();

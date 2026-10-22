@@ -239,6 +239,7 @@ func runSynth(args []string) error {
 	password := fs.String("password", "", "protect the PDF with this password")
 	rotate := fs.Int("rotate", 0, "turn the page by 90, 180 or 270 degrees")
 	month := fs.Int("month", 10, "month of the payslip, 1 to 12")
+	year := fs.Int("year", 2026, "year of the payslip")
 	person := fs.String("person", "", "worker's name, surname first, printed with an invented codice fiscale (classic style)")
 	company := fs.String("employer", "", "employer's name, printed with an invented VAT number (classic style)")
 	if err := fs.Parse(args); err != nil {
@@ -258,6 +259,7 @@ func runSynth(args []string) error {
 	opts := synth.Options{Password: *password, Rotate: *rotate}
 	p := synth.ExampleFor(style)
 	p.Month = time.Month(*month)
+	p.Year = *year
 	if *person != "" {
 		p.Employee, p.EmployeeCode = strings.ToUpper(*person), synth.CodiceFiscale(*person)
 	}

@@ -123,7 +123,10 @@ type Page struct {
 	// %s for the month, filled in by the page.
 	OpenMonth string
 	People    []Data
-	Version   string
+	// Views are every report the page can show: each person's, and each of
+	// their years when there are several.
+	Views   []Data
+	Version string
 }
 
 // Data is everything the page shows of one person; BuildPage builds it
@@ -135,6 +138,11 @@ type Data struct {
 	// several; Person names them at the top of their report when there is
 	// one.
 	Who, Person string
+	// Index is the person's place among People; Year the year shown, 0 for
+	// all, and Choices the years to choose from, when there are several.
+	Index   int
+	Year    int
+	Choices []Choice
 	// OpenMonth is the label of the button under a touched column, with a
 	// %s for the month, filled in by the page.
 	OpenMonth string
@@ -193,8 +201,7 @@ func BuildPage(l i18n.Lang, slips []payslip.Payslip, version string) Page {
 	insights.Sort(slips)
 	pg := Page{Lang: string(l), T: texts(l), OpenMonth: i18n.Template(l, "report.chart.open"), Version: version}
 	groups := people(slips)
-	for _, g := range groups {
-		d := Build(l, g, version)
+	for n, g := range groups {
 		who := g[0].Person
 		for _, p := range g {
 			if p.Person.ID != "" {
@@ -202,16 +209,48 @@ func BuildPage(l i18n.Lang, slips []payslip.Payslip, version string) Page {
 				break
 			}
 		}
-		d.Who = PersonLabel(l, who)
-		if len(groups) == 1 && who.ID != "" {
-			d.Person = d.Who
+		// The person's report, and one for each year when there are
+		// several: the same choice of years tops each of them.
+		var ys []int
+		for _, p := range g {
+			if p.Year != 0 && !slices.Contains(ys, p.Year) {
+				ys = append(ys, p.Year)
+			}
 		}
-		pg.People = append(pg.People, d)
+		if len(ys) < 2 {
+			ys = nil
+		}
+		for _, y := range append([]int{0}, ys...) {
+			d := build(l, g, version, y)
+			d.Index = n
+			d.Who = PersonLabel(l, who)
+			if len(groups) == 1 && who.ID != "" {
+				d.Person = d.Who
+			}
+			if ys != nil {
+				d.Choices = append(d.Choices, Choice{Label: i18n.T(l, "report.years.all"), On: y == 0})
+				for _, c := range ys {
+					d.Choices = append(d.Choices, Choice{Label: strconv.Itoa(c), Year: strconv.Itoa(c), On: c == y})
+				}
+			}
+			if y == 0 {
+				pg.People = append(pg.People, d)
+			}
+			pg.Views = append(pg.Views, d)
+		}
 	}
 	if len(pg.People) == 0 {
 		pg.People = []Data{Build(l, nil, version)}
+		pg.Views = pg.People
 	}
 	return pg
+}
+
+// Choice is a button of the choice of years.
+type Choice struct {
+	Label string
+	Year  string // empty for all of them
+	On    bool
 }
 
 // PersonLabel names a person: by the name read, or else by the masked
@@ -315,19 +354,35 @@ func shortEmployer(e payslip.Party) string {
 
 // Build computes the page content. The slice is sorted in place.
 func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
+	return build(l, slips, version, 0)
+}
+
+// build computes the page content of the payslips of one year, or of all
+// of them for year 0. A month is still compared with the one before it in
+// another year. The slice is sorted in place.
+func build(l i18n.Lang, slips []payslip.Payslip, version string, year int) Data {
 	periods := insights.Compare(l, slips) // sorts slips
-	d := Data{Lang: string(l), T: texts(l), OpenMonth: i18n.Template(l, "report.chart.open"), Version: version}
-	if len(slips) == 0 {
+	d := Data{Lang: string(l), T: texts(l), OpenMonth: i18n.Template(l, "report.chart.open"), Version: version, Year: year}
+	var kept []int
+	var shown []payslip.Payslip
+	for i, p := range slips {
+		if year == 0 || p.Year == year {
+			kept = append(kept, i)
+			shown = append(shown, p)
+		}
+	}
+	if len(kept) == 0 {
 		return d
 	}
-	if len(slips) == 1 {
-		d.Range = i18n.T(l, "report.range.one", periods[0].Label)
+	if len(kept) == 1 {
+		d.Range = i18n.T(l, "report.range.one", periods[kept[0]].Label)
 	} else {
-		d.Range = i18n.T(l, "report.range", len(slips), periods[0].Label, periods[len(periods)-1].Label)
+		d.Range = i18n.T(l, "report.range", len(kept), periods[kept[0]].Label, periods[kept[len(kept)-1]].Label)
 	}
 
 	names := employers(slips)
-	for i, p := range slips {
+	for k, i := range kept {
+		p := slips[i]
 		st := status(p)
 		d.Rows = append(d.Rows, Row{
 			Period:        periods[i].Label,
@@ -343,7 +398,7 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		m := month(l, p, periods[i])
 		if name, ok := names[p.Employer.ID]; ok {
 			m.Label += " · " + name
-			if sameShort(slips, i) {
+			if sameShort(shown, k) {
 				m.Short += " · " + name
 			}
 		}
@@ -378,19 +433,19 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		}
 	}
 	// The latest payslip opens first, a thirteenth or fourteenth month too.
-	d.Selected = len(slips) - 1
+	d.Selected = len(shown) - 1
 
-	if len(slips) > 1 {
-		d.Trend = template.HTML(trend(l, slips))
-		d.Variable = template.HTML(variablePay(l, slips))
-		d.Years = years(l, slips)
-		d.TFR, d.TFRTotal, d.TFRSpan = tfrChart(l, slips)
-		d.Fund, d.FundTotal, d.FundSpan = fundChart(l, slips)
+	if len(shown) > 1 {
+		d.Trend = template.HTML(trend(l, shown))
+		d.Variable = template.HTML(variablePay(l, shown))
+		d.Years = years(l, shown)
+		d.TFR, d.TFRTotal, d.TFRSpan = tfrChart(l, shown)
+		d.Fund, d.FundTotal, d.FundSpan = fundChart(l, shown)
 		if d.Fund != "" {
-			d.FundYears = fundYears(l, slips)
+			d.FundYears = fundYears(l, shown)
 		}
 	}
-	d.LeaveCharts = leaveCharts(l, slips)
+	d.LeaveCharts = leaveCharts(l, shown)
 	d.Time = d.Years != nil || d.Trend != "" || d.Variable != ""
 	d.Accrued = len(d.LeaveCharts) > 0 || d.TFR != "" || d.Fund != ""
 	d.Tabs = d.Time || d.Accrued
@@ -401,7 +456,7 @@ func Build(l i18n.Lang, slips []payslip.Payslip, version string) Data {
 		}
 	}
 
-	d.Contract = contract(l, slips)
+	d.Contract = contract(l, shown)
 	for _, term := range i18n.Terms {
 		d.Terms = append(d.Terms, Term{Label: i18n.T(l, "term."+term), Text: i18n.T(l, "term."+term+".text")})
 	}
