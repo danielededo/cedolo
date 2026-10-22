@@ -25,6 +25,12 @@ How to use this file:
   months, charts and totals, and keeps the tab shown. A month is still
   compared with the one before it in the year before.
 
+### Changed
+
+- On a wide screen the month takes two columns, what it is beside where the
+  gross pay went, and the glossary two; the charts over time keep a size at
+  which their text reads well, and the web app widens with the report.
+
 ## [0.9.0] - 2026-10-22
 
 ### Added
