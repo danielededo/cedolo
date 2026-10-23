@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"html"
 	"slices"
 	"strings"
@@ -609,5 +610,35 @@ func TestPeople(t *testing.T) {
 	one := BuildPage(i18n.EN, []payslip.Payslip{slip(1, rossi, "ALFA"), slip(2, payslip.Party{}, "ALFA")}, "test")
 	if len(one.People) != 1 || one.People[0].Person != "Mario Rossi" || len(one.People[0].Months) != 2 {
 		t.Errorf("one person: %d, %q", len(one.People), one.People[0].Person)
+	}
+}
+
+// TestYears gives a person with payslips of several years a report for
+// each year besides the whole, all with the same choice of years; a month
+// is still compared with the one before it in another year.
+func TestYears(t *testing.T) {
+	a := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Verified} }
+	slip := func(year, month int, net int64) payslip.Payslip {
+		return payslip.Payslip{Year: year, Month: month, Kind: payslip.Monthly,
+			Items: []payslip.Item{{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 200000}},
+			Gross: a(200000), Net: a(net), Deductions: a(200000 - net)}
+	}
+	pg := BuildPage(i18n.EN, []payslip.Payslip{slip(2025, 12, 150000), slip(2026, 1, 140000), slip(2026, 2, 140000)}, "test")
+	if len(pg.People) != 1 || len(pg.Views) != 3 {
+		t.Fatalf("people %d, views %d", len(pg.People), len(pg.Views))
+	}
+	var labels []string
+	for _, c := range pg.Views[2].Choices {
+		labels = append(labels, fmt.Sprintf("%s:%v", c.Label, c.On))
+	}
+	if strings.Join(labels, " ") != "All:false 2025:false 2026:true" {
+		t.Errorf("choices = %v", labels)
+	}
+	y := pg.Views[2]
+	if y.Year != 2026 || len(y.Months) != 2 || !strings.Contains(y.Months[0].Summary, "December 2025") {
+		t.Errorf("2026: year %d, %d months, summary %q", y.Year, len(y.Months), y.Months[0].Summary)
+	}
+	if one := BuildPage(i18n.EN, []payslip.Payslip{slip(2026, 1, 140000), slip(2026, 2, 140000)}, "test"); len(one.Views) != 1 || one.People[0].Choices != nil {
+		t.Errorf("one year: %d views", len(one.Views))
 	}
 }
