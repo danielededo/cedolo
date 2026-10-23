@@ -118,20 +118,12 @@ p { margin: 0 0 12px; }
 .yearpick button[aria-pressed="true"] { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
 .month { margin-top: 24px; }
 .when { color: var(--ink-2); margin: 0; }
-.when .status { font-size: 14px; margin-left: 8px; }
 .net { margin: 4px 0 0; display: flex; flex-direction: column; }
-.net .label { font-size: 14px; color: var(--ink-2); }
 .net .big { font-size: 44px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .summary { margin: 12px 0 0; font-size: 17px; max-width: 34em; }
-.bar { display: flex; gap: 2px; height: 28px; margin: 12px 0 6px; }
-.bar .seg { border: 0; padding: 0; min-width: 4px; cursor: pointer; }
-.bar .seg:first-child { border-radius: 6px 0 0 6px; }
-.bar .seg:last-child { border-radius: 0 6px 6px 0; }
-.bar .seg:hover, .bar .seg:focus-visible { opacity: .8; }
 .hint { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
 .part-net { --c: var(--series-1); } .part-contrib { --c: var(--series-2); } .part-taxes { --c: var(--series-3); } .part-other { --c: var(--series-4); }
-.part-gross, .part-aside { --c: transparent; }
-.bar .seg { background: var(--c); }
+.part-gross { --c: var(--muted); } .part-aside { --c: transparent; }
 .parts { border-top: 1px solid var(--grid); }
 .part { margin: 0; border-bottom: 1px solid var(--grid); }
 .part > summary { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--ink); font-size: 16px; list-style: none; }
@@ -139,6 +131,12 @@ p { margin: 0 0 12px; }
 .part > summary .key { flex: none; width: 12px; height: 12px; border-radius: 3px; background: var(--c); border: 1px solid var(--c); }
 .part > summary .name { flex: 1; }
 .part > summary .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+/* Each part's span on the way from the gross pay to the net. */
+.part > summary { flex-wrap: wrap; }
+.part > summary .track { order: 4; flex: 0 0 calc(100% - 40px); position: relative; height: 8px; margin: 0 0 0 22px; border-radius: 4px; background: color-mix(in srgb, var(--grid) 60%, transparent); }
+.part > summary .fill { position: absolute; top: 0; bottom: 0; min-width: 3px; border-radius: 4px; background: var(--c); }
+.part-gross > summary .amount, .part-net > summary .amount { font-weight: 700; }
+.part-plus { --c: var(--good); }
 .part > summary::after { content: "›"; color: var(--muted); transition: transform .15s; }
 .part[open] > summary::after { transform: rotate(90deg); }
 .part .body { padding: 0 0 12px 22px; }
@@ -550,14 +548,6 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
         hit.addEventListener("click", function () { if (pointer === "mouse") openMonth(i); });
       });
     });
-    // A segment of the bar opens its line below.
-    document.querySelectorAll(".bar .seg").forEach(function (seg) {
-      seg.addEventListener("click", function () {
-        var month = seg.closest("section.month");
-        month.querySelectorAll("details.part").forEach(function (d) { d.open = d.dataset.part === seg.dataset.part; });
-        month.querySelector('details.part[data-part="' + seg.dataset.part + '"]').scrollIntoView({ block: "nearest" });
-      });
-    });
     // Inside the web app the page shows the tabs: it is told which there
     // are, and asks for one in turn.
     if (embedded && tabs.length) {
@@ -650,9 +640,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{range $i, $m := .Months}}
 <section class="month" data-month="{{$i}}"{{if ne $i $.Selected}} hidden{{end}}>
 <div class="m-head">
-<p class="when"><span class="label">{{$m.Label}} <span class="status {{$m.Status}}">{{$m.StatusText}}</span></span>{{if gt (len $.Months) 1}}<span class="steps"><button type="button" data-to="{{$m.Prev}}" aria-label="{{index $.T "report.prev"}}"{{if not $m.Prev}} disabled{{end}}>‹</button><button type="button" data-to="{{$m.Next}}" aria-label="{{index $.T "report.next"}}"{{if not $m.Next}} disabled{{end}}>›</button></span>{{end}}</p>
-<p class="net"><span class="label">{{index $.T "report.net"}}</span><span class="big">{{$m.Net}}</span></p>
-{{if $m.Gross}}<p class="sub">{{$m.Gross}}</p>{{end}}
+<p class="when"><span class="label">{{$m.NetOf}}</span>{{if gt (len $.Months) 1}}<span class="steps"><button type="button" data-to="{{$m.Prev}}" aria-label="{{index $.T "report.prev"}}"{{if not $m.Prev}} disabled{{end}}>‹</button><button type="button" data-to="{{$m.Next}}" aria-label="{{index $.T "report.next"}}"{{if not $m.Next}} disabled{{end}}>›</button></span>{{end}}</p>
+<p class="net"><span class="big">{{$m.Net}}</span></p>
+<p class="sub">{{with $m.Gross}}{{.}} · {{end}}<span class="status {{$m.Status}}">{{$m.StatusText}}</span></p>
 {{if $m.Summary}}<p class="summary">{{$m.Summary}}</p>{{end}}
 {{range $m.SummaryWhy}}<p class="why">{{.}}</p>{{end}}
 {{with $m.Reread}}<p class="note">{{.}}</p>{{end}}
@@ -674,15 +664,10 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <div class="m-body">
 {{if $m.Parts}}
 <h2>{{index $.T "report.where"}}</h2>
-{{if $m.Earnings}}<details class="part gross">
-<summary><span class="name">{{index $.T "report.earnings"}}</span><span class="amount">{{$m.GrossTotal}}</span></summary>
-<div class="body"><ul class="lines">{{range $m.Earnings}}{{template "line" .}}{{end}}</ul></div>
-</details>{{end}}
-<div class="bar">{{range $m.Parts}}<button type="button" class="seg part-{{.Key}}" style="width:{{printf "%.2f" .Width}}%" data-part="{{.Key}}" aria-label="{{.Label}} {{.Amount}}"></button>{{end}}</div>
 <div class="parts">
 {{range $m.Parts}}<details class="part part-{{.Key}}" data-part="{{.Key}}">
-<summary><span class="key"></span><span class="name">{{.Label}}</span><span class="amount">{{.Amount}}</span></summary>
-<div class="body"><p class="explain">{{.Text}}</p>
+<summary><span class="key"></span><span class="name">{{.Label}}</span><span class="amount">{{.Amount}}</span><span class="track" aria-hidden="true"><span class="fill" style="left:{{printf "%.2f" .From}}%;width:{{printf "%.2f" .Width}}%"></span></span></summary>
+<div class="body">{{with .Text}}<p class="explain">{{.}}</p>{{end}}
 {{if .Lines}}<ul class="lines">{{range .Lines}}{{template "line" .}}{{end}}</ul>{{end}}</div>
 </details>
 {{end}}</div>

@@ -12,17 +12,6 @@ import (
 // apprentice rate. A rate outside this list is not an error, only unverified.
 var inpsRates = []int64{919, 949, 584}
 
-// outsideGross are item kinds that some payroll software leaves out of the
-// printed gross because they are not taxable pay.
-var outsideGross = map[string]bool{
-	"earnings.reimbursement":       true,
-	"earnings.contribution_relief": true,
-	"tax.credit":                   true,
-	"tax.return":                   true,
-	"earnings.family_allowance":    true,
-	"rounding":                     true,
-}
-
 // validate fills totals that can be computed, runs the cross-checks, and sets
 // the status of each total: verified when a check confirms it, inconsistent
 // when a check contradicts it, extracted when no check applies.
@@ -41,7 +30,7 @@ func validate(p *payslip.Payslip) {
 	if hasItems {
 		var taxable int64
 		for _, it := range p.Items {
-			if it.Side == payslip.Earning && !outsideGross[it.Key] {
+			if it.Side == payslip.Earning && !payslip.OutsideGross(it.Key) {
 				taxable += it.Cents
 			}
 		}

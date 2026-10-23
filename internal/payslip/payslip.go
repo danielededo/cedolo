@@ -177,6 +177,21 @@ type Payslip struct {
 	Checks []Check `json:"checks"`
 }
 
+// outsideGross are item kinds that some payroll software leaves out of the
+// printed gross because they are not taxable pay.
+var outsideGross = map[string]bool{
+	"earnings.reimbursement":       true,
+	"earnings.contribution_relief": true,
+	"tax.credit":                   true,
+	"tax.return":                   true,
+	"earnings.family_allowance":    true,
+	"rounding":                     true,
+}
+
+// OutsideGross reports whether some payroll software leaves an item of this
+// kind out of the printed gross.
+func OutsideGross(key string) bool { return outsideGross[key] }
+
 // Party is a person or a company named on a payslip.
 type Party struct {
 	ID   string `json:"id,omitempty"`
