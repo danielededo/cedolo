@@ -239,7 +239,7 @@ test('shows the latest of many months first', async () => {
   await page.waitForSelector('#report:not(.pending)');
   const visible = await frame.$$eval('section.month', (ms) => ms.filter((m) => getComputedStyle(m).display !== 'none').map((m) => m.querySelector('.when').textContent));
   assert.equal(visible.length, 1);
-  assert.match(visible[0], /^September 2026/);
+  assert.match(visible[0], /^Net pay for September 2026/);
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Sep 26');
   // On a phone the row of months is wider than the screen: it opens
   // scrolled to the marked month, not to January.

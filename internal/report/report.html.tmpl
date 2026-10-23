@@ -118,9 +118,7 @@ p { margin: 0 0 12px; }
 .yearpick button[aria-pressed="true"] { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
 .month { margin-top: 24px; }
 .when { color: var(--ink-2); margin: 0; }
-.when .status { font-size: 14px; margin-left: 8px; }
 .net { margin: 4px 0 0; display: flex; flex-direction: column; }
-.net .label { font-size: 14px; color: var(--ink-2); }
 .net .big { font-size: 44px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .summary { margin: 12px 0 0; font-size: 17px; max-width: 34em; }
 .hint { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
@@ -642,9 +640,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{range $i, $m := .Months}}
 <section class="month" data-month="{{$i}}"{{if ne $i $.Selected}} hidden{{end}}>
 <div class="m-head">
-<p class="when"><span class="label">{{$m.Label}} <span class="status {{$m.Status}}">{{$m.StatusText}}</span></span>{{if gt (len $.Months) 1}}<span class="steps"><button type="button" data-to="{{$m.Prev}}" aria-label="{{index $.T "report.prev"}}"{{if not $m.Prev}} disabled{{end}}>‹</button><button type="button" data-to="{{$m.Next}}" aria-label="{{index $.T "report.next"}}"{{if not $m.Next}} disabled{{end}}>›</button></span>{{end}}</p>
-<p class="net"><span class="label">{{index $.T "report.net"}}</span><span class="big">{{$m.Net}}</span></p>
-{{if $m.Gross}}<p class="sub">{{$m.Gross}}</p>{{end}}
+<p class="when"><span class="label">{{$m.NetOf}}</span>{{if gt (len $.Months) 1}}<span class="steps"><button type="button" data-to="{{$m.Prev}}" aria-label="{{index $.T "report.prev"}}"{{if not $m.Prev}} disabled{{end}}>‹</button><button type="button" data-to="{{$m.Next}}" aria-label="{{index $.T "report.next"}}"{{if not $m.Next}} disabled{{end}}>›</button></span>{{end}}</p>
+<p class="net"><span class="big">{{$m.Net}}</span></p>
+<p class="sub">{{with $m.Gross}}{{.}} · {{end}}<span class="status {{$m.Status}}">{{$m.StatusText}}</span></p>
 {{if $m.Summary}}<p class="summary">{{$m.Summary}}</p>{{end}}
 {{range $m.SummaryWhy}}<p class="why">{{.}}</p>{{end}}
 {{with $m.Reread}}<p class="note">{{.}}</p>{{end}}

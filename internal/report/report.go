@@ -47,6 +47,7 @@ type Month struct {
 	Prev, Next string // the index of the month before and after, empty at either end
 	Status     Status
 	StatusText string
+	NetOf      string // "Netto di ottobre 2026", over the net pay
 	Net        string
 	Gross      string            // "of 2.194,50 € gross pay"
 	Delta      string            // change of the net from the previous month, empty when unknown
@@ -474,6 +475,7 @@ func month(l i18n.Lang, p payslip.Payslip, per insights.Period) Month {
 		Status:     st,
 		StatusText: i18n.T(l, "report."+string(st)),
 		Net:        amount(p.Net),
+		NetOf:      i18n.T(l, "report.net_of", per.Label),
 	}
 	m.Reread = reread(l, p)
 	if p.Adjustment {

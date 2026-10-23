@@ -27,6 +27,8 @@ How to use this file:
 
 ### Changed
 
+- The month opens with one line less: "Net pay for October 2026" over the
+  amount, and whether the numbers add up beside the gross pay below it.
 - "Where your gross pay goes" reads as a waterfall: from the gross pay,
   what is added to it, such as an expense refund or a contribution relief,
   then each deduction, down to the net pay, each with a span that starts
