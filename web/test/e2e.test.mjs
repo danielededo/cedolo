@@ -113,7 +113,9 @@ test('reads payslips in every style and rotation and shows the report', async ()
   ]);
   const frame = page.frames().find((f) => f !== page.mainFrame());
   await frame.waitForSelector('section.month:not([hidden]) .bar');
-  await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 600);
+  // The frame grows to its content: shorter on this wide window, where
+  // the month takes two columns.
+  await page.waitForFunction(() => parseInt(document.getElementById('report').style.height, 10) > 400);
   // One payslip at a time: the picker switches, and a segment of the bar
   // opens its explanation.
   const shown = () => frame.$$eval('section.month', (ms) => ms.filter((m) => !m.hidden).map((m) => m.dataset.month));

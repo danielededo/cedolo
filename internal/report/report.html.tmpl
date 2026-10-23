@@ -215,8 +215,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .status.inconsistent::before { content: "!"; }
 .changes { margin: 0; padding-left: 20px; }
 .changes > li { padding: 4px 0; }
-.changes .why, .month > .why { color: var(--ink-2); font-size: 14px; }
-.month > .why { margin: 4px 0 0; max-width: 40em; }
+.changes .why, .m-head > .why { color: var(--ink-2); font-size: 14px; }
+.m-head > .why { margin: 4px 0 0; max-width: 40em; }
 .more-changes { margin-top: 4px; }
 .more-changes > summary { font-size: 14px; color: var(--series-1); }
 .contract-note { margin-top: 12px; }
@@ -228,6 +228,18 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 .embedded .who .sub, .embedded .who .person { margin-top: 0; }
 .embedded main { padding-top: 8px; padding-bottom: 8px; }
 .chart.narrow { display: none; }
+/* A wide screen holds the month in two columns, what it is beside where
+   it went, and the glossary in two. */
+@media (min-width: 1000px) {
+  main { max-width: 1120px; }
+  section.month:not([hidden]) { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: 56px; align-items: start; }
+  .m-body > h2:first-child { margin-top: 8px; }
+  /* Charts keep a size where their text reads as on paper. */
+  #panel-time > section, #panel-accrued > section { max-width: 860px; }
+  .glossary { columns: 2; column-gap: 56px; }
+  .glossary dt { break-after: avoid; }
+  .glossary dd { break-inside: avoid; }
+}
 @media (max-width: 520px) {
   .chart.wide { display: none; }
   .chart.narrow { display: block; }
@@ -637,6 +649,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 
 {{range $i, $m := .Months}}
 <section class="month" data-month="{{$i}}"{{if ne $i $.Selected}} hidden{{end}}>
+<div class="m-head">
 <p class="when"><span class="label">{{$m.Label}} <span class="status {{$m.Status}}">{{$m.StatusText}}</span></span>{{if gt (len $.Months) 1}}<span class="steps"><button type="button" data-to="{{$m.Prev}}" aria-label="{{index $.T "report.prev"}}"{{if not $m.Prev}} disabled{{end}}>‹</button><button type="button" data-to="{{$m.Next}}" aria-label="{{index $.T "report.next"}}"{{if not $m.Next}} disabled{{end}}>›</button></span>{{end}}</p>
 <p class="net"><span class="label">{{index $.T "report.net"}}</span><span class="big">{{$m.Net}}</span></p>
 {{if $m.Gross}}<p class="sub">{{$m.Gross}}</p>{{end}}
@@ -656,7 +669,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}</ul>
 </details>{{end}}
 {{end}}
+</div>
 
+<div class="m-body">
 {{if $m.Parts}}
 <h2>{{index $.T "report.where"}}</h2>
 {{if $m.Earnings}}<details class="part gross">
@@ -700,6 +715,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </details>{{end}}
 </div>
 {{end}}
+</div>
 </section>
 {{end}}
 </div>
