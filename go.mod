@@ -3,7 +3,7 @@ module github.com/danielededo/cedolo
 go 1.26.0
 
 require (
-	github.com/klippa-app/go-pdfium v1.21.3
+	github.com/klippa-app/go-pdfium v1.21.4
 	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
 )
