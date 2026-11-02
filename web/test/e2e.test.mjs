@@ -248,7 +248,7 @@ test('shows the latest of many months first', async () => {
     const r = row.getBoundingClientRect();
     return { wider: row.scrollWidth > row.clientWidth, scrollWidth: row.scrollWidth, clientWidth: row.clientWidth, scrollLeft: row.scrollLeft, row: [r.left, r.right], marked: [b.left, b.right] };
   });
-  assert.ok(row.wider && row.marked[0] >= row.row[0] && row.marked[1] <= row.row[1], `the marked month is in view: ${JSON.stringify(row)}`);
+  assert.ok(row.wider && row.marked[0] >= row.row[0] && row.marked[1] <= row.row[1] - 8, `the marked month is in view, clear of the edge: ${JSON.stringify(row)}`);
   // Picking a month in view leaves the row where it is, though the frame
   // changes height with the month shown.
   const left = await frame.$eval('.picker', (row) => row.scrollLeft);

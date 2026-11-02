@@ -336,10 +336,14 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     // turn: scroll again when the width changes. Not on every resize: inside
     // the web app the frame grows or shrinks with each month shown, and the
     // row must not jump under the finger that picked one.
+    // Where a button starts within the row's scrolled content. Not
+    // offsetLeft, which counts from the nearest positioned box: the row
+    // reaches past the page's padding, so that is off by its overhang.
+    function at(b) { return b.getBoundingClientRect().left - picker.getBoundingClientRect().left + picker.scrollLeft; }
     function toCurrent() {
       var current = document.querySelector('.picker button[aria-pressed="true"]');
       if (picker && current) {
-        picker.scrollLeft = current.offsetLeft + current.offsetWidth - picker.clientWidth + 16;
+        picker.scrollLeft = at(current) + current.offsetWidth - picker.clientWidth + 16;
       }
     }
     toCurrent();
@@ -354,7 +358,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     }
     // A month picked at the edge of the row slides fully into view.
     function reveal(b) {
-      var left = b.offsetLeft - 16, right = b.offsetLeft + b.offsetWidth + 16 - picker.clientWidth;
+      var left = at(b) - 16, right = at(b) + b.offsetWidth + 16 - picker.clientWidth;
       var to = picker.scrollLeft < right ? right : picker.scrollLeft > left ? left : null;
       if (to !== null) picker.scrollTo({ left: to, behavior: "smooth" });
     }
