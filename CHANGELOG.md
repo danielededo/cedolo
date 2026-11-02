@@ -27,6 +27,9 @@ How to use this file:
 
 ### Changed
 
+- The CLI starts in a fraction of a second instead of about four: PDFium,
+  the PDF reader, is compiled on the first run and kept in the user's cache
+  folder, with nothing read from the payslips.
 - The month opens with one line less: "Net pay for October 2026" over the
   amount, and whether the numbers add up beside the gross pay below it.
 - "Where your gross pay goes" reads as a waterfall: from the gross pay,
