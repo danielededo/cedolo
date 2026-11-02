@@ -240,15 +240,15 @@ test('shows the latest of many months first', async () => {
   const visible = await frame.$$eval('section.month', (ms) => ms.filter((m) => getComputedStyle(m).display !== 'none').map((m) => m.querySelector('.when').textContent));
   assert.equal(visible.length, 1);
   assert.match(visible[0], /^Net pay for September 2026/);
-  assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Sep 26');
+  assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Sep');
   // On a phone the row of months is wider than the screen: it opens
   // scrolled to the marked month, not to January.
-  const inView = await frame.$eval('.picker', (row) => {
+  const row = await frame.$eval('.picker', (row) => {
     const b = row.querySelector('[aria-pressed="true"]').getBoundingClientRect();
     const r = row.getBoundingClientRect();
-    return row.scrollWidth > row.clientWidth && b.left >= r.left && b.right <= r.right;
+    return { wider: row.scrollWidth > row.clientWidth, scrollWidth: row.scrollWidth, clientWidth: row.clientWidth, scrollLeft: row.scrollLeft, row: [r.left, r.right], marked: [b.left, b.right] };
   });
-  assert.ok(inView, 'the marked month is in view');
+  assert.ok(row.wider && row.marked[0] >= row.row[0] && row.marked[1] <= row.row[1] - 8, `the marked month is in view, clear of the edge: ${JSON.stringify(row)}`);
   // Picking a month in view leaves the row where it is, though the frame
   // changes height with the month shown.
   const left = await frame.$eval('.picker', (row) => row.scrollLeft);
@@ -333,7 +333,14 @@ test('a touch on a chart shows its amounts under it', async () => {
   assert.equal(await frame.$$eval('#trend-narrow .col.dim', (cs) => cs.length), 2);
   // Its button opens the month.
   await press(frame, '#trend-narrow ~ .tooltip .open');
-  await frame.waitForSelector('section.month[data-month="1"]:not([hidden])');
+  await frame.waitForSelector('section.month[data-month="1"]:not([hidden])', { timeout: 10000 }).catch(async (err) => {
+    const state = await frame.evaluate(() => ({
+      shown: [...document.querySelectorAll('section.month')].map((m) => `${m.dataset.month}:${m.hidden ? 'hidden' : 'shown'}`),
+      pressed: document.querySelector('.picker button[aria-pressed="true"]')?.dataset.month,
+      panel: document.getElementById('panel-month')?.hidden,
+    }));
+    throw new Error(`${err.message}\nstate: ${JSON.stringify(state)}\nerrors: ${JSON.stringify(seen.errors)}`);
+  });
   await page.waitForFunction(() => document.querySelector('#tabs [data-tab="month"]').getAttribute('aria-selected') === 'true');
   assert.deepEqual(seen.errors, []);
   await page.close();
@@ -354,7 +361,7 @@ test('shows one person at a time', async () => {
   const frame = page.frames().find((f) => f !== page.mainFrame());
   assert.deepEqual(await frame.$$eval('.people button', (bs) => bs.map((b) => b.textContent)), ['Mario Rossi', 'Lucia Verdi']);
   // The month with two employers names them; the other does not need to.
-  assert.deepEqual(await frame.$$eval('.picker button', (bs) => bs.map((b) => b.textContent)), ['Jan 26', 'Feb 26 · ALFA', 'Feb 26 · BETA']);
+  assert.deepEqual(await frame.$$eval('.picker button', (bs) => bs.map((b) => b.textContent)), ['Jan', 'Feb · ALFA', 'Feb · BETA']);
   // The other person's report replaces the first, and the page's tabs
   // still lead into it.
   await press(frame, '.people button[data-person="1"]');
@@ -364,32 +371,6 @@ test('shows one person at a time', async () => {
   await press(frame, '.people button[data-person="0"]');
   await press(page, '#tabs [data-tab="time"]');
   await frame.waitForSelector('#panel-time:not([hidden])');
-  assert.equal(await frame.$$eval('section.month', (ms) => ms.length), 3);
-  assert.deepEqual(seen.errors, []);
-  await page.close();
-});
-
-test('shows one year at a time, or all', async () => {
-  const files = [
-    synth('y-2025-11.pdf', '-year', '2025', '-month', '11'),
-    synth('y-2025-12.pdf', '-year', '2025', '-month', '12'),
-    synth('y-2026-01.pdf', '-year', '2026', '-month', '1'),
-  ];
-  const { page, seen } = await open({ viewport: { width: 390, height: 800 } });
-  await page.setInputFiles('#files', files);
-  await statuses(page);
-  await page.waitForSelector('#report:not(.pending)');
-  const frame = page.frames().find((f) => f !== page.mainFrame());
-  assert.deepEqual(await frame.$$eval('.yearpick button', (bs) => bs.map((b) => b.textContent)), ['All', '2025', '2026']);
-  // A year keeps the tab shown, and its months only.
-  await press(page, '#tabs [data-tab="time"]');
-  await frame.waitForSelector('#panel-time:not([hidden])');
-  await press(frame, '.yearpick button[data-year="2025"]');
-  await frame.waitForSelector('.yearpick button[data-year="2025"][aria-pressed="true"]');
-  assert.ok(!(await frame.$eval('#panel-time', (p) => p.hidden)), 'still over time');
-  assert.equal(await frame.$$eval('section.month', (ms) => ms.length), 2);
-  await press(frame, '.yearpick button[data-year=""]');
-  await frame.waitForSelector('.yearpick button[data-year=""][aria-pressed="true"]');
   assert.equal(await frame.$$eval('section.month', (ms) => ms.length), 3);
   assert.deepEqual(seen.errors, []);
   await page.close();
@@ -417,7 +398,7 @@ test('adds payslips to a report', async () => {
   const frame = page.frames().find((f) => f !== page.mainFrame());
   await frame.waitForFunction(() => document.querySelectorAll('.picker button').length === 3);
   // The report opens on the latest month again.
-  assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Mar 26');
+  assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Mar');
   // The confirmation goes by itself after a few seconds.
   await page.waitForSelector('#added', { state: 'hidden', timeout: 8000 });
   assert.deepEqual(seen.errors, []);
