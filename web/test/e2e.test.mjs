@@ -243,12 +243,12 @@ test('shows the latest of many months first', async () => {
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.textContent), 'Sep');
   // On a phone the row of months is wider than the screen: it opens
   // scrolled to the marked month, not to January.
-  const inView = await frame.$eval('.picker', (row) => {
+  const row = await frame.$eval('.picker', (row) => {
     const b = row.querySelector('[aria-pressed="true"]').getBoundingClientRect();
     const r = row.getBoundingClientRect();
-    return row.scrollWidth > row.clientWidth && b.left >= r.left && b.right <= r.right;
+    return { wider: row.scrollWidth > row.clientWidth, scrollWidth: row.scrollWidth, clientWidth: row.clientWidth, scrollLeft: row.scrollLeft, row: [r.left, r.right], marked: [b.left, b.right] };
   });
-  assert.ok(inView, 'the marked month is in view');
+  assert.ok(row.wider && row.marked[0] >= row.row[0] && row.marked[1] <= row.row[1], `the marked month is in view: ${JSON.stringify(row)}`);
   // Picking a month in view leaves the row where it is, though the frame
   // changes height with the month shown.
   const left = await frame.$eval('.picker', (row) => row.scrollLeft);
@@ -333,7 +333,14 @@ test('a touch on a chart shows its amounts under it', async () => {
   assert.equal(await frame.$$eval('#trend-narrow .col.dim', (cs) => cs.length), 2);
   // Its button opens the month.
   await press(frame, '#trend-narrow ~ .tooltip .open');
-  await frame.waitForSelector('section.month[data-month="1"]:not([hidden])');
+  await frame.waitForSelector('section.month[data-month="1"]:not([hidden])', { timeout: 10000 }).catch(async (err) => {
+    const state = await frame.evaluate(() => ({
+      shown: [...document.querySelectorAll('section.month')].map((m) => `${m.dataset.month}:${m.hidden ? 'hidden' : 'shown'}`),
+      pressed: document.querySelector('.picker button[aria-pressed="true"]')?.dataset.month,
+      panel: document.getElementById('panel-month')?.hidden,
+    }));
+    throw new Error(`${err.message}\nstate: ${JSON.stringify(state)}\nerrors: ${JSON.stringify(seen.errors)}`);
+  });
   await page.waitForFunction(() => document.querySelector('#tabs [data-tab="month"]').getAttribute('aria-selected') === 'true');
   assert.deepEqual(seen.errors, []);
   await page.close();
