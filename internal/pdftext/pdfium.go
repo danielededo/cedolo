@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 	"unicode"
@@ -14,6 +15,9 @@ import (
 	"github.com/klippa-app/go-pdfium/references"
 	"github.com/klippa-app/go-pdfium/requests"
 	"github.com/klippa-app/go-pdfium/webassembly"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental"
 
 	"github.com/danielededo/cedolo/internal/layout"
 )
@@ -21,7 +25,8 @@ import (
 // PDFium reads PDFs with PDFium, the PDF engine of Chromium, compiled to
 // WebAssembly and run by a pure Go runtime (github.com/klippa-app/go-pdfium,
 // MIT; PDFium is BSD and Apache licensed). It needs no external program and
-// no cgo, at the cost of about 5 MB of binary size and a short start-up time.
+// no cgo, at the cost of about 5 MB of binary size and, the first time, a
+// start-up of a few seconds to compile it.
 type PDFium struct{}
 
 func (PDFium) Name() string { return "pdfium" }
@@ -34,12 +39,34 @@ var (
 
 func pdfiumInstance() (pdfium.Pdfium, error) {
 	pdfiumOnce.Do(func() {
-		pdfiumPool, pdfiumErr = webassembly.Init(webassembly.Config{MinIdle: 1, MaxIdle: 1, MaxTotal: 1})
+		pdfiumPool, pdfiumErr = webassembly.Init(webassembly.Config{
+			MinIdle: 1, MaxIdle: 1, MaxTotal: 1,
+			RuntimeConfig: pdfiumRuntime(),
+		})
 	})
 	if pdfiumErr != nil {
 		return nil, fmt.Errorf("start pdfium: %w", pdfiumErr)
 	}
 	return pdfiumPool.GetInstance(30 * time.Second)
+}
+
+// pdfiumRuntime compiles PDFium once per version of cedolo and keeps the
+// machine code in the user's cache directory, so that later runs start in a
+// fraction of a second instead of several. The cache holds compiled PDFium
+// only, never anything read from a PDF. Without a cache directory PDFium is
+// compiled at every start, as before. The features are those go-pdfium sets
+// by default.
+func pdfiumRuntime() wazero.RuntimeConfig {
+	rc := wazero.NewRuntimeConfig().WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesExceptionHandling)
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return rc
+	}
+	cache, err := wazero.NewCompilationCacheWithDir(filepath.Join(dir, "cedolo", "pdfium"))
+	if err != nil {
+		return rc
+	}
+	return rc.WithCompilationCache(cache)
 }
 
 func (p PDFium) ReadFile(path string) (layout.Document, error) {
