@@ -109,13 +109,12 @@ p { margin: 0 0 12px; }
 .picker { display: flex; gap: 6px; overflow-x: auto; margin: 20px -16px 0; padding: 2px 16px 6px; scrollbar-width: none; }
 .picker button { flex: none; font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); cursor: pointer; }
 .picker button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.picker .year { flex: none; align-self: center; font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; padding: 0 2px 0 8px; }
+.picker .year:first-child { padding-left: 0; }
 .people { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
 .people button { font: inherit; font-size: 15px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); cursor: pointer; }
 .people button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .who .person { font-size: 17px; font-weight: 600; margin: 4px 0 0; }
-.yearpick { display: flex; gap: 2px; margin: 10px 0 2px; padding: 3px; width: fit-content; max-width: 100%; overflow-x: auto; scrollbar-width: none; border-radius: 10px; background: var(--grid); }
-.yearpick button { flex: none; font: inherit; font-size: 14px; padding: 5px 12px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); cursor: pointer; font-variant-numeric: tabular-nums; }
-.yearpick button[aria-pressed="true"] { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
 .month { margin-top: 24px; }
 .when { color: var(--ink-2); margin: 0; }
 .net { margin: 4px 0 0; display: flex; flex-direction: column; }
@@ -243,7 +242,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
   .chart.narrow { display: block; }
 }
 @media print {
-  .tooltip, .picker, .hint, .tabs, .steps, .people, .yearpick { display: none; }
+  .tooltip, .picker, .hint, .tabs, .steps, .people { display: none; }
   .panel[hidden] { display: block !important; }
   .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
@@ -259,7 +258,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 {{end}}</nav>
 {{end}}</header>
 <div id="person">{{template "person" index .People 0}}</div>
-{{if gt (len .Views) 1}}{{range .Views}}<template data-person="{{.Index}}" data-year="{{if .Year}}{{.Year}}{{end}}">{{template "person" .}}</template>
+{{if gt (len .People) 1}}{{range $i, $p := .People}}<template data-person="{{$i}}">{{template "person" $p}}</template>
 {{end}}{{end}}
 <footer>
 <p>{{index .T "report.privacy"}}</p>
@@ -562,37 +561,24 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       }, { signal: signal });
     }
   }
-  // The report of one person at a time, and of one year or all: the others
-  // wait in templates, and the one chosen replaces the one shown, on the
-  // same tab. Listeners of the page as a whole end with the report they
-  // were added for.
+  // The report of one person at a time: the others wait in templates, and
+  // a person chosen replaces the one shown. Listeners of the page as a
+  // whole end with the person they were added for.
   var embedded = window.parent !== window;
   var person = document.getElementById("person");
   var shown = new AbortController();
   init(shown.signal);
   var who = document.querySelectorAll(".people button");
-  function view(p, year) {
-    var t = document.querySelector('template[data-person="' + p + '"][data-year="' + year + '"]');
-    if (!t) return;
-    var tab = (document.querySelector('[role="tab"][aria-selected="true"]') || {}).dataset;
-    shown.abort();
-    person.replaceChildren(t.content.cloneNode(true));
-    shown = new AbortController();
-    init(shown.signal);
-    var again = tab && document.querySelector('[role="tab"][data-tab="' + tab.tab + '"]');
-    if (again) again.click();
-  }
   who.forEach(function (b) {
     b.addEventListener("click", function () {
       if (b.getAttribute("aria-pressed") === "true") return;
+      shown.abort();
       who.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
-      view(b.dataset.person, "");
+      var t = document.querySelector('template[data-person="' + b.dataset.person + '"]');
+      person.replaceChildren(t.content.cloneNode(true));
+      shown = new AbortController();
+      init(shown.signal);
     });
-  });
-  person.addEventListener("click", function (ev) {
-    var b = ev.target.closest(".yearpick button");
-    if (!b || b.getAttribute("aria-pressed") === "true") return;
-    view(person.querySelector(".who").dataset.person, b.dataset.year);
   });
   // Printing shows everything.
   window.addEventListener("beforeprint", function () {
@@ -615,10 +601,9 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 </body>
 </html>
 {{define "line"}}<li><details><summary><span class="desc">{{.Description}}</span><span class="amount">{{.Amount}}</span></summary><p class="explain"><strong>{{.Label}}</strong> · {{.Text}}</p></details></li>{{end}}
-{{define "person"}}<div class="who" data-person="{{.Index}}">
+{{define "person"}}<div class="who">
 {{with .Person}}<p class="person">{{.}}</p>{{end}}
-{{with .Choices}}<nav class="yearpick" aria-label="{{index $.T "report.years.pick"}}">{{range .}}<button type="button" data-year="{{.Year}}" aria-pressed="{{if .On}}true{{else}}false{{end}}">{{.Label}}</button>{{end}}</nav>
-{{end}}{{with .Range}}<p class="sub">{{.}}</p>{{end}}
+{{with .Range}}<p class="sub">{{.}}</p>{{end}}
 </div>
 
 {{if .Tabs}}
@@ -633,7 +618,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <div class="panel" id="panel-month"{{if .Tabs}} role="tabpanel" aria-labelledby="tab-month"{{end}}>
 {{if gt (len .Months) 1}}
 <nav class="picker" aria-label="{{index .T "report.pick"}}">
-{{range $i, $m := .Months}}<button type="button" data-month="{{$i}}" aria-pressed="{{if eq $i $.Selected}}true{{else}}false{{end}}">{{$m.Short}}</button>
+{{range $i, $m := .Months}}{{with $m.YearMark}}<span class="year" aria-hidden="true">{{.}}</span>{{end}}<button type="button" data-month="{{$i}}" aria-label="{{$m.Label}}" aria-pressed="{{if eq $i $.Selected}}true{{else}}false{{end}}">{{$m.Short}}</button>
 {{end}}</nav>
 {{end}}
 

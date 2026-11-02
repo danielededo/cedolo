@@ -54,7 +54,7 @@ func TestBuild(t *testing.T) {
 		t.Fatalf("months = %+v, selected %d", d.Months, d.Selected)
 	}
 	m := d.Months[2]
-	if m.Net == "–" || !strings.HasPrefix(m.Gross, "out of ") || !strings.Contains(m.Delta, "+") || m.Short != "Mar 26" {
+	if m.Net == "–" || !strings.HasPrefix(m.Gross, "out of ") || !strings.Contains(m.Delta, "+") || m.Short != "Mar" {
 		t.Errorf("latest month = %+v", m)
 	}
 	if d.Months[0].Delta != "" {
@@ -247,7 +247,7 @@ func TestMonthSummary(t *testing.T) {
 		t.Errorf("first month summary = %q", got)
 	}
 	// Overtime grows by 50 € a month and drives the net up.
-	want := "Compared with February 2026 you receive "
+	want := "Compared with February you receive "
 	if got := d.Months[2].Summary; !strings.HasPrefix(got, want) || !strings.Contains(got, "more, mostly because of “"+i18n.ItemLabel(i18n.EN, "earnings.overtime")+"” (+50,00 €).") {
 		t.Errorf("latest month summary = %q", got)
 	}
@@ -265,12 +265,12 @@ func TestMonthSummary(t *testing.T) {
 		cur  payslip.Payslip
 		want string
 	}{
-		{"same", slip(2, 150000, prev.Items...), "You receive the same as in January 2026."},
+		{"same", slip(2, 150000, prev.Items...), "You receive the same as in January."},
 		{"tax up", slip(2, 140000, item("earnings.base_salary", payslip.Earning, 200000), item("tax.irpef", payslip.Deduction, 60000)),
-			"Compared with January 2026 you receive 100,00 € less, mostly because of “" + i18n.ItemLabel(i18n.EN, "tax.irpef") + "” (-100,00 €)."},
+			"Compared with January you receive 100,00 € less, mostly because of “" + i18n.ItemLabel(i18n.EN, "tax.irpef") + "” (-100,00 €)."},
 		{"no single cause", slip(2, 151000, item("earnings.base_salary", payslip.Earning, 200400), item("earnings.allowance", payslip.Earning, 300),
 			item("earnings.overtime", payslip.Earning, 300), item("tax.irpef", payslip.Deduction, 50000)),
-			"Compared with January 2026 you receive 10,00 € more."},
+			"Compared with January you receive 10,00 € more."},
 	} {
 		if got, _ := compared(i18n.EN, prev, c.cur); got != c.want {
 			t.Errorf("%s: %q, want %q", c.name, got, c.want)
@@ -278,15 +278,38 @@ func TestMonthSummary(t *testing.T) {
 	}
 }
 
+// TestYearMarks names each year once in the month picker, before its
+// first month, and only when there are several; a month compared with one
+// of another year keeps that year in the sentence.
+func TestYearMarks(t *testing.T) {
+	slips := months(t, 4)
+	slips[0].Year, slips[1].Year = 2025, 2025
+	slips[0].Month, slips[1].Month = 11, 12
+	d := Build(i18n.EN, slips, "test")
+	var got []string
+	for _, m := range d.Months {
+		got = append(got, m.YearMark+"|"+m.Short)
+	}
+	if want := "2025|Nov |Dec 2026|Mar |Apr"; strings.Join(got, " ") != want {
+		t.Errorf("picker = %q", got)
+	}
+	if s := d.Months[2].Summary; !strings.Contains(s, "December 2025") {
+		t.Errorf("across years: %q", s)
+	}
+	if one := Build(i18n.EN, months(t, 2), "test"); one.Months[0].YearMark != "" || one.Months[1].YearMark != "" {
+		t.Errorf("one year marked: %q %q", one.Months[0].YearMark, one.Months[1].YearMark)
+	}
+}
+
 func TestMonthSummaryItalianPreposition(t *testing.T) {
 	prev := payslip.Payslip{Year: 2026, Month: 8, Kind: payslip.Monthly, Net: payslip.Amount{Cents: 100, Status: payslip.Verified}}
 	cur := prev
 	cur.Month = 9
-	if got, _ := compared(i18n.IT, prev, cur); got != "Ricevi quanto ad agosto 2026." {
+	if got, _ := compared(i18n.IT, prev, cur); got != "Ricevi quanto ad agosto." {
 		t.Errorf("got %q", got)
 	}
 	prev.Month, cur.Month = 9, 10
-	if got, _ := compared(i18n.IT, prev, cur); got != "Ricevi quanto a settembre 2026." {
+	if got, _ := compared(i18n.IT, prev, cur); got != "Ricevi quanto a settembre." {
 		t.Errorf("got %q", got)
 	}
 }
@@ -299,14 +322,14 @@ func TestLatestAdditionalMonthOpensFirst(t *testing.T) {
 	thirteenth.Kind = payslip.Thirteenth
 	slips = append(slips, thirteenth)
 	d := Build(i18n.IT, slips, "test")
-	if d.Selected != len(d.Months)-1 || d.Months[d.Selected].Short != "13ª 26" {
+	if d.Selected != len(d.Months)-1 || d.Months[d.Selected].Short != "13ª" {
 		t.Fatalf("selected %d (%q), want the thirteenth month", d.Selected, d.Months[d.Selected].Short)
 	}
 	var b bytes.Buffer
 	if err := Render(&b, i18n.IT, slips, "test"); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(b.String(), `aria-pressed="true">13ª 26</button>`) {
+	if !strings.Contains(b.String(), `aria-pressed="true">13ª</button>`) {
 		t.Error("the thirteenth month is not highlighted in the picker")
 	}
 }
@@ -618,7 +641,7 @@ func TestPeople(t *testing.T) {
 	for _, m := range pg.People[0].Months {
 		shorts, labels = append(shorts, m.Short), append(labels, m.Label)
 	}
-	if strings.Join(shorts, "|") != "Jan 26|Feb 26 · ALFA|Feb 26 · BETA" || labels[0] != "January 2026 · ALFA" {
+	if strings.Join(shorts, "|") != "Jan|Feb · ALFA|Feb · BETA" || labels[0] != "January 2026 · ALFA" {
 		t.Errorf("shorts = %v, labels = %v", shorts, labels)
 	}
 	// February of BETA is compared with nothing: its employer's first.
@@ -629,36 +652,6 @@ func TestPeople(t *testing.T) {
 	one := BuildPage(i18n.EN, []payslip.Payslip{slip(1, rossi, "ALFA"), slip(2, payslip.Party{}, "ALFA")}, "test")
 	if len(one.People) != 1 || one.People[0].Person != "Mario Rossi" || len(one.People[0].Months) != 2 {
 		t.Errorf("one person: %d, %q", len(one.People), one.People[0].Person)
-	}
-}
-
-// TestYears gives a person with payslips of several years a report for
-// each year besides the whole, all with the same choice of years; a month
-// is still compared with the one before it in another year.
-func TestYears(t *testing.T) {
-	a := func(c int64) payslip.Amount { return payslip.Amount{Cents: c, Status: payslip.Verified} }
-	slip := func(year, month int, net int64) payslip.Payslip {
-		return payslip.Payslip{Year: year, Month: month, Kind: payslip.Monthly,
-			Items: []payslip.Item{{Key: "earnings.base_salary", Side: payslip.Earning, Cents: 200000}},
-			Gross: a(200000), Net: a(net), Deductions: a(200000 - net)}
-	}
-	pg := BuildPage(i18n.EN, []payslip.Payslip{slip(2025, 12, 150000), slip(2026, 1, 140000), slip(2026, 2, 140000)}, "test")
-	if len(pg.People) != 1 || len(pg.Views) != 3 {
-		t.Fatalf("people %d, views %d", len(pg.People), len(pg.Views))
-	}
-	var labels []string
-	for _, c := range pg.Views[2].Choices {
-		labels = append(labels, fmt.Sprintf("%s:%v", c.Label, c.On))
-	}
-	if strings.Join(labels, " ") != "All:false 2025:false 2026:true" {
-		t.Errorf("choices = %v", labels)
-	}
-	y := pg.Views[2]
-	if y.Year != 2026 || len(y.Months) != 2 || !strings.Contains(y.Months[0].Summary, "December 2025") {
-		t.Errorf("2026: year %d, %d months, summary %q", y.Year, len(y.Months), y.Months[0].Summary)
-	}
-	if one := BuildPage(i18n.EN, []payslip.Payslip{slip(2026, 1, 140000), slip(2026, 2, 140000)}, "test"); len(one.Views) != 1 || one.People[0].Choices != nil {
-		t.Errorf("one year: %d views", len(one.Views))
 	}
 }
 

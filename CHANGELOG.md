@@ -18,15 +18,11 @@ How to use this file:
 
 ## [Unreleased]
 
-### Added
-
-- A person with payslips of several years can see one year at a time, or
-  all: a choice of years under their name narrows the whole report, its
-  months, charts and totals, and keeps the tab shown. A month is still
-  compared with the one before it in the year before.
-
 ### Changed
 
+- With payslips of several years, the row of months names each year once,
+  before its first month, and its buttons name the month alone; a sentence
+  that names two months of the same year says the year once.
 - The CLI starts in a fraction of a second instead of about four: PDFium,
   the PDF reader, is compiled on the first run and kept in the user's cache
   folder, with nothing read from the payslips.

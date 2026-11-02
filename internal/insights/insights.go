@@ -124,6 +124,16 @@ func Label(l i18n.Lang, p payslip.Payslip) string {
 	return i18n.T(l, "period", i18n.Month(l, p.Month), p.Year)
 }
 
+// LabelBeside names p in a sentence that also names ref: an ordinary month
+// of the same year goes without the year, "settembre" beside "dicembre
+// 2026".
+func LabelBeside(l i18n.Lang, p, ref payslip.Payslip) string {
+	if p.Kind == payslip.Monthly && p.Month != 0 && p.Year == ref.Year {
+		return i18n.Month(l, p.Month)
+	}
+	return Label(l, p)
+}
+
 // Compare sorts the payslips and returns, for each one, its changes from the
 // previous ordinary monthly payslip. Additional months (13th, 14th) are
 // compared with nothing: their amounts are not comparable with a month.
@@ -181,7 +191,7 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 	}
 
 	if gap := (cur.Year*12 + cur.Month) - (prev.Year*12 + prev.Month); gap > 1 {
-		add("gap", i18n.T(l, "change.gap", Label(l, prev), Label(l, cur)))
+		add("gap", i18n.T(l, "change.gap", LabelBeside(l, prev, cur), Label(l, cur)))
 	}
 	if prev.CCNL != "" && cur.CCNL != "" && prev.CCNL != cur.CCNL {
 		add("ccnl", i18n.T(l, "change.ccnl", prev.CCNL, cur.CCNL), i18n.T(l, "why.different_employ"))
