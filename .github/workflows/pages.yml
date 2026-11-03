@@ -1,11 +1,16 @@
 name: Web app
 
 # Builds the web app and publishes it with GitHub Pages (Settings > Pages >
-# Source: GitHub Actions) whenever main changes, or when run by hand.
+# Source: GitHub Actions) whenever main changes, after a release, or when run
+# by hand. The release's tag is made after its pull request reaches main, so
+# the app is published again once it exists, to show the new version.
 
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -19,6 +24,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -27,6 +33,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The whole history, for the tags that name the version.
+          fetch-depth: 0
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -39,7 +47,13 @@ jobs:
       - name: Build
         run: |
           (cd web && npm ci --omit=optional --ignore-scripts)
-          go run ./cmd/webbuild -o dist/web -version "$(git describe --tags --always)"
+          # The latest release, "v0.10.0", and "v0.10.0+3" when main has
+          # three changes more.
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+          ahead="$(git rev-list --count "$tag..HEAD")"
+          version="$tag"
+          if [ "$ahead" -gt 0 ]; then version="$tag+$ahead"; fi
+          go run ./cmd/webbuild -o dist/web -version "$version"
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
