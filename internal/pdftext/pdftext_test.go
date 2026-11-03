@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/klippa-app/go-pdfium/requests"
+
 	"github.com/danielededo/cedolo/internal/layout"
 	"github.com/danielededo/cedolo/internal/money"
 	"github.com/danielededo/cedolo/internal/synth"
@@ -162,5 +164,24 @@ func TestPassword(t *testing.T) {
 		if _, err := r.ReadFile(damaged); !errors.Is(err, ErrDamaged) {
 			t.Errorf("%s on a damaged file: %v", r.Name(), err)
 		}
+	}
+}
+
+// TestPDFiumSeesNoFiles checks that PDFium runs without the file system:
+// it reads the PDF given as bytes, and cannot open even that same file by
+// its path.
+func TestPDFiumSeesNoFiles(t *testing.T) {
+	path := writeExample(t)
+	if _, err := (PDFium{}).ReadFile(path); err != nil {
+		t.Fatal(err)
+	}
+	inst, err := pdfiumInstance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer inst.Close()
+	if doc, err := inst.OpenDocument(&requests.OpenDocument{FilePath: &path}); err == nil {
+		inst.FPDF_CloseDocument(&requests.FPDF_CloseDocument{Document: doc.Document})
+		t.Fatalf("PDFium opened %s from the file system", path)
 	}
 }
