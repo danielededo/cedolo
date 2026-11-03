@@ -18,6 +18,12 @@ How to use this file:
 
 ## [Unreleased]
 
+### Fixed
+
+- The web app names its version, such as v0.10.0, instead of a commit: the
+  latest release, with the number of changes since it when there are any
+  (v0.10.0+1). It is published again once a release is made, to show it.
+
 ### Security
 
 - The CLI's PDF reader, PDFium, no longer sees your files. It used to be
