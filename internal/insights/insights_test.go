@@ -199,3 +199,23 @@ func TestPreviousOfSameEmployer(t *testing.T) {
 		}
 	}
 }
+
+// TestFarMonthIsNotCompared compares a month with one up to MaxGap months
+// before it; after a longer break it only says how far back the previous
+// payslip is.
+func TestFarMonthIsNotCompared(t *testing.T) {
+	month := func(year, month int, net int64) payslip.Payslip {
+		return payslip.Payslip{Year: year, Month: month, Kind: payslip.Monthly, Net: payslip.Amount{Cents: net, Status: payslip.Verified}}
+	}
+	slips := []payslip.Payslip{month(2025, 9, 150000), month(2025, 12, 160000), month(2027, 2, 190000)}
+	got := Compare(i18n.EN, slips)
+	if Previous(slips, 1) != &slips[0] {
+		t.Errorf("December is three months after September: it is compared")
+	}
+	if Previous(slips, 2) != nil {
+		t.Errorf("February 2027 is fourteen months after December: it is not compared")
+	}
+	if len(got[2].Changes) != 1 || got[2].Changes[0].Code != "far" || !strings.Contains(got[2].Changes[0].Text, "December 2025") {
+		t.Errorf("far month: %+v", got[2].Changes)
+	}
+}

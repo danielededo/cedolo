@@ -145,6 +145,8 @@ func Compare(l i18n.Lang, slips []payslip.Payslip) []Period {
 		per := Period{Year: cur.Year, Month: cur.Month, Kind: cur.Kind, Label: Label(l, *cur), Changes: []Change{}}
 		if prev := Previous(slips, i); prev != nil {
 			per.Changes = append(per.Changes, changes(l, *prev, *cur)...)
+		} else if before := latest(slips, i); before != nil {
+			per.Changes = append(per.Changes, Change{Code: "far", Text: i18n.T(l, "change.far", LabelBeside(l, *before, *cur))})
 		}
 		if inconsistent(*cur) {
 			per.Changes = append(per.Changes, Change{Code: "unchecked", Text: i18n.T(l, "change.unchecked")})
@@ -154,10 +156,26 @@ func Compare(l i18n.Lang, slips []payslip.Payslip) []Period {
 	return out
 }
 
+// MaxGap is how many months back a payslip is still compared with: a month
+// with one or two payslips missing before it, not one after a long break,
+// whose differences would read as those of a single month.
+const MaxGap = 3
+
 // Previous returns the ordinary month that payslip i is compared with: the
-// latest one before it of the same person and employer (ADR 0010). It is
-// nil for additional months and payslips without a month.
+// latest one before it of the same person and employer (ADR 0010), at most
+// MaxGap months earlier. It is nil for additional months and payslips
+// without a month.
 func Previous(slips []payslip.Payslip, i int) *payslip.Payslip {
+	prev := latest(slips, i)
+	if prev == nil || months(slips[i])-months(*prev) > MaxGap {
+		return nil
+	}
+	return prev
+}
+
+// latest returns the latest ordinary month before payslip i of the same
+// person and employer, however far back.
+func latest(slips []payslip.Payslip, i int) *payslip.Payslip {
 	if !ordinary(slips[i]) {
 		return nil
 	}
@@ -168,6 +186,8 @@ func Previous(slips []payslip.Payslip, i int) *payslip.Payslip {
 	}
 	return nil
 }
+
+func months(p payslip.Payslip) int { return p.Year*12 + p.Month }
 
 func ordinary(p payslip.Payslip) bool { return p.Kind == payslip.Monthly && p.Month != 0 }
 
@@ -190,7 +210,7 @@ func changes(l i18n.Lang, prev, cur payslip.Payslip) []Change {
 		out = append(out, Change{Code: code, Text: text, Why: why})
 	}
 
-	if gap := (cur.Year*12 + cur.Month) - (prev.Year*12 + prev.Month); gap > 1 {
+	if gap := months(cur) - months(prev); gap > 1 {
 		add("gap", i18n.T(l, "change.gap", LabelBeside(l, prev, cur), Label(l, cur)))
 	}
 	if prev.CCNL != "" && cur.CCNL != "" && prev.CCNL != cur.CCNL {
