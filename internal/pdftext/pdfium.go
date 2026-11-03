@@ -42,6 +42,13 @@ func pdfiumInstance() (pdfium.Pdfium, error) {
 		pdfiumPool, pdfiumErr = webassembly.Init(webassembly.Config{
 			MinIdle: 1, MaxIdle: 1, MaxTotal: 1,
 			RuntimeConfig: pdfiumRuntime(),
+			// PDFium gets the PDF as bytes and needs no file: it sees none.
+			// By default go-pdfium would let it read and write the whole
+			// file system, and look up system fonts for a PDF that does not
+			// embed its own, so that one PDF read differently from one
+			// computer to another. Without them PDFium uses its built-in
+			// fonts.
+			FSConfig: wazero.NewFSConfig(),
 		})
 	})
 	if pdfiumErr != nil {

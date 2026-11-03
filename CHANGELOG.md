@@ -18,6 +18,14 @@ How to use this file:
 
 ## [Unreleased]
 
+### Security
+
+- The CLI's PDF reader, PDFium, no longer sees your files. It used to be
+  able to read and write the whole file system, which it never needed: it
+  gets each PDF from cedolo already read. A PDF that does not embed its
+  fonts is read with PDFium's own fonts, not those installed on the
+  computer.
+
 ## [0.10.0] - 2026-11-02
 
 ### Changed
