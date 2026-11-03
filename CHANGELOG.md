@@ -23,6 +23,11 @@ How to use this file:
 - A month is no longer compared with one more than three months before it,
   after a break: its differences read as those of a single month. It now
   says how far back the payslip before it is, instead of listing them.
+- A payslip whose codice fiscale or employer's code could not be read is
+  compared with an earlier month only when it can belong to one person and
+  one employer alone; with two of them, it could be anyone's. This mattered
+  for `cedolo compare` over several people's payslips, and for a person
+  with two employers.
 
 ## [0.10.1] - 2026-11-03
 
