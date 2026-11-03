@@ -331,8 +331,17 @@ test('a touch on a chart shows its amounts under it', async () => {
   assert.match(await frame.$eval('#trend-narrow ~ .tooltip', (t) => t.textContent), /Feb 26/);
   assert.ok(!(await frame.$eval('#panel-time', (p) => p.hidden)));
   assert.equal(await frame.$$eval('#trend-narrow .col.dim', (cs) => cs.length), 2);
-  // Its button opens the month.
-  await press(frame, '#trend-narrow ~ .tooltip .open');
+  // Its button opens the month, tapped as the column was, where it is. Not
+  // a click with Playwright's mouse: scrolling the button into view can
+  // slide the chart under that mouse, and a mouse over a column shows its
+  // amounts, without the button, as on a computer. A phone has no mouse.
+  await frame.$eval('#trend-narrow ~ .tooltip .open', (open) => {
+    const box = open.getBoundingClientRect();
+    const at = { bubbles: true, pointerType: 'touch', clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 };
+    open.dispatchEvent(new PointerEvent('pointerdown', at));
+    open.dispatchEvent(new PointerEvent('pointerup', at));
+    open.dispatchEvent(new MouseEvent('click', at));
+  });
   await frame.waitForSelector('section.month[data-month="1"]:not([hidden])', { timeout: 10000 }).catch(async (err) => {
     const state = await frame.evaluate(() => ({
       shown: [...document.querySelectorAll('section.month')].map((m) => `${m.dataset.month}:${m.hidden ? 'hidden' : 'shown'}`),
