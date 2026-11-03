@@ -20,9 +20,9 @@ How to use this file:
 
 ### Fixed
 
-- The web app names its version, such as v0.10.0, instead of a commit: the
-  latest release, with the number of changes since it when there are any
-  (v0.10.0+1). It is published again once a release is made, to show it.
+- The web app online is the latest release and names it, such as v0.10.1,
+  instead of a commit. It used to follow every change to main; it is now
+  published with each release, as the binaries are.
 
 ### Security
 
