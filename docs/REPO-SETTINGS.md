@@ -67,7 +67,8 @@ Even solo, a minimal ruleset on `main` prevents accidents:
 ### GitHub Pages (the web app)
 
 - [ ] Settings > Pages > Source: **GitHub Actions**; then run the "Web app"
-      workflow from the Actions tab.
+      workflow from the Actions tab. It publishes the latest release, and runs
+      again by itself after each Release run.
 - [ ] **Enforce HTTPS** enabled (see `docs/design/web-security.md`).
 
 ### Optional / public projects
