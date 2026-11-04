@@ -1,4 +1,6 @@
 :root {
+  /* Motion: quick to start, gentle to land, as on iOS and Linear. */
+  --ease: cubic-bezier(.2, .8, .2, 1);
   color-scheme: light dark;
   --surface: #fcfcfb;
   --raised: #ffffff;
@@ -111,6 +113,9 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .toolbar #anon-ask { margin-right: auto; padding-left: 0; border: 0; background: none; color: var(--ink-2); }
 .toolbar #anon-ask:hover { color: var(--ink); }
 .toolbar button:hover { border-color: var(--muted); }
+/* A press answers at once, as a key does. */
+button { transition: transform .12s var(--ease); }
+button:active:not(:disabled) { transform: scale(.97); }
 .toolbar .primary:hover { filter: brightness(1.08); }
 #result.over { outline: 2px dashed var(--accent); outline-offset: 8px; border-radius: 12px; }
 #result.over iframe { pointer-events: none; }
@@ -122,7 +127,7 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 /* The sheet covers a phone's screen and sits at the side of a wider one. */
 .sheet { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 0; border: 0; background: var(--surface); color: var(--ink); }
 .sheet::backdrop { background: rgb(0 0 0 / .35); }
-.sheet[open] { display: flex; flex-direction: column; animation: sheet-in .2s ease-out; }
+.sheet[open] { display: flex; flex-direction: column; animation: sheet-in .32s var(--ease); }
 @keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
 @media (min-width: 720px) {
   .sheet { width: 480px; margin-left: auto; border-left: 1px solid var(--line); }
@@ -156,10 +161,14 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .added.fading { opacity: 0; transition: opacity .6s ease; }
 .added.going { overflow: hidden; margin-bottom: 0; padding-top: 0; padding-bottom: 0;
   transition: height .25s ease, margin .25s ease, padding .25s ease; }
-.report-tabs { display: flex; gap: 4px; margin: 0 -16px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--line); }
+.report-tabs { position: relative; display: flex; gap: 4px; margin: 0 -16px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--line); }
+/* One line under the tab shown, sliding to the tab picked. */
+.report-tabs::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: var(--tab-w, 0); transform: translateX(var(--tab-x, 0)); background: var(--ink); border-radius: 2px; }
+.report-tabs.moving::after { transition: transform .32s var(--ease), width .32s var(--ease); }
 .report-tabs[hidden] { display: none; }
 .report-tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; }
-.report-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.report-tabs button { transition: color .2s ease, transform .12s var(--ease); }
+.report-tabs button[aria-selected="true"] { color: var(--ink); }
 .report-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
 .anon a { color: var(--accent); }
 .anon { margin: 0; }
@@ -175,7 +184,7 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes bob { 50% { transform: translateY(-3px); } }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-.enter { animation: rise .4s cubic-bezier(.2, .7, .2, 1) both; }
+.enter { animation: rise .45s var(--ease) both; }
 .leaving { opacity: 0; transform: translateY(-8px); transition: opacity .18s ease, transform .18s ease; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

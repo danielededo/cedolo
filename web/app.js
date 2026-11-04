@@ -522,12 +522,22 @@ function tabsFrom(v) {
 
 function markTab(name) {
   state.tab = name;
-  for (const b of $('tabs').children) {
+  const bar = $('tabs');
+  for (const b of bar.children) {
     const on = b.dataset.tab === name;
     b.setAttribute('aria-selected', String(on));
     b.tabIndex = on ? 0 : -1;
+    // The line under the tabs slides to this one, after it first lands.
+    if (on) {
+      bar.style.setProperty('--tab-x', `${b.offsetLeft}px`);
+      bar.style.setProperty('--tab-w', `${b.offsetWidth}px`);
+    }
   }
+  requestAnimationFrame(() => bar.classList.add('moving'));
 }
+
+// The tabs change width with the window, and the line under them too.
+window.addEventListener('resize', () => { if (!$('tabs').hidden && state.tab) markTab(state.tab); });
 
 function pickTab(name) {
   markTab(name);

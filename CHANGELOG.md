@@ -24,6 +24,11 @@ How to use this file:
   holds the files read, to open them, and "Add" and "Download", where two
   large buttons and a link at the foot used to be. Tabs other than the
   month no longer repeat which months the payslips cover.
+- The report moves where it helps to follow it: the line under the tabs
+  slides to the tab picked, the waterfall grows step by step and the net
+  pay counts to the month shown, the columns of a chart rise and its lines
+  draw themselves the first time it is seen, details open smoothly, and
+  buttons answer a press. None of it with "reduce motion" set.
 
 ### Fixed
 
