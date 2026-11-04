@@ -190,8 +190,10 @@ func TestPreviousOfSameEmployer(t *testing.T) {
 		return payslip.Payslip{Year: 2026, Month: month, Kind: payslip.Monthly,
 			Person: payslip.Party{ID: person}, Employer: payslip.Party{ID: employer}}
 	}
+	// May has no codes: with two people and two employers it could be
+	// anyone's, so it is compared with nothing.
 	slips := []payslip.Payslip{slip(1, "A", "X"), slip(2, "A", "Y"), slip(3, "A", "X"), slip(4, "B", "X"), slip(5, "", "")}
-	want := []int{-1, -1, 0, -1, 3}
+	want := []int{-1, -1, 0, -1, -1}
 	for i, w := range want {
 		got := Previous(slips, i)
 		if (w < 0) != (got == nil) || (got != nil && got != &slips[w]) {
@@ -217,5 +219,30 @@ func TestFarMonthIsNotCompared(t *testing.T) {
 	}
 	if len(got[2].Changes) != 1 || got[2].Changes[0].Code != "far" || !strings.Contains(got[2].Changes[0].Text, "December 2025") {
 		t.Errorf("far month: %+v", got[2].Changes)
+	}
+}
+
+// TestPreviousWithoutCode compares a payslip whose code was not read only
+// when it can belong to one party alone.
+func TestPreviousWithoutCode(t *testing.T) {
+	slip := func(month int, person, employer string) payslip.Payslip {
+		return payslip.Payslip{Year: 2026, Month: month, Kind: payslip.Monthly,
+			Person: payslip.Party{ID: person}, Employer: payslip.Party{ID: employer}}
+	}
+	for _, c := range []struct {
+		name  string
+		slips []payslip.Payslip
+		want  int
+	}{
+		{"one person, no code", []payslip.Payslip{slip(1, "A", "X"), slip(2, "", "X")}, 0},
+		{"two people, no code", []payslip.Payslip{slip(1, "A", "X"), slip(2, "B", "X"), slip(3, "", "X")}, -1},
+		{"two people, both without code", []payslip.Payslip{slip(1, "A", "X"), slip(2, "", "X"), slip(3, "B", "X"), slip(4, "", "X")}, 1},
+		{"one employer, no code", []payslip.Payslip{slip(1, "A", "X"), slip(2, "A", "")}, 0},
+		{"two employers, no code", []payslip.Payslip{slip(1, "A", "X"), slip(2, "A", "Y"), slip(3, "A", "")}, -1},
+	} {
+		got := Previous(c.slips, len(c.slips)-1)
+		if (c.want < 0) != (got == nil) || (got != nil && got != &c.slips[c.want]) {
+			t.Errorf("%s: Previous = %v, want %d", c.name, got, c.want)
+		}
 	}
 }

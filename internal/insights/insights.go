@@ -179,21 +179,45 @@ func latest(slips []payslip.Payslip, i int) *payslip.Payslip {
 	if !ordinary(slips[i]) {
 		return nil
 	}
+	person := func(p payslip.Payslip) payslip.Party { return p.Person }
+	employer := func(p payslip.Payslip) payslip.Party { return p.Employer }
+	people, employers := single(slips, person), single(slips, employer)
 	for j := i - 1; j >= 0; j-- {
-		if ordinary(slips[j]) && Same(slips[j].Person, slips[i].Person) && Same(slips[j].Employer, slips[i].Employer) {
+		if ordinary(slips[j]) && match(slips[j].Person, slips[i].Person, people) && match(slips[j].Employer, slips[i].Employer, employers) {
 			return &slips[j]
 		}
 	}
 	return nil
 }
 
+// single reports whether the payslips name at most one party of a kind,
+// so that one whose code was not read can only be that one.
+func single(slips []payslip.Payslip, party func(payslip.Payslip) payslip.Party) bool {
+	var id string
+	for _, p := range slips {
+		if c := party(p).ID; c != "" {
+			if id != "" && c != id {
+				return false
+			}
+			id = c
+		}
+	}
+	return true
+}
+
+// match reports whether two payslips are of the same party: by their codes
+// when both were read; when one was not, only if there is no other party it
+// could be, or neither was read.
+func match(a, b payslip.Party, single bool) bool {
+	if a.ID == "" || b.ID == "" {
+		return single || a.ID == b.ID
+	}
+	return a.ID == b.ID
+}
+
 func months(p payslip.Payslip) int { return p.Year*12 + p.Month }
 
 func ordinary(p payslip.Payslip) bool { return p.Kind == payslip.Monthly && p.Month != 0 }
-
-// Same reports whether two parties may be the same: they are unless both
-// codes were read and differ.
-func Same(a, b payslip.Party) bool { return a.ID == "" || b.ID == "" || a.ID == b.ID }
 
 func inconsistent(p payslip.Payslip) bool {
 	for _, a := range []payslip.Amount{p.Gross, p.Deductions, p.Net} {
