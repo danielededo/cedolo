@@ -28,6 +28,9 @@ How to use this file:
   one employer alone; with two of them, it could be anyone's. This mattered
   for `cedolo compare` over several people's payslips, and for a person
   with two employers.
+- The CLI's cache of compiled PDFium keeps only the PDFium of the version
+  of cedolo in use: the copy of each earlier one, about 20 MB, used to stay
+  there for good.
 
 ## [0.10.1] - 2026-11-03
 

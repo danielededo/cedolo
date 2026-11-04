@@ -185,3 +185,42 @@ func TestPDFiumSeesNoFiles(t *testing.T) {
 		t.Fatalf("PDFium opened %s from the file system", path)
 	}
 }
+
+// TestPDFiumCacheKeepsOnlyThisBuild removes the PDFium compiled by other
+// builds, and the folders of the layout before builds were named; a build
+// without versions, as in development, removes nothing.
+func TestPDFiumCacheKeepsOnlyThisBuild(t *testing.T) {
+	root := t.TempDir()
+	this, old := "go-pdfium-v1.2.3-wazero-v4.5.6", "go-pdfium-v1.2.2-wazero-v4.5.6"
+	dirs := []string{this, old, "wazero-v4.5.6-amd64-linux"}
+	for _, d := range dirs {
+		if err := os.MkdirAll(filepath.Join(root, d, "sub"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	left := func() (names []string) {
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		return names
+	}
+	pdfiumCache(root, "go-pdfium-unknown-wazero-unknown")
+	if got := left(); len(got) != len(dirs) {
+		t.Errorf("a development build removed folders: left %v", got)
+	}
+	if got := pdfiumCache(root, this); got != filepath.Join(root, this) {
+		t.Errorf("folder = %s", got)
+	}
+	if got := left(); len(got) != 1 || got[0] != this {
+		t.Errorf("left %v, want only %s", got, this)
+	}
+	// Test binaries carry no module versions: "unknown" here, the versions
+	// in cedolo itself.
+	if build := pdfiumBuild(); !strings.HasPrefix(build, "go-pdfium-") || !strings.Contains(build, "-wazero-") {
+		t.Errorf("build = %s, want the versions of go-pdfium and wazero", build)
+	}
+}

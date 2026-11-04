@@ -6,6 +6,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 	"unicode"
@@ -39,17 +41,26 @@ var (
 
 func pdfiumInstance() (pdfium.Pdfium, error) {
 	pdfiumOnce.Do(func() {
-		pdfiumPool, pdfiumErr = webassembly.Init(webassembly.Config{
-			MinIdle: 1, MaxIdle: 1, MaxTotal: 1,
-			RuntimeConfig: pdfiumRuntime(),
-			// PDFium gets the PDF as bytes and needs no file: it sees none.
-			// By default go-pdfium would let it read and write the whole
-			// file system, and look up system fonts for a PDF that does not
-			// embed its own, so that one PDF read differently from one
-			// computer to another. Without them PDFium uses its built-in
-			// fonts.
-			FSConfig: wazero.NewFSConfig(),
-		})
+		start := func(rc wazero.RuntimeConfig) (pdfium.Pool, error) {
+			return webassembly.Init(webassembly.Config{
+				MinIdle: 1, MaxIdle: 1, MaxTotal: 1,
+				RuntimeConfig: rc,
+				// PDFium gets the PDF as bytes and needs no file: it sees
+				// none. By default go-pdfium would let it read and write the
+				// whole file system, and look up system fonts for a PDF that
+				// does not embed its own, so that one PDF read differently
+				// from one computer to another. Without them PDFium uses its
+				// built-in fonts.
+				FSConfig: wazero.NewFSConfig(),
+			})
+		}
+		rc, cached := pdfiumRuntime()
+		pdfiumPool, pdfiumErr = start(rc)
+		// The cache must never stop a read: one that cannot be written or
+		// read, perhaps emptied by another cedolo meanwhile, is left out.
+		if pdfiumErr != nil && cached {
+			pdfiumPool, pdfiumErr = start(pdfiumFeatures())
+		}
 	})
 	if pdfiumErr != nil {
 		return nil, fmt.Errorf("start pdfium: %w", pdfiumErr)
@@ -63,17 +74,52 @@ func pdfiumInstance() (pdfium.Pdfium, error) {
 // only, never anything read from a PDF. Without a cache directory PDFium is
 // compiled at every start, as before. The features are those go-pdfium sets
 // by default.
-func pdfiumRuntime() wazero.RuntimeConfig {
-	rc := wazero.NewRuntimeConfig().WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesExceptionHandling)
+func pdfiumRuntime() (rc wazero.RuntimeConfig, cached bool) {
+	rc = pdfiumFeatures()
 	dir, err := os.UserCacheDir()
 	if err != nil {
-		return rc
+		return rc, false
 	}
-	cache, err := wazero.NewCompilationCacheWithDir(filepath.Join(dir, "cedolo", "pdfium"))
+	cache, err := wazero.NewCompilationCacheWithDir(pdfiumCache(filepath.Join(dir, "cedolo", "pdfium"), pdfiumBuild()))
 	if err != nil {
-		return rc
+		return rc, false
 	}
-	return rc.WithCompilationCache(cache)
+	return rc.WithCompilationCache(cache), true
+}
+
+func pdfiumFeatures() wazero.RuntimeConfig {
+	return wazero.NewRuntimeConfig().WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesExceptionHandling)
+}
+
+// pdfiumBuild names the PDFium compiled by this build of cedolo: the
+// versions of go-pdfium, which holds PDFium, and of wazero, which compiles
+// it, such as "go-pdfium-v1.21.4-wazero-v1.12.0".
+func pdfiumBuild() string {
+	versions := map[string]string{"github.com/klippa-app/go-pdfium": "unknown", "github.com/tetratelabs/wazero": "unknown"}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, d := range info.Deps {
+			if _, ok := versions[d.Path]; ok {
+				versions[d.Path] = d.Version
+			}
+		}
+	}
+	return "go-pdfium-" + versions["github.com/klippa-app/go-pdfium"] + "-wazero-" + versions["github.com/tetratelabs/wazero"]
+}
+
+// pdfiumCache returns the folder of the PDFium of this build within root,
+// and removes the others: each version compiled, about 20 MB, would
+// otherwise stay there for good. Only a build that knows its versions
+// removes them, so that a development build leaves a release's alone. A
+// folder that cannot be removed is left for next time.
+func pdfiumCache(root, build string) string {
+	if entries, err := os.ReadDir(root); err == nil && !strings.Contains(build, "unknown") {
+		for _, e := range entries {
+			if e.Name() != build {
+				_ = os.RemoveAll(filepath.Join(root, e.Name()))
+			}
+		}
+	}
+	return filepath.Join(root, build)
 }
 
 func (p PDFium) ReadFile(path string) (layout.Document, error) {
