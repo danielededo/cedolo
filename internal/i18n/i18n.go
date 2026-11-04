@@ -109,6 +109,7 @@ var catalog = map[Lang]map[string]string{
 		"change.inps_rate": "INPS contributions are %[2]s%% of pay, before %[1]s%%.",
 		"change.leave":     "%[1]s: %[3]s left, before %[2]s (%[4]s).",
 		"change.gap":       "A payslip is missing between %s and %s.",
+		"change.far":       "The payslip before it is from %s: too far back to compare with.",
 		"change.unchecked": "Some numbers of this payslip do not add up, so these changes may be reading errors.",
 
 		"why.surcharge_start":  "Regional and municipal income tax surcharges for the previous year are withheld in instalments, usually from January (regional) and March (municipal advance).",
@@ -311,6 +312,7 @@ var catalog = map[Lang]map[string]string{
 		"change.inps_rate": "I contributi INPS sono il %[2]s%% della retribuzione, prima il %[1]s%%.",
 		"change.leave":     "%[1]s: ne restano %[3]s, prima %[2]s (%[4]s).",
 		"change.gap":       "Manca il cedolino tra %s e %s.",
+		"change.far":       "Il cedolino precedente è di %s: troppo indietro per un confronto.",
 		"change.unchecked": "Alcuni numeri di questo cedolino non tornano: queste variazioni potrebbero essere errori di lettura.",
 
 		"why.surcharge_start":  "Le addizionali regionale e comunale dell'anno precedente si trattengono a rate, di solito da gennaio (regionale) e da marzo (acconto comunale).",

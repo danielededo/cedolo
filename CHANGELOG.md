@@ -18,6 +18,12 @@ How to use this file:
 
 ## [Unreleased]
 
+### Fixed
+
+- A month is no longer compared with one more than three months before it,
+  after a break: its differences read as those of a single month. It now
+  says how far back the payslip before it is, instead of listing them.
+
 ## [0.10.1] - 2026-11-03
 
 ### Fixed

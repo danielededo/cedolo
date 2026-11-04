@@ -773,7 +773,7 @@ func pickLabel(l i18n.Lang, p payslip.Payslip) string {
 // changeOrder ranks changes by how much they tell a person about the
 // month: a caveat on the numbers first, then the net, then why it moved.
 var changeOrder = map[string]int{
-	"unchecked": 0, "net": 1, "item_new": 2, "item_gone": 3, "level": 4, "ccnl": 5,
+	"unchecked": 0, "far": 0, "net": 1, "item_new": 2, "item_gone": 3, "level": 4, "ccnl": 5,
 	"tax_rate": 6, "gross": 7, "inps_rate": 8, "leave": 9, "gap": 10,
 }
 
