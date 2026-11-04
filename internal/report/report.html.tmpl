@@ -96,6 +96,9 @@ h2.total .amount { font-variant-numeric: tabular-nums; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
 .tabs button:focus-visible { outline: 2px solid var(--series-1); outline-offset: -2px; border-radius: 4px; }
 .tabs ~ .panel h2.group { display: none; }
+/* Whose payslips and which months head the month; the other tabs go
+   straight to their content. */
+[data-tab]:not([data-tab="month"]) .who .sub { display: none; }
 .tabs ~ .panel > section:first-of-type > h3 { margin-top: 24px; }
 .link { font: inherit; font-size: 15px; padding: 0; border: 0; background: none; color: var(--series-1); cursor: pointer; text-align: left; }
 .stat { margin: 0 0 8px; color: var(--ink-2); }
@@ -244,6 +247,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 @media print {
   .tooltip, .picker, .hint, .tabs, .steps, .people { display: none; }
   .panel[hidden] { display: block !important; }
+  .who .sub { display: block !important; }
   .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
 }
@@ -401,6 +405,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       if (names.indexOf(name) < 0) return;
       var from = names.indexOf(current()) < names.indexOf(name) ? "24px" : "-24px";
       if (embedded && !fromPage) window.parent.postMessage({ cedoloTab: name }, "*");
+      document.documentElement.dataset.tab = name;
       tabs.forEach(function (t) {
         var on = t.dataset.tab === name;
         t.setAttribute("aria-selected", String(on));

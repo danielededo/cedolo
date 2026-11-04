@@ -18,6 +18,13 @@ How to use this file:
 
 ## [Unreleased]
 
+### Changed
+
+- The web app leaves more of the report in view: one small row over it
+  holds the files read, to open them, and "Add" and "Download", where two
+  large buttons and a link at the foot used to be. Tabs other than the
+  month no longer repeat which months the payslips cover.
+
 ### Fixed
 
 - A month is no longer compared with one more than three months before it,

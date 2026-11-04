@@ -99,13 +99,17 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .pw-row .primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .status { min-height: 24px; color: var(--ink-2); margin: 12px 0 0; }
 .status.error { color: var(--bad); }
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+/* One row over the report: the files read on the left, what to do with the
+   report on the right, small enough to leave the month in view. */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
 .toolbar button {
-  display: inline-flex; align-items: center; gap: 8px;
-  font: inherit; font-size: 15px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--line); background: var(--raised); color: var(--ink);
 }
-.toolbar button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.toolbar button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.toolbar #anon-ask { margin-right: auto; padding-left: 0; border: 0; background: none; color: var(--ink-2); }
+.toolbar #anon-ask:hover { color: var(--ink); }
 .toolbar button:hover { border-color: var(--muted); }
 .toolbar .primary:hover { filter: brightness(1.08); }
 #result.over { outline: 2px dashed var(--accent); outline-offset: 8px; border-radius: 12px; }
@@ -152,7 +156,6 @@ h1 { font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 12px; lett
 .added.fading { opacity: 0; transition: opacity .6s ease; }
 .added.going { overflow: hidden; margin-bottom: 0; padding-top: 0; padding-bottom: 0;
   transition: height .25s ease, margin .25s ease, padding .25s ease; }
-.misread { margin: 16px 0 0; text-align: center; }
 .report-tabs { display: flex; gap: 4px; margin: 0 -16px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--line); }
 .report-tabs[hidden] { display: none; }
 .report-tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; }
