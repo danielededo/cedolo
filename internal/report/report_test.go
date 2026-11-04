@@ -552,8 +552,8 @@ func TestPensionFundInContributions(t *testing.T) {
 	if over := Build(i18n.EN, []payslip.Payslip{aug, slip(9, 530000, 142430)}, "test"); !over.FundYears.Over {
 		t.Errorf("no word of a year over the limit")
 	}
-	if deductibleLimit(2025) != 516457 {
-		t.Errorf("2025 limit = %d", deductibleLimit(2025))
+	if deductibleLimit(2025) != 516457 || deductibleLimit(2026) != 530000 || deductibleLimit(2030) != 530000 {
+		t.Errorf("limits = %d, %d, %d", deductibleLimit(2025), deductibleLimit(2026), deductibleLimit(2030))
 	}
 	// The chart starts at the first payslip that paid in, and its columns
 	// still lead to their own months.
@@ -673,5 +673,21 @@ func TestAddedToGross(t *testing.T) {
 	want := []string{"gross 2.000,00 € 0+95 1", "plus +100,00 € 95+5 1", "contrib −180,00 € 91+9 0", "taxes −320,00 € 76+15 0", "net 1.600,00 € 0+76 0"}
 	if !slices.Equal(got, want) {
 		t.Errorf("parts =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// TestYearlyFigures keeps the table of figures set by law in order and
+// sourced, and no newer than the year they were checked through.
+func TestYearlyFigures(t *testing.T) {
+	for i, y := range yearly {
+		if y.source == "" || y.deductible <= 0 {
+			t.Errorf("row %d: %+v", i, y)
+		}
+		if i > 0 && y.from <= yearly[i-1].from {
+			t.Errorf("row %d is out of order", i)
+		}
+		if y.from > FiguresCheckedThrough {
+			t.Errorf("row %d starts in %d, after the figures were checked through %d", i, y.from, FiguresCheckedThrough)
+		}
 	}
 }
