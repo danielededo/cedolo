@@ -167,6 +167,7 @@ decisions behind it.
 │   ├── cedolo/               # the command-line tool
 │   ├── piiscan/              # CI check for codici fiscali and IBANs
 │   ├── ccnlgen/              # regenerates the CCNL list from the CNEL open data
+│   ├── upkeep/               # says when built-in data is due a check (monthly job)
 │   ├── cedolo-wasm/          # the core compiled to WebAssembly for the web app
 │   └── webbuild/             # assembles the web app as static files
 ├── web/                      # the web app: page, pdf.js text layer, tests

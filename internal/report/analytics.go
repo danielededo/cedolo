@@ -147,15 +147,34 @@ func fundYears(l i18n.Lang, slips []payslip.Payslip) *YearTable {
 	return t
 }
 
-// deductibleLimit is the most that contributions to a supplementary
-// pension fund, yours and the employer's, take off the taxable income in
-// a year (d.lgs. 252/2005, art. 8 c. 4). The TFR paid into the fund is not
-// counted. The 2026 budget law raised it from 5.164,57 € to 5.300 €.
+// FiguresCheckedThrough is the last year whose figures set by law, those
+// of yearly below, were checked against the law in force. A scheduled job
+// (cmd/upkeep) asks for a check once a year passes it.
+const FiguresCheckedThrough = 2026
+
+// yearly holds the figures set by law that the report uses, each from a
+// year on until the next row: a row for a year when one changes.
+var yearly = []struct {
+	from int
+	// deductible is the most that contributions to a supplementary
+	// pension fund, yours and the employer's, take off the taxable income
+	// in a year; the TFR paid into the fund is not counted.
+	deductible int64
+	source     string
+}{
+	{2007, 516457, "d.lgs. 252/2005, art. 8 c. 4"},
+	{2026, 530000, "2026 budget law"},
+}
+
+// deductibleLimit is the pension fund deductible limit of a year.
 func deductibleLimit(year int) int64 {
-	if year >= 2026 {
-		return 530000
+	limit := yearly[0].deductible
+	for _, y := range yearly {
+		if year >= y.from {
+			limit = y.deductible
+		}
 	}
-	return 516457
+	return limit
 }
 
 // variableKeys are the earnings that change from one month to the next.
