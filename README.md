@@ -101,8 +101,8 @@ after cedolo asks for the password in the terminal; scripts can set
 
 The first run takes a few seconds to prepare the PDF reader; cedolo keeps it,
 about 20 MB of compiled PDFium and nothing from your payslips, in your cache
-folder (`cedolo/pdfium`), so later runs start at once. Deleting the folder is
-safe.
+folder (`cedolo/pdfium`), so later runs start at once. A new version of
+cedolo replaces it rather than adding to it, and deleting the folder is safe.
 
 ## Report a payslip read badly
 
