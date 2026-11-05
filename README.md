@@ -22,7 +22,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0"></a>
 </p>
 
-![The cedolo web app: the start page, and the report of three synthetic payslips on a phone](docs/images/screenshot.png)
+![The cedolo web app: the start page, and its example report of a year of invented payslips on a phone](docs/images/screenshot.png)
 
 ## What it does
 

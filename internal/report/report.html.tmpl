@@ -204,6 +204,7 @@ figure { margin: 0; position: relative; }
 .minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 24px; margin-bottom: 12px; }
 .mini figcaption { font-size: 14px; color: var(--ink-2); }
 .mini figcaption strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.mini .steady { margin: 2px 0 8px; font-size: 14px; color: var(--muted); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 8px; font-size: 14px; color: var(--ink-2); padding: 0; list-style: none; }
 .legend .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
 .legend .key.line { height: 2px; width: 14px; vertical-align: middle; border-radius: 1px; }
@@ -849,7 +850,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 <section>
 <h3>{{index .T "report.leave"}}</h3>
 {{with .LeaveAsOf}}<p class="note">{{.}}</p>{{end}}
-{{if .LeaveCharts}}<div class="minis">{{range .LeaveCharts}}<figure class="mini"><figcaption>{{.Label}} <strong>{{.Now}}</strong></figcaption>{{.SVG}}<div class="tooltip" hidden></div></figure>
+{{if .LeaveCharts}}<div class="minis">{{range .LeaveCharts}}<figure class="mini"><figcaption>{{.Label}} <strong>{{.Now}}</strong></figcaption>{{if .Steady}}<p class="steady">{{.Steady}}</p>{{else}}{{.SVG}}<div class="tooltip" hidden></div>{{end}}</figure>
 {{end}}</div>{{else}}<ul class="leave">
 {{range .Leave}}<li><span class="name">{{.Label}}</span><span class="left">{{.Remaining}}</span>{{with .Moves}}<span class="moves">{{.}}</span>{{end}}</li>
 {{end}}</ul>{{end}}

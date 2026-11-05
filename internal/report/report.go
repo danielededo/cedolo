@@ -609,6 +609,9 @@ type LeaveChart struct {
 	Label string
 	Now   string // the latest balance, with its unit
 	SVG   template.HTML
+	// Steady says since when the balance has not moved, in place of a flat
+	// line: "unchanged since September 2025".
+	Steady string
 }
 
 // leaveCharts charts the remaining balance of each kind of leave the latest
@@ -628,13 +631,17 @@ func leaveCharts(l i18n.Lang, slips []payslip.Payslip) []LeaveChart {
 			continue
 		}
 		var labels []string
+		var first *payslip.Payslip
 		s := series{Name: lv.Label, Color: "var(--series-1)"}
-		for _, p := range slips {
+		for i, p := range slips {
 			if p.Kind != payslip.Monthly {
 				continue // an additional month repeats the balances of its month
 			}
 			for _, x := range p.Leave {
 				if x.Kind == lv.Kind && x.Unit == lv.Unit && x.Remaining != nil {
+					if first == nil {
+						first = &slips[i]
+					}
 					labels = append(labels, shortLabel(l, p))
 					s.Values = append(s.Values, *x.Remaining)
 					break
@@ -645,6 +652,15 @@ func leaveCharts(l i18n.Lang, slips []payslip.Payslip) []LeaveChart {
 			continue
 		}
 		value := func(v int64) string { return quantity(&v, lv.Unit, l) }
+		// A balance that never moved makes a flat line: say so instead.
+		if !slices.ContainsFunc(s.Values, func(v int64) bool { return v != s.Values[0] }) {
+			out = append(out, LeaveChart{
+				Label:  lv.Label,
+				Now:    value(*lv.Remaining),
+				Steady: i18n.T(l, "report.leave.steady", insights.Label(l, *first)),
+			})
+			continue
+		}
 		out = append(out, LeaveChart{
 			Label: lv.Label,
 			Now:   value(*lv.Remaining),

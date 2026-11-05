@@ -691,3 +691,26 @@ func TestYearlyFigures(t *testing.T) {
 		}
 	}
 }
+
+// TestSteadyLeave says a balance that never moved in so many words, and
+// charts one that did.
+func TestSteadyLeave(t *testing.T) {
+	steady := Build(i18n.EN, months(t, 3), "test")
+	if len(steady.LeaveCharts) == 0 {
+		t.Fatal("no leave")
+	}
+	for _, c := range steady.LeaveCharts {
+		if c.SVG != "" || c.Steady != "unchanged since January 2026" {
+			t.Errorf("%s: steady %q, chart %t", c.Label, c.Steady, c.SVG != "")
+		}
+	}
+	var year []payslip.Payslip
+	for _, p := range synth.Year(2025) {
+		year = append(year, extract.Document(synth.Layout(p, synth.StyleClassic))...)
+	}
+	for _, c := range Build(i18n.EN, year, "test").LeaveCharts {
+		if c.SVG == "" || c.Steady != "" {
+			t.Errorf("%s moved over the year: steady %q, chart %t", c.Label, c.Steady, c.SVG != "")
+		}
+	}
+}
