@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-05
+
 ### Added
 
 - "Try an example" on the web app's start page shows the report of a year
@@ -504,7 +506,8 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/danielededo/cedolo/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/danielededo/cedolo/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/danielededo/cedolo/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/danielededo/cedolo/compare/v0.8.0...v0.9.0
