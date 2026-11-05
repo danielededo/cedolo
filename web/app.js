@@ -81,6 +81,7 @@ async function start() {
   applyTexts();
   $('version').textContent = globalThis.cedolo.version;
   $('files').disabled = false;
+  $('example').disabled = false;
   status('');
   window.cedoloReady = true;
 }
@@ -293,6 +294,7 @@ function render() {
   $('too-many').hidden = !state.tooMany;
   $('too-many').textContent = t('web.too_many', MAX_FILES);
   $('download').hidden = !any;
+  $('example-note').hidden = !state.example;
   $('report').hidden = !any;
   if (!any) $('tabs').hidden = true;
   if (any && $('report').srcdoc !== state.report) {
@@ -377,6 +379,12 @@ function progress(done, total) {
 async function handle(fileList) {
   let files = [...fileList].filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
   if (files.length === 0) return;
+  // One's own payslips take the place of the example's.
+  if (state.example) {
+    state.files = [];
+    state.example = false;
+    state.allRead = false;
+  }
   // Files added to those already read count towards the same limit.
   const room = MAX_FILES - state.files.length;
   state.tooMany = files.length > room;
@@ -422,6 +430,32 @@ async function handle(fileList) {
     $('pick').classList.remove('leaving');
     progress(0, 0);
   }
+}
+
+// showExample reads a year of invented payslips, made on the device, as if
+// they were files: the report someone gets, before reading their own. The
+// year is the last full one.
+async function showExample() {
+  const result = globalThis.cedolo.example(new Date().getFullYear() - 1);
+  if (result.error) {
+    status(t('web.failed', result.error), true);
+    return;
+  }
+  state.files = JSON.parse(result.layouts).map((layout, i) => ({ name: t('web.example.file', i + 1), layout }));
+  state.example = true;
+  state.allRead = false;
+  try {
+    analyze();
+  } catch (err) {
+    status(t('web.failed', err.message), true);
+    return;
+  }
+  $('intro').classList.add('leaving');
+  $('pick').classList.add('leaving');
+  await wait(180);
+  render();
+  $('intro').classList.remove('leaving');
+  $('pick').classList.remove('leaving');
 }
 
 // openAnon shows the anonymized copy of a file (ADR 0008): the text it
@@ -587,6 +621,8 @@ drop.addEventListener('drop', (ev) => {
 });
 // Payslips can be added to a report: with its button, or dropped on it.
 $('add').addEventListener('click', () => $('files').click());
+$('example').addEventListener('click', showExample);
+$('example-own').addEventListener('click', () => $('files').click());
 // Files dragged anywhere over the page while a report is shown; the report
 // frame stops taking pointer events meanwhile, so that it does not swallow
 // the drop.

@@ -121,6 +121,10 @@ button:active:not(:disabled) { transform: scale(.97); }
 #result.over iframe { pointer-events: none; }
 .toolbar .primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .files-alert { margin: 0 0 16px; }
+.try { margin: 16px 0 0; text-align: center; }
+.try .link { font-size: 15px; }
+.example-note { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-size: 15px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--raised)); border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line)); }
 .files-alert button { width: 100%; text-align: left; font: inherit; font-size: 15px; padding: 10px 14px; border-radius: 12px; cursor: pointer;
   border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line)); background: color-mix(in srgb, var(--warn) 8%, var(--raised)); color: var(--ink); }
 .files-alert button::before { content: "! "; color: var(--warn); font-weight: 700; }
