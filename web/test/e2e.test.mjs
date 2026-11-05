@@ -63,8 +63,8 @@ after(async () => {
 
 // open loads the app and records what should never happen; before runs in
 // the page ahead of the app, to change what the browser offers.
-async function open({ before, viewport } = {}) {
-  const page = await browser.newPage({ locale: 'en-US', ...(viewport && { viewport }) });
+async function open({ before, viewport, reducedMotion } = {}) {
+  const page = await browser.newPage({ locale: 'en-US', ...(viewport && { viewport }), ...(reducedMotion && { reducedMotion }) });
   const seen = { requests: [], errors: [], dialogs: 0, missing: [] };
   page.on('request', (r) => seen.requests.push(r.url()));
   page.on('response', (r) => { if (r.status() >= 400) seen.missing.push(r.url()); });
@@ -306,6 +306,39 @@ test('shows the latest of many months first', async () => {
   assert.equal(await frame.$eval('.picker button[aria-pressed="true"]', (b) => b.dataset.month), '1');
   assert.deepEqual(seen.errors, []);
   await page.close();
+});
+
+test('motion lands on the amounts, and stays still when asked', async () => {
+  // Two months with different overtime, so their net pay differs.
+  const files = [1, 2].map((m) => synth(`motion-${m}.pdf`, '-month', String(m)));
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const { page, seen } = await open({ viewport: { width: 390, height: 800 }, reducedMotion });
+    await page.setInputFiles('#files', files);
+    await statuses(page);
+    await page.waitForSelector('#report:not(.pending)');
+    const frame = page.frames().find((f) => f !== page.mainFrame());
+    const net = (i) => frame.$eval(`section.month[data-month="${i}"] .net .big`, (e) => e.textContent);
+    const jan = await net(0);
+    await press(frame, '.picker button[data-month="0"]');
+    await frame.waitForSelector('section.month[data-month="0"]:not([hidden])');
+    // The waterfall grows and the net pay counts only with motion on.
+    const grows = await frame.$eval('section.month[data-month="0"]', (m) => m.classList.contains('grow'));
+    assert.equal(grows, reducedMotion !== 'reduce', `waterfall grows with ${reducedMotion}`);
+    await page.waitForTimeout(600);
+    assert.equal(await net(0), jan, 'the net pay ends on its own amount');
+    // The line under the page's tabs sits under the tab shown.
+    await press(page, '#tabs [data-tab="time"]');
+    await page.waitForTimeout(500);
+    const under = await page.$eval('#tabs', (bar) => {
+      const b = bar.querySelector('[aria-selected="true"]');
+      return Math.abs(parseFloat(bar.style.getPropertyValue('--tab-x')) - b.offsetLeft) < 1 && parseFloat(bar.style.getPropertyValue('--tab-w')) === b.offsetWidth;
+    });
+    assert.ok(under, 'the line is under the tab shown');
+    const risen = await frame.$$eval('#panel-time .chart .col.rise', (cs) => cs.length);
+    assert.equal(risen > 0, reducedMotion !== 'reduce', `columns rise with ${reducedMotion}`);
+    assert.deepEqual(seen.errors, []);
+    await page.close();
+  }
 });
 
 test('a touch on a chart shows its amounts under it', async () => {

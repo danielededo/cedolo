@@ -68,8 +68,9 @@
 
   <section id="result" hidden>
     <div class="toolbar">
-      <button type="button" class="primary" id="download"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span data-t="web.download"></span></button>
-      <button type="button" id="add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-t="web.add"></span></button>
+      <button type="button" class="link" id="anon-ask" hidden></button>
+      <button type="button" id="add" data-t-aria="web.add.aria"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-t="web.add"></span></button>
+      <button type="button" class="primary" id="download" data-t-aria="web.download.aria"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span data-t="web.download"></span></button>
     </div>
     <p class="added" id="added" role="status" hidden></p>
     <p class="files-alert" id="files-alert" hidden><button type="button" id="files-open"></button></p>
@@ -81,7 +82,6 @@
       <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
     </div>
     <iframe id="report" title="Report" sandbox="allow-scripts" hidden></iframe>
-    <p class="misread"><button type="button" class="link" id="anon-ask" hidden></button></p>
   </section>
 
   <!-- The files read, with what needs a look first, and the anonymized

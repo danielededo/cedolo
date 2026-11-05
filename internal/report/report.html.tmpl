@@ -10,6 +10,8 @@
 <style>
 :root {
   color-scheme: light dark;
+  /* Motion: quick to start, gentle to land. */
+  --ease: cubic-bezier(.2, .8, .2, 1);
   --surface: #fcfcfb;
   --raised: #ffffff;
   --ink: #0b0b0b;
@@ -76,13 +78,15 @@ h2.total span:first-child { flex: 1; }
 h2.total .amount { font-variant-numeric: tabular-nums; }
 .tabs { display: flex; gap: 4px; margin: 20px -16px 0; padding: 0 16px; border-bottom: 1px solid var(--grid); overflow-x: auto; scrollbar-width: none; position: sticky; top: 0; z-index: 1; background: var(--surface); }
 .embedded .tabs { display: none; }
-.panel:not([hidden]) { animation: panel-in .18s ease-out; }
+.panel:not([hidden]) { animation: panel-in .26s var(--ease); }
 /* The page scrolls up and down; sideways, a finger moves between tabs,
    except on rows that scroll sideways themselves. */
 .panel { touch-action: pan-y pinch-zoom; }
 .panel .scroll, .panel .picker { touch-action: pan-x pan-y pinch-zoom; }
 @keyframes panel-in { from { opacity: 0; transform: translateX(var(--from, 0)); } }
-@media (prefers-reduced-motion: reduce) { .panel:not([hidden]) { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
 .when { display: flex; align-items: center; gap: 8px; }
 .when .label { flex: 1; }
 .steps { display: flex; gap: 6px; }
@@ -92,10 +96,16 @@ h2.total .amount { font-variant-numeric: tabular-nums; }
 .leave .moves { grid-column: 1 / -1; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .steps button { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--grid); background: var(--raised); color: var(--ink); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .steps button:disabled { opacity: .35; cursor: default; }
-.tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; }
-.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.tabs button { flex: none; font: inherit; font-size: 15px; font-weight: 600; padding: 10px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); cursor: pointer; transition: color .2s ease; }
+.tabs button[aria-selected="true"] { color: var(--ink); }
+/* One line under the tab shown, sliding to the tab picked. */
+.tabs::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: var(--tab-w, 0); transform: translateX(var(--tab-x, 0)); background: var(--ink); border-radius: 2px; }
+.tabs.moving::after { transition: transform .32s var(--ease), width .32s var(--ease); }
 .tabs button:focus-visible { outline: 2px solid var(--series-1); outline-offset: -2px; border-radius: 4px; }
 .tabs ~ .panel h2.group { display: none; }
+/* Whose payslips and which months head the month; the other tabs go
+   straight to their content. */
+[data-tab]:not([data-tab="month"]) .who .sub { display: none; }
 .tabs ~ .panel > section:first-of-type > h3 { margin-top: 24px; }
 .link { font: inherit; font-size: 15px; padding: 0; border: 0; background: none; color: var(--series-1); cursor: pointer; text-align: left; }
 .stat { margin: 0 0 8px; color: var(--ink-2); }
@@ -138,6 +148,19 @@ p { margin: 0 0 12px; }
 .part-plus { --c: var(--good); }
 .part > summary::after { content: "›"; color: var(--muted); transition: transform .15s; }
 .part[open] > summary::after { transform: rotate(90deg); }
+/* The steps of the waterfall grow from where each starts, one after the
+   other, when a month is shown. */
+.grow .part > summary .fill { transform-origin: left; animation: grow .5s var(--ease) both; animation-delay: calc(var(--step, 0) * 60ms); }
+@keyframes grow { from { transform: scaleX(0); } }
+/* Details open and close smoothly where the browser can size to content. */
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+  details::details-content { height: 0; overflow: clip; transition: height .28s var(--ease), content-visibility .28s allow-discrete; }
+  details[open]::details-content { height: auto; }
+}
+/* A press answers at once, as a key does. */
+button, .picker button { transition: transform .12s var(--ease), background-color .2s ease, color .2s ease, border-color .2s ease; }
+button:active:not(:disabled) { transform: scale(.96); }
 .part .body { padding: 0 0 12px 22px; }
 .part.gross > summary { font-weight: 600; }
 .part.gross .body, .extra .part .body { padding-left: 0; }
@@ -171,6 +194,11 @@ figure { margin: 0; position: relative; }
    still scroll the page. */
 .chart { touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .chart .col { transition: opacity .15s; }
+/* Columns rise and lines draw themselves the first time a chart is seen. */
+.chart .col.rise { transform-box: fill-box; transform-origin: bottom; animation: rise-col .55s var(--ease) both; }
+@keyframes rise-col { from { transform: scaleY(0); } }
+.chart .series-line.draw { animation: draw .9s var(--ease) both; }
+@keyframes draw { from { stroke-dashoffset: var(--len); } }
 .chart .col.dim { opacity: .35; }
 .chart .month.current { fill: var(--ink); font-weight: 600; }
 .minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 24px; margin-bottom: 12px; }
@@ -244,6 +272,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
 @media print {
   .tooltip, .picker, .hint, .tabs, .steps, .people { display: none; }
   .panel[hidden] { display: block !important; }
+  .who .sub { display: block !important; }
   .tabs ~ .panel h2.group { display: block; }
   .month[hidden] { display: block !important; break-before: page; }
 }
@@ -305,6 +334,46 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     var box = fig.getBoundingClientRect();
     place(tip, fig, ev.clientX - box.left, ev.clientY - box.top);
   }
+  // Motion, unless the reader asks for less, now: the setting can change
+  // while the report is open.
+  function calm() { return matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  // A month shown grows its waterfall, step by step.
+  function grow(section) {
+    if (calm() || !section) return;
+    section.querySelectorAll(".parts > .part").forEach(function (p, i) { p.style.setProperty("--step", i); });
+    section.classList.remove("grow");
+    void section.offsetWidth;
+    section.classList.add("grow");
+  }
+  // The net pay counts from the month left to the month shown, as a meter
+  // turns. The amounts are printed as 1.667,40 €.
+  function count(el, fromText) {
+    var cents = function (t) { var d = t.replace(/[^\d-]/g, ""); return d ? Number(d) : NaN; };
+    var to = el.textContent, a = cents(fromText), b = cents(to);
+    if (calm() || isNaN(a) || isNaN(b) || a === b || !/€$/.test(to.trim())) return;
+    var fmt = new Intl.NumberFormat("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var start = performance.now(), ms = 450;
+    (function step(now) {
+      var t = Math.min(1, (now - start) / ms), e = 1 - Math.pow(1 - t, 3);
+      el.textContent = t < 1 ? fmt.format(Math.round(a + (b - a) * e) / 100) + " €" : to;
+      if (t < 1) requestAnimationFrame(step);
+    })(start);
+  }
+  // Columns rise and lines draw themselves the first time a panel is seen.
+  function draw(panel) {
+    if (calm() || !panel || panel.dataset.drawn) return;
+    panel.dataset.drawn = "1";
+    panel.querySelectorAll("svg.chart").forEach(function (svg) {
+      svg.querySelectorAll(".col").forEach(function (g, i) { g.style.animationDelay = i * 35 + "ms"; g.classList.add("rise"); });
+      svg.querySelectorAll(".series-line").forEach(function (l) {
+        var len = Math.ceil(l.getTotalLength ? l.getTotalLength() : 0);
+        if (!len) return;
+        l.style.strokeDasharray = len;
+        l.style.setProperty("--len", len);
+        l.classList.add("draw");
+      });
+    });
+  }
   function init(signal) {
     document.querySelectorAll("svg.chart.line").forEach(function (svg) {
       var fig = svg.parentNode, tip = fig.querySelector(".tooltip");
@@ -364,8 +433,14 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     }
     picks.forEach(function (b) {
       b.addEventListener("click", function () {
+        var left = document.querySelector("section.month:not([hidden]) .net .big");
         picks.forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
         document.querySelectorAll("section.month").forEach(function (m) { m.hidden = m.dataset.month !== b.dataset.month; });
+        var shown = document.querySelector("section.month:not([hidden])");
+        if (shown && left && shown.querySelector(".net .big") !== left) {
+          count(shown.querySelector(".net .big"), left.textContent);
+          grow(shown);
+        }
         reveal(b);
       });
     });
@@ -397,12 +472,25 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     }
     // Inside the web app the tabs are the page's, which stay in view: the
     // report tells it which tab it shows, unless the page asked for it.
+    // The line under the tabs slides to the tab shown, after it first lands.
+    function line(t) {
+      if (!t || !t.offsetWidth) return;
+      t.parentNode.style.setProperty("--tab-x", t.offsetLeft + "px");
+      t.parentNode.style.setProperty("--tab-w", t.offsetWidth + "px");
+      requestAnimationFrame(function () { t.parentNode.classList.add("moving"); });
+    }
+    line(tabs.filter(function (t) { return t.getAttribute("aria-selected") === "true"; })[0]);
+    window.addEventListener("resize", function () {
+      line(tabs.filter(function (t) { return t.getAttribute("aria-selected") === "true"; })[0]);
+    }, { signal: signal });
     function showTab(name, fromPage) {
       if (names.indexOf(name) < 0) return;
       var from = names.indexOf(current()) < names.indexOf(name) ? "24px" : "-24px";
       if (embedded && !fromPage) window.parent.postMessage({ cedoloTab: name }, "*");
+      document.documentElement.dataset.tab = name;
       tabs.forEach(function (t) {
         var on = t.dataset.tab === name;
+        if (on) line(t);
         t.setAttribute("aria-selected", String(on));
         t.tabIndex = on ? 0 : -1;
         var panel = document.getElementById("panel-" + t.dataset.tab);
@@ -412,6 +500,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       // The row of months was hidden with its tab: bring the marked one back
       // into view.
       if (name === "month") toCurrent();
+      draw(document.getElementById("panel-" + name));
     }
     tabs.forEach(function (t, i) {
       t.addEventListener("click", function () { showTab(t.dataset.tab); });
@@ -439,7 +528,6 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
     // that can still scroll that way, such as the months, and on a chart
     // whose amounts are shown, where the finger moves along the months.
     if (tabs.length) {
-      var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
       var sx = null, sy = 0, st = 0, dx = 0, lock = null, from = null, moving = null;
       var scrolls = function (el, dir) {
         for (; el && el !== document.body; el = el.parentElement) {
@@ -456,7 +544,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
       };
       var slide = function (x, animate) {
         if (!moving) return;
-        moving.style.transition = animate && !still ? "transform .18s ease-out, opacity .18s ease-out" : "none";
+        moving.style.transition = animate && !calm() ? "transform .18s ease-out, opacity .18s ease-out" : "none";
         moving.style.transform = x ? "translateX(" + x + "px)" : "";
         moving.style.opacity = x ? String(Math.max(0.4, 1 - Math.abs(x) / innerWidth)) : "";
       };
@@ -493,7 +581,7 @@ footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
           gone.style.transition = gone.style.transform = gone.style.opacity = "";
           showTab(next);
           toTab(next);
-        }, still ? 0 : 120);
+        }, calm() ? 0 : 120);
       };
       document.addEventListener("touchend", end, { passive: true, signal: signal });
       document.addEventListener("touchcancel", function () { if (lock === "x") slide(0, true); sx = null; }, { passive: true, signal: signal });
