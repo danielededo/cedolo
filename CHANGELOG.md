@@ -27,6 +27,8 @@ How to use this file:
 
 ### Changed
 
+- A leave balance that did not move over the payslips says so, "unchanged
+  since September 2025", instead of drawing a flat line.
 - The web app leaves more of the report in view: one small row over it
   holds the files read, to open them, and "Add" and "Download", where two
   large buttons and a link at the foot used to be. Tabs other than the
