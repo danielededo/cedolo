@@ -308,6 +308,32 @@ test('shows the latest of many months first', async () => {
   await page.close();
 });
 
+test('an example shows a report, and your own payslips take its place', async () => {
+  const { page, seen } = await open({ viewport: { width: 390, height: 800 } });
+  await press(page, '#example');
+  await page.waitForSelector('#report:not([hidden]):not(.pending)', { timeout: 60000 });
+  assert.ok(!(await page.$eval('#example-note', (e) => e.hidden)), 'the example says it is one');
+  const frame = page.frames().find((f) => f !== page.mainFrame());
+  // A year of invented payslips of one person, every month checked.
+  assert.equal(await frame.$$eval('.picker button', (bs) => bs.length), 12);
+  assert.match(await frame.$eval('.who .person', (e) => e.textContent), /Anna Bianchi/);
+  assert.equal(await frame.$$eval('section.month .status.verified', (s) => s.length), 12);
+  // Its months differ, so there is something to compare and chart.
+  assert.notEqual(await frame.$eval('section.month:not([hidden]) .summary', (e) => e.textContent), '');
+  assert.equal(await page.$eval('#anon-ask', (b) => b.textContent), 'Files read: 12 ›');
+  // One's own payslip replaces the example, which is not added to.
+  const mine = synth('mine.pdf', '-month', '3');
+  await page.setInputFiles('#files', [mine]);
+  await page.waitForFunction(() => document.getElementById('anon-ask').textContent === 'Files read: 1 ›');
+  await page.waitForSelector('#report:not(.pending)');
+  assert.ok(await page.$eval('#example-note', (e) => e.hidden), 'no word of the example any more');
+  const own = page.frames().find((f) => f !== page.mainFrame());
+  assert.doesNotMatch(await own.$eval('main', (e) => e.textContent), /Anna Bianchi/);
+  assert.deepEqual(seen.errors, []);
+  onlyThisSite(seen);
+  await page.close();
+});
+
 test('motion lands on the amounts, and stays still when asked', async () => {
   // Two months with different overtime, so their net pay differs.
   const files = [1, 2].map((m) => synth(`motion-${m}.pdf`, '-month', String(m)));

@@ -14,6 +14,8 @@
 //	anonymize(layoutJSON, keepAmounts) -> {text, pdf} or {error}: an
 //	    anonymized copy of one document (ADR 0008), its text for review and
 //	    the rebuilt PDF as a Uint8Array
+//	example(year) -> {layouts}: the layouts of a year of invented payslips,
+//	    as JSON, for the page to read as files
 //	texts(lang) -> JSON object of the web app's texts
 //	version -> string
 package main
@@ -33,6 +35,7 @@ import (
 	"github.com/danielededo/cedolo/internal/layout"
 	"github.com/danielededo/cedolo/internal/payslip"
 	"github.com/danielededo/cedolo/internal/report"
+	"github.com/danielededo/cedolo/internal/synth"
 )
 
 // version is set by the web build (-ldflags "-X main.version=v1.2.3").
@@ -146,6 +149,29 @@ func anonymizeOne(_ js.Value, args []js.Value) (result any) {
 	return map[string]any{"text": strings.TrimSpace(strings.Join(text, "\n")), "pdf": data}
 }
 
+// example returns the layouts of a year of invented payslips, for the page
+// to read as if they were files: a report to look at before reading one's
+// own.
+func example(_ js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": fmt.Sprint("internal error: ", r)}
+		}
+	}()
+	if len(args) != 1 {
+		return map[string]any{"error": "example(year)"}
+	}
+	var docs []layout.Document
+	for _, p := range synth.Year(args[0].Int()) {
+		docs = append(docs, synth.Layout(p, synth.StyleClassic))
+	}
+	data, err := json.Marshal(docs)
+	if err != nil {
+		return failure(err)
+	}
+	return map[string]any{"layouts": string(data)}
+}
+
 // texts returns the web app's texts and the report texts it reuses.
 func texts(_ js.Value, args []js.Value) any {
 	l := i18n.IT
@@ -168,6 +194,7 @@ func main() {
 	js.Global().Set("cedolo", js.ValueOf(map[string]any{
 		"analyze":   js.FuncOf(analyze),
 		"anonymize": js.FuncOf(anonymizeOne),
+		"example":   js.FuncOf(example),
 		"texts":     js.FuncOf(texts),
 		"version":   version,
 	}))

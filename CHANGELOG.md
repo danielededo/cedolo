@@ -18,6 +18,13 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- "Try an example" on the web app's start page shows the report of a year
+  of invented payslips, made on the device: overtime that changes, a move
+  up a level, leave taken, the TFR set aside. It says it is an example,
+  and reading one's own payslips takes its place.
+
 ### Changed
 
 - The web app leaves more of the report in view: one small row over it
