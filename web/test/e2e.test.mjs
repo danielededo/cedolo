@@ -540,6 +540,35 @@ test('an unsupported browser gets a plain message', async () => {
   await page.close();
 });
 
+test('starts where the core is not served as application/wasm', async () => {
+  // As on a server someone set up, which sends any file as bytes.
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.route('**/cedolo.wasm', async (route) => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res, headers: { ...res.headers(), 'content-type': 'application/octet-stream' } });
+  });
+  await page.goto(base);
+  await page.waitForFunction(() => window.cedoloReady === true, null, { timeout: 30000 });
+  assert.ok(!(await page.$eval('#status', (s) => s.classList.contains('error'))), 'no word of an unsupported browser');
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('a slow start says it is slow, not that the browser is unsupported', async () => {
+  const page = await browser.newPage();
+  // The core never arrives; the clock runs fast to the first notice.
+  await page.route('**/cedolo.wasm', () => {});
+  await page.clock.install();
+  await page.goto(base);
+  await page.clock.runFor(16000);
+  const status = await page.$eval('#status', (s) => ({ text: s.textContent, error: s.classList.contains('error') }));
+  assert.match(status.text, /Caricamento lento/);
+  assert.equal(status.error, false);
+  await page.close();
+});
+
 test('file names and contents never run as code', async () => {
   const hostile = synth('<img src=x onerror=alert(1)>.pdf');
   const { page, seen } = await open();

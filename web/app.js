@@ -69,10 +69,23 @@ function status(text, error = false) {
   $('status').classList.toggle('error', error);
 }
 
+// instantiate compiles the core as it downloads, or, where the server does
+// not send it as application/wasm (a copy hosted by someone, perhaps),
+// once it is all there.
+async function instantiate(url, imports) {
+  try {
+    return await WebAssembly.instantiateStreaming(fetch(url), imports);
+  } catch (err) {
+    const res = await fetch(url);
+    if (!res.ok) throw err;
+    return WebAssembly.instantiate(await res.arrayBuffer(), imports);
+  }
+}
+
 async function start() {
   try {
     const go = new globalThis.Go();
-    const { instance } = await WebAssembly.instantiateStreaming(fetch(new URL('cedolo.wasm', import.meta.url)), go.importObject);
+    const { instance } = await instantiate(new URL('cedolo.wasm', import.meta.url), go.importObject);
     go.run(instance);
   } catch (err) {
     status(`${window.cedoloUnsupported} (${err.message})`, true);
@@ -509,12 +522,22 @@ function downloadAnon() {
   save(new Blob([state.anonPDF], { type: 'application/pdf' }), t('web.anon.file'));
 }
 
+// The address of the file saved last. It is let go at the next save, or a
+// minute on: a slow download, as on Safari for iOS, can still be reading it
+// a second after the click.
+let saved = '';
+
 function save(blob, name) {
+  if (saved) URL.revokeObjectURL(saved);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = saved = URL.createObjectURL(blob);
   a.download = name;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const url = saved;
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    if (saved === url) saved = '';
+  }, 60000);
 }
 
 function download() {
@@ -665,5 +688,7 @@ for (const b of document.querySelectorAll('[data-lang]')) {
   });
 }
 
-status('…');
+// The page starts with "…" in the status line: the app writes it no more,
+// since it runs late (after the PDF worker loads) and would cover boot.js's
+// notice of a slow start.
 start();

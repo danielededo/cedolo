@@ -43,7 +43,7 @@ test('every file but the page has an address of its own build', () => {
     if (/^(https:|data:)/.test(m[1])) continue;
     assert.ok(m[1].startsWith(assets + '/'), m[1]);
   }
-  assert.match(app, /fetch\(new URL\('cedolo\.wasm', import\.meta\.url\)\)/);
+  assert.match(app, /instantiate\(new URL\('cedolo\.wasm', import\.meta\.url\)/);
 });
 
 test('the page loads nothing from other sites', () => {

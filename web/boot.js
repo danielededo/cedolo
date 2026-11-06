@@ -4,6 +4,8 @@
 (function () {
   var message = 'cedolo non può funzionare in questo browser: aggiornalo o prova con un altro browser recente. / ' +
     'cedolo cannot run in this browser: update it or try another recent browser.';
+  var slow = 'Caricamento lento: la connessione sembra lenta, attendi ancora un po\'… / ' +
+    'Loading slowly: the connection seems slow, please wait a little longer…';
   window.cedoloUnsupported = message;
   function fail() {
     if (window.cedoloReady) return;
@@ -21,5 +23,13 @@
     // Errors in loading a script or module before the app is ready.
     if (!window.cedoloReady && (ev.target instanceof HTMLScriptElement || ev.message)) fail();
   }, true);
-  setTimeout(fail, 20000);
+  // A slow connection is not an old browser: after a while, say it is still
+  // loading, and give up only much later, when no error came either.
+  setTimeout(function () {
+    if (window.cedoloReady) return;
+    var status = document.getElementById('status');
+    // Only over the app's own "…", never over a message of its own.
+    if (status && (status.textContent === '' || status.textContent === '…')) status.textContent = slow;
+  }, 15000);
+  setTimeout(fail, 120000);
 })();
