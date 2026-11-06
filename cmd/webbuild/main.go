@@ -53,7 +53,11 @@ func build(out, version, url string) error {
 		return err
 	}
 
-	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w -X main.version="+version,
+	// The build must be the same wherever it runs, so it carries no paths
+	// (-trimpath) and no state of the git checkout (-buildvcs=false): files
+	// left untracked in it, as the release job leaves, would mark it
+	// modified and change the core's bytes.
+	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags", "-s -w -X main.version="+version,
 		"-o", filepath.Join(stage, "cedolo.wasm"), "./cmd/cedolo-wasm")
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr

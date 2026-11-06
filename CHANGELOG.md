@@ -18,6 +18,13 @@ How to use this file:
 
 ## [Unreleased]
 
+### Fixed
+
+- The web app's build no longer depends on the state of the git checkout
+  it is made in: the release's list of hashes of v0.12.0 was made in a
+  checkout with untracked files, so the site could not match it and was
+  not published.
+
 ## [0.12.0] - 2026-11-06
 
 ### Added
