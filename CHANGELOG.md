@@ -28,6 +28,16 @@ How to use this file:
 - Saved files (report, anonymized copy) no longer stay in the page's memory
   for as long as it is open: they are released a minute after the download.
 
+### Security
+
+- The web app online allows its own files only, not those of the other
+  projects that share its address on GitHub Pages: its Content-Security-
+  Policy names its build's folder instead of the whole site.
+- A downloaded report lets only its own script run, by its hash, instead of
+  any script written in the page.
+- The web app's core no longer hands the page a second copy of every
+  payslip read, which the page never used.
+
 ## [0.11.0] - 2026-11-05
 
 ### Added
