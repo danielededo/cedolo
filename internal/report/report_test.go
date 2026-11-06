@@ -121,6 +121,8 @@ func TestRender(t *testing.T) {
 		for _, want := range []string{
 			`<html lang="` + string(l) + `">`,
 			"Content-Security-Policy",
+			// The report's own script runs by its hash, nothing else inline.
+			"script-src " + html.EscapeString(ScriptHash()) + ";",
 			`<svg id="trend"`,
 			`<section class="month" data-month="3">`,
 			`data-month="0" hidden>`,

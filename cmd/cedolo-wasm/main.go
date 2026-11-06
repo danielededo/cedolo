@@ -6,7 +6,7 @@
 //
 // It defines a global object cedolo with:
 //
-//	analyze(layoutsJSON, lang) -> {payslips, perDocument, report} or {error};
+//	analyze(layoutsJSON, lang) -> {perDocument, report} or {error};
 //	    perDocument has, for each document, {read, repeated, periods,
 //	    latest, people} or {error}: periods name the payslips read, such as
 //	    "marzo 2026", latest is the latest of them as year*100+month for
@@ -14,6 +14,8 @@
 //	anonymize(layoutJSON, keepAmounts) -> {text, pdf} or {error}: an
 //	    anonymized copy of one document (ADR 0008), its text for review and
 //	    the rebuilt PDF as a Uint8Array
+//	payslips(layoutsJSON) -> {payslips}: the payslips read, as JSON, for
+//	    the tests that compare them with the CLI's
 //	example(year) -> {layouts}: the layouts of a year of invented payslips,
 //	    as JSON, for the page to read as files
 //	texts(lang) -> JSON object of the web app's texts
@@ -96,11 +98,39 @@ func analyze(_ js.Value, args []js.Value) (result any) {
 			return failure(err)
 		}
 	}
+	return map[string]any{"perDocument": perDoc, "report": page.String()}
+}
+
+// payslips returns the payslips of every document as JSON, for the tests
+// that compare them with the CLI's. The page never asks for them: they
+// would be one more copy of the payslips' data in memory.
+func payslips(_ js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": fmt.Sprint("internal error: ", r)}
+		}
+	}()
+	if len(args) != 1 {
+		return map[string]any{"error": "payslips(layoutsJSON)"}
+	}
+	var docs []layout.Document
+	if err := json.Unmarshal([]byte(args[0].String()), &docs); err != nil {
+		return failure(err)
+	}
+	var slips []payslip.Payslip
+	for _, d := range docs {
+		found, err := extractOne(d)
+		if err != nil {
+			return failure(err)
+		}
+		slips = append(slips, found...)
+	}
+	slips, _ = insights.Dedupe(slips)
 	data, err := json.Marshal(slips)
 	if err != nil {
 		return failure(err)
 	}
-	return map[string]any{"payslips": string(data), "perDocument": perDoc, "report": page.String()}
+	return map[string]any{"payslips": string(data)}
 }
 
 // extractOne reads the payslips of one document, turning a panic into an
@@ -195,6 +225,7 @@ func main() {
 		"analyze":   js.FuncOf(analyze),
 		"anonymize": js.FuncOf(anonymizeOne),
 		"example":   js.FuncOf(example),
+		"payslips":  js.FuncOf(payslips),
 		"texts":     js.FuncOf(texts),
 		"version":   version,
 	}))
