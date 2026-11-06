@@ -37,8 +37,9 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
   `web/test/agreement.test.mjs` checks that it reads every synthetic style as
   the CLI does; run it with `npm test` in `web/` after `go run ./cmd/webbuild`.
   Its security limits are in `docs/design/web-security.md` and guarded by
-  `web/test/security.test.mjs`: never add a worker, a remote source, storage
-  or a relaxation of the policy without updating both.
+  `web/test/security.test.mjs`: never add a worker (pdf.js's, made from a
+  `blob:` URL so it keeps the policy, is the only one), a remote source,
+  storage or a relaxation of the policy without updating both.
   `web/test/e2e.test.mjs` drives the built app in Chromium (`npm run
   test:e2e`; `CHROMIUM_PATH` points it to an installed browser): every
   style and rotation, damaged, oversized, repeated and protected files, the

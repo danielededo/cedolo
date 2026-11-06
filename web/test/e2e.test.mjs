@@ -96,7 +96,9 @@ async function press(page, selector) {
 }
 
 function onlyThisSite(seen) {
-  const elsewhere = seen.requests.filter((u) => !u.startsWith(base) && !u.startsWith('data:') && !u.startsWith('about:'));
+  // blob: URLs of this origin are pdf.js's worker and its probe, in memory.
+  const own = `blob:${new URL(base).origin}/`;
+  const elsewhere = seen.requests.filter((u) => !u.startsWith(base) && !u.startsWith(own) && !u.startsWith('data:') && !u.startsWith('about:'));
   assert.deepEqual(elsewhere, []);
 }
 
@@ -111,6 +113,8 @@ test('reads payslips in every style and rotation and shows the report', async ()
     'warn: — 1 payslip(s) read, 1 already read in another file and ignored',
     'ok: — 1 payslip(s) read',
   ]);
+  // pdf.js read them in its worker, made from memory, not in the page.
+  assert.deepEqual(page.workers().map((w) => w.url().split(':')[0]), ['blob']);
   const frame = page.frames().find((f) => f !== page.mainFrame());
   await frame.waitForSelector('section.month:not([hidden]) .parts');
   // The frame grows to its content: shorter on this wide window, where
@@ -180,6 +184,15 @@ test('handles damaged, oversized, repeated and protected files', async () => {
 
 // Safari cannot iterate a ReadableStream with "for await", which pdf.js
 // uses; compat.js fills it in. Removing it reproduces Safari in any engine.
+test('reads payslips in the page where workers are not available', async () => {
+  const { page, seen } = await open({ before: () => { delete window.Worker; } });
+  await page.setInputFiles('#files', [synth('classic.pdf')]);
+  assert.deepEqual(await statuses(page), ['ok: — 1 payslip(s) read']);
+  assert.deepEqual(page.workers(), []);
+  assert.deepEqual(seen.errors, []);
+  await page.close();
+});
+
 test('works where streams cannot be iterated, as in Safari', async () => {
   const { page, seen } = await open({ before: () => {
     delete ReadableStream.prototype[Symbol.asyncIterator];
@@ -589,11 +602,19 @@ test('nothing reaches another site and nothing is stored', async () => {
     return {
       fetch: await blocked(() => fetch(other)),
       worker: await blocked(() => new Promise((ok, ko) => { const w = new Worker('pdfjs/pdf.worker.min.mjs', { type: 'module' }); w.onerror = ko; setTimeout(ok, 500); })),
+      // A worker from memory may run, as pdf.js's does, but under the
+      // page's policy: it reaches no other site.
+      fromBlob: await new Promise((ok) => {
+        const code = `fetch(${JSON.stringify(other)}).then(() => postMessage('reached'), () => postMessage('blocked'))`;
+        const w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
+        w.onmessage = (e) => ok(e.data);
+        w.onerror = () => ok('error');
+      }),
       eval: await blocked(() => eval('1')),
       storage: localStorage.length + sessionStorage.length + (await indexedDB.databases()).length + (await caches.keys()).length + document.cookie.length,
     };
   }, other);
-  assert.deepEqual(result, { fetch: true, worker: true, eval: true, storage: 0 });
+  assert.deepEqual(result, { fetch: true, worker: true, fromBlob: 'blocked', eval: true, storage: 0 });
   const frame = page.frames().find((f) => f !== page.mainFrame());
   const fromFrame = await frame.evaluate(async (other) => {
     const blocked = async (fn) => { try { await fn(); return false; } catch { return true; } };
