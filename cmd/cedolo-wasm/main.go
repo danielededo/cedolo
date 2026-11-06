@@ -6,11 +6,15 @@
 //
 // It defines a global object cedolo with:
 //
-//	analyze(layoutsJSON, lang) -> {perDocument, report} or {error};
-//	    perDocument has, for each document, {read, repeated, periods,
-//	    latest, people} or {error}: periods name the payslips read, such as
+//	read(layoutJSON) -> {doc} or {error}: reads the payslips of one
+//	    document once and keeps them, under the number doc, for analyze
+//	analyze(docsJSON, lang) -> {perDocument, report} or {error}: the
+//	    report of the documents read under those numbers, in that order;
+//	    perDocument has, for each, {read, repeated, periods, latest,
+//	    people} or {error}: periods name the payslips read, such as
 //	    "marzo 2026", latest is the latest of them as year*100+month for
 //	    sorting, and people names whose payslips they are
+//	forget(docsJSON) -> {}: drops what read kept for those documents
 //	anonymize(layoutJSON, keepAmounts) -> {text, pdf} or {error}: an
 //	    anonymized copy of one document (ADR 0008), its text for review and
 //	    the rebuilt PDF as a Uint8Array
@@ -45,10 +49,20 @@ var version = "dev"
 
 func failure(err error) any { return map[string]any{"error": err.Error()} }
 
-// analyze extracts the payslips of every document and renders the report.
-// It also returns how many payslips each document held, so the page can
-// say which file held none.
-func analyze(_ js.Value, args []js.Value) (result any) {
+// readDocs holds the payslips of each document read, by number, so that adding
+// a file or changing the language reads no document again.
+var (
+	readDocs = map[int]docResult{}
+	nextDoc  = 1
+)
+
+type docResult struct {
+	slips []payslip.Payslip
+	err   error
+}
+
+// readDoc extracts the payslips of one document and keeps them.
+func readDoc(_ js.Value, args []js.Value) (result any) {
 	// A panic would stop the Go program and leave the page without a core;
 	// report it as an error instead.
 	defer func() {
@@ -56,41 +70,85 @@ func analyze(_ js.Value, args []js.Value) (result any) {
 			result = map[string]any{"error": fmt.Sprint("internal error: ", r)}
 		}
 	}()
-	if len(args) != 2 {
-		return map[string]any{"error": "analyze(layoutsJSON, lang)"}
+	if len(args) != 1 {
+		return map[string]any{"error": "read(layoutJSON)"}
 	}
-	var docs []layout.Document
-	if err := json.Unmarshal([]byte(args[0].String()), &docs); err != nil {
+	var d layout.Document
+	if err := json.Unmarshal([]byte(args[0].String()), &d); err != nil {
+		return failure(err)
+	}
+	// A document that trips the extractor is kept with its error, so the
+	// others are still read.
+	slips, err := extractOne(d)
+	id := nextDoc
+	nextDoc++
+	readDocs[id] = docResult{slips, err}
+	return map[string]any{"doc": id}
+}
+
+// forget drops the payslips kept for some documents.
+func forget(_ js.Value, args []js.Value) any {
+	if len(args) != 1 {
+		return map[string]any{"error": "forget(docsJSON)"}
+	}
+	var ids []int
+	if err := json.Unmarshal([]byte(args[0].String()), &ids); err != nil {
+		return failure(err)
+	}
+	for _, id := range ids {
+		delete(readDocs, id)
+	}
+	return map[string]any{}
+}
+
+// analyze renders the report of documents already read. It also returns
+// how many payslips each document held, so the page can say which file
+// held none.
+func analyze(_ js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": fmt.Sprint("internal error: ", r)}
+		}
+	}()
+	if len(args) != 2 {
+		return map[string]any{"error": "analyze(docsJSON, lang)"}
+	}
+	var ids []int
+	if err := json.Unmarshal([]byte(args[0].String()), &ids); err != nil {
 		return failure(err)
 	}
 	l, err := i18n.Parse(args[1].String())
 	if err != nil {
 		return failure(err)
 	}
-	// Each document is read on its own, so one that trips the extractor is
-	// reported and the others are kept. Payslips repeating an earlier one
-	// (the same file twice) are counted once.
-	perDoc := make([]any, len(docs))
+	// Payslips repeating one of an earlier document (the same file twice)
+	// are counted once.
+	perDoc := make([]any, len(ids))
 	var slips []payslip.Payslip
-	for i, d := range docs {
-		found, err := extractOne(d)
-		if err != nil {
-			perDoc[i] = map[string]any{"error": err.Error()}
+	var seen insights.Deduper
+	for i, id := range ids {
+		r, ok := readDocs[id]
+		if !ok {
+			perDoc[i] = map[string]any{"error": fmt.Sprintf("document %d was not read", id)}
 			continue
 		}
-		kept, dropped := insights.Dedupe(append(append([]payslip.Payslip(nil), slips...), found...))
-		periods := make([]any, len(found))
+		if r.err != nil {
+			perDoc[i] = map[string]any{"error": r.err.Error()}
+			continue
+		}
+		kept, dropped := seen.Keep(r.slips)
+		periods := make([]any, len(r.slips))
 		var latest int
 		var people []any
-		for k, p := range found {
+		for k, p := range r.slips {
 			periods[k] = insights.Label(l, p)
 			latest = max(latest, p.Year*100+p.Month)
 			if name := report.PersonLabel(l, p.Person); !slices.Contains(people, any(name)) {
 				people = append(people, name)
 			}
 		}
-		perDoc[i] = map[string]any{"read": len(found), "repeated": dropped, "periods": periods, "latest": latest, "people": people}
-		slips = kept
+		perDoc[i] = map[string]any{"read": len(r.slips), "repeated": dropped, "periods": periods, "latest": latest, "people": people}
+		slips = append(slips, kept...)
 	}
 	var page bytes.Buffer
 	if len(slips) > 0 {
@@ -223,6 +281,8 @@ func texts(_ js.Value, args []js.Value) any {
 func main() {
 	js.Global().Set("cedolo", js.ValueOf(map[string]any{
 		"analyze":   js.FuncOf(analyze),
+		"forget":    js.FuncOf(forget),
+		"read":      js.FuncOf(readDoc),
 		"anonymize": js.FuncOf(anonymizeOne),
 		"example":   js.FuncOf(example),
 		"payslips":  js.FuncOf(payslips),

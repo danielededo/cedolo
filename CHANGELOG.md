@@ -26,6 +26,9 @@ How to use this file:
 
 ### Changed
 
+- The web app reads each file's payslips once: adding files or changing the
+  language rebuilds the report from what was already read, several times
+  faster with many files.
 - The web app reads PDFs in the background, so the page stays responsive
   while it reads a long or complex file. Where the browser could not keep the app's
   security policy in the background, it reads them in the page as before.
