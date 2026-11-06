@@ -1,7 +1,8 @@
 name: Release
 
 # Pushing a tag vX.Y.Z on main builds cedolo for Linux, macOS and Windows and
-# publishes a GitHub Release with the binaries and the changelog section.
+# publishes a GitHub Release with the binaries, the web app, the hashes of
+# the web app as published online, and the changelog section.
 # Running the workflow by hand on main with a version does the same, creating
 # the tag on the current commit of main first.
 
@@ -65,6 +66,11 @@ jobs:
           (cd web && npm ci --omit=optional --ignore-scripts)
           go run ./cmd/webbuild -o "cedolo-web_${TAG}" -version "$TAG"
           zip -qr "dist/cedolo-web_${TAG}.zip" "cedolo-web_${TAG}"
+          # The site as GitHub Pages builds it, for its files' hashes: anyone
+          # can compare them with what the site serves (cmd/webverify), and
+          # the Pages workflow does before it publishes.
+          go run ./cmd/webbuild -o site -version "$TAG" -url "https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+          go run ./cmd/webverify -list site > "dist/cedolo-web_${TAG}.sha256"
           for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
             os="${target%/*}" arch="${target#*/}"
             name="cedolo_${TAG}_${os}_${arch}"

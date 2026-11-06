@@ -18,6 +18,12 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- Each release lists the SHA-256 of every file of the web app as published
+  online, and `go run ./cmd/webverify -tag <version>` compares them with
+  what the site serves. The site is published only if its build matches.
+
 ### Changed
 
 - The web app reads PDFs in the background, so the page stays responsive

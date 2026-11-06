@@ -68,7 +68,12 @@ These are not covered, and should not be claimed:
   or the build could serve different code. Top-level navigation, popups and
   WebRTC are not governed by Content-Security-Policy, so code running in the
   page could still send data out. The defence is review of what is
-  published: open source, reproducible build, pinned dependencies.
+  published: open source, reproducible build, pinned dependencies. Each
+  release lists the SHA-256 of every file of the site, built as Pages
+  builds it (`cedolo-web_<version>.sha256`); the Pages workflow publishes
+  only a build that matches it, and `go run ./cmd/webverify -tag <version>`
+  lets anyone compare it with what the site serves. That shows the site is
+  the release's, not that the release's code is harmless.
 - **The shared origin.** Narrowing the policy keeps the page from loading
   other projects' files, but not the other way round: a page of another
   project on the same site is the same origin, and could open cedolo in a
