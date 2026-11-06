@@ -18,6 +18,16 @@ How to use this file:
 
 ## [Unreleased]
 
+### Fixed
+
+- The web app starts where the server does not send its core as WebAssembly
+  (application/wasm), as some hosts of a copy do.
+- On a slow connection the web app says it is still loading, and gives up
+  only after two minutes instead of twenty seconds, when it used to call the
+  browser unsupported.
+- Saved files (report, anonymized copy) no longer keep their contents in
+  memory after the download starts.
+
 ## [0.11.0] - 2026-11-05
 
 ### Added
