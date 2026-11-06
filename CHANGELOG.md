@@ -25,8 +25,8 @@ How to use this file:
 - On a slow connection the web app says it is still loading, and gives up
   only after two minutes instead of twenty seconds, when it used to call the
   browser unsupported.
-- Saved files (report, anonymized copy) no longer keep their contents in
-  memory after the download starts.
+- Saved files (report, anonymized copy) no longer stay in the page's memory
+  for as long as it is open: they are released a minute after the download.
 
 ## [0.11.0] - 2026-11-05
 
