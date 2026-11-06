@@ -81,3 +81,5 @@ testdata/private/
 
 ### Web app
 web/node_modules/
+# Playwright's results and traces.
+web/test-results/

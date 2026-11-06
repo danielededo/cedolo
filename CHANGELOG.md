@@ -30,6 +30,9 @@ How to use this file:
 
 ### Security
 
+- cedolo is built with the latest Go 1.26 release (1.26.10) instead of
+  1.26.0, with its fixes to the standard library, for the CLI and the web
+  app's core alike. Every change is now checked for known vulnerabilities.
 - The web app online allows its own files only, not those of the other
   projects that share its address on GitHub Pages: its Content-Security-
   Policy names its build's folder instead of the whole site.

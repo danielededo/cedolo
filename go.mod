@@ -2,6 +2,8 @@ module github.com/danielededo/cedolo
 
 go 1.26.0
 
+toolchain go1.26.10
+
 require (
 	github.com/klippa-app/go-pdfium v1.21.4
 	github.com/tetratelabs/wazero v1.12.0
