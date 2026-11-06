@@ -18,6 +18,12 @@ How to use this file:
 
 ## [Unreleased]
 
+### Changed
+
+- The web app reads PDFs in the background, so the page stays responsive
+  while it reads a long or complex file. Where the browser could not keep the app's
+  security policy in the background, it reads them in the page as before.
+
 ### Fixed
 
 - The web app starts where the server does not send its core as WebAssembly

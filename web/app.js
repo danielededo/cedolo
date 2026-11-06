@@ -5,12 +5,43 @@ import './compat.js';
 import * as pdfjs from './pdfjs/pdf.min.mjs';
 import { layoutOf, hasText } from './layout.js';
 
-// pdf.js parses PDFs in the page itself, not in a Web Worker: a worker
-// loaded from a file does not inherit the page's Content-Security-Policy
-// (it is set by a <meta> tag, as static hosting allows), so a flaw in the
-// parser exploited by a crafted PDF could reach the network from there.
-// worker-src 'none' in the policy keeps it that way.
-globalThis.pdfjsWorker = await import('./pdfjs/pdf.worker.min.mjs');
+// pdf.js parses PDFs in a Web Worker, so that a long or hostile file does
+// not freeze the page. The worker is made from a blob: URL, which keeps the
+// page's Content-Security-Policy (a worker loaded from a file would not, as
+// the policy is set by a <meta> tag), and worker-src allows blob: only. A
+// probe checks the browser applies the policy inside such a worker: where it
+// does not, or where workers fail, pdf.js parses in the page as before.
+const pdfReady = (async () => {
+  const worker = await pdfWorker();
+  if (worker) pdfjs.GlobalWorkerOptions.workerPort = worker;
+  else globalThis.pdfjsWorker = await import('./pdfjs/pdf.worker.min.mjs');
+})();
+
+// blobWorker starts a worker from code held in memory.
+function blobWorker(code, options) {
+  return new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })), options);
+}
+
+// pdfWorker returns pdf.js's worker, or null where it would not run under
+// the page's policy. The probe fetches a data: URL, which the policy
+// refuses (connect-src) and which never reaches the network either way.
+async function pdfWorker() {
+  try {
+    const probe = blobWorker("fetch('data:,1').then(() => postMessage('open'), () => postMessage('closed'));");
+    const answer = await new Promise((ok) => {
+      probe.onmessage = (e) => ok(e.data);
+      probe.onerror = () => ok('error');
+      setTimeout(() => ok('silent'), 3000);
+    });
+    probe.terminate();
+    if (answer !== 'closed') return null;
+    const res = await fetch(new URL('pdfjs/pdf.worker.min.mjs', import.meta.url));
+    if (!res.ok) return null;
+    return blobWorker(await res.text(), { type: 'module' });
+  } catch {
+    return null;
+  }
+}
 
 // Motion is skipped for people who asked their system to reduce it.
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -133,6 +164,7 @@ async function readFile(file) {
     entry.refused = ['web.file.too_big', MAX_BYTES / 1024 / 1024];
     return entry;
   }
+  await pdfReady;
   const task = pdfjs.getDocument({
     data: new Uint8Array(await file.arrayBuffer()),
     // Only text is read: no fonts handed to the browser, no system fonts,
@@ -689,6 +721,5 @@ for (const b of document.querySelectorAll('[data-lang]')) {
 }
 
 // The page starts with "…" in the status line: the app writes it no more,
-// since it runs late (after the PDF worker loads) and would cover boot.js's
-// notice of a slow start.
+// since it may run late and would cover boot.js's notice of a slow start.
 start();
