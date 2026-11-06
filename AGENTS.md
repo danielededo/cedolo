@@ -31,6 +31,9 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
 - `cmd/cedolo-wasm`: the core as WebAssembly for the web app.
   `cmd/webbuild`: assembles the web app into static files: `index.html` and
   everything else under `a/<content hash>/`, so builds never mix in a cache.
+  The build is reproducible: each release lists its files' hashes, and
+  `cmd/webverify` compares a site or a folder with them; keep anything that
+  varies between builds (times, paths, randomness) out of it.
 - `web/`: the web app. pdf.js reads the PDFs (`layout.js`), the core analyzes
   them; its texts come from `internal/i18n` (`web.*` keys). The page's
   Content-Security-Policy allows no request outside the site.

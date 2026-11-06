@@ -56,6 +56,20 @@ jobs:
           # project there (docs/design/web-security.md).
           go run ./cmd/webbuild -o dist/web -version "$TAG" -url "https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
 
+      # The build is reproducible: it must be the one the release lists, or
+      # nothing is published. Releases before v0.12.0 list nothing.
+      - name: Check the build is the release's
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          list="cedolo-web_${TAG}.sha256"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qxF "$list"; then
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$list" --output web.sha256
+            go run ./cmd/webverify -sums web.sha256 -site dist/web
+          else
+            echo "::warning::$TAG lists no hashes of the site"
+          fi
+
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist/web
