@@ -218,9 +218,18 @@ async function readFile(file) {
   return entry;
 }
 
+// analyze builds the report of the files read. The core reads each file's
+// payslips once and keeps them (doc), so adding a file or changing the
+// language reads only what is new.
 function analyze() {
   const readable = state.files.filter((f) => f.layout && hasText(f.layout));
-  const result = globalThis.cedolo.analyze(JSON.stringify(readable.map((f) => f.layout)), state.lang);
+  for (const f of readable) {
+    if (f.doc) continue;
+    const r = globalThis.cedolo.read(JSON.stringify(f.layout));
+    if (r.error) throw new Error(r.error);
+    f.doc = r.doc;
+  }
+  const result = globalThis.cedolo.analyze(JSON.stringify(readable.map((f) => f.doc)), state.lang);
   if (result.error) throw new Error(result.error);
   readable.forEach((f, i) => {
     const r = result.perDocument[i];
@@ -232,6 +241,14 @@ function analyze() {
     f.latest = Number.isFinite(r.latest) ? r.latest : 0;
   });
   state.report = result.report;
+}
+
+// replaceFiles puts files in the place of those read, and has the core drop
+// what it kept of the old ones.
+function replaceFiles(files) {
+  const docs = state.files.map((f) => f.doc).filter(Boolean);
+  if (docs.length) globalThis.cedolo.forget(JSON.stringify(docs));
+  state.files = files;
 }
 
 function describe(f) {
@@ -426,7 +443,7 @@ async function handle(fileList) {
   if (files.length === 0) return;
   // One's own payslips take the place of the example's.
   if (state.example) {
-    state.files = [];
+    replaceFiles([]);
     state.example = false;
     state.allRead = false;
   }
@@ -486,7 +503,7 @@ async function showExample() {
     status(t('web.failed', result.error), true);
     return;
   }
-  state.files = JSON.parse(result.layouts).map((layout, i) => ({ name: t('web.example.file', i + 1), layout }));
+  replaceFiles(JSON.parse(result.layouts).map((layout, i) => ({ name: t('web.example.file', i + 1), layout })));
   state.example = true;
   state.allRead = false;
   try {

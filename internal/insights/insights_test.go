@@ -146,6 +146,14 @@ func TestDedupe(t *testing.T) {
 	if len(slips) != 3 {
 		t.Error("Dedupe changed its input")
 	}
+
+	// Across calls, as file after file: the same as all at once.
+	var d Deduper
+	first, n1 := d.Keep(slips[:2])
+	second, n2 := d.Keep(slips[2:])
+	if len(first) != 2 || n1 != 0 || len(second) != 0 || n2 != 1 {
+		t.Errorf("Keep = %d then %d payslips, %d then %d dropped", len(first), len(second), n1, n2)
+	}
 }
 
 func TestAdditionalMonthWithoutMonth(t *testing.T) {
