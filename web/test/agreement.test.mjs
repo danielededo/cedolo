@@ -60,7 +60,11 @@ for (const { style, rotate } of cases) {
     const got = core.analyze(JSON.stringify([layout]), 'en');
     assert.equal(got.error, undefined);
     assert.deepEqual(got.perDocument, [{ read: want.length, repeated: 0, periods: ['October 2026'], latest: 202610, people: ['Without fiscal code'] }]);
-    assert.deepEqual(JSON.parse(got.payslips).map(summary), want.map(summary));
+    // The page gets no payslips from analyze, only the report.
+    assert.equal(got.payslips, undefined);
+    const read = core.payslips(JSON.stringify([layout]));
+    assert.equal(read.error, undefined);
+    assert.deepEqual(JSON.parse(read.payslips).map(summary), want.map(summary));
     assert.match(got.report, /<section class="month"/);
   });
 }

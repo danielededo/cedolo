@@ -52,7 +52,9 @@ jobs:
       - name: Build
         run: |
           (cd web && npm ci --omit=optional --ignore-scripts)
-          go run ./cmd/webbuild -o dist/web -version "$TAG"
+          # The page allows its own build folder on the site, not every
+          # project there (docs/design/web-security.md).
+          go run ./cmd/webbuild -o dist/web -version "$TAG" -url "https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
