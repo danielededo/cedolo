@@ -57,10 +57,13 @@ Every amount printed on the payslip's pages, with its place, except:
 - the amounts of the item table's rows;
 - the amounts that already are the source of a value read (totals, bases,
   roundings and the other boxes);
-- the leave rows, which count hours or days.
+- amounts that are zero or negative.
 
-Year-to-date rows are not excluded: in January they repeat the month's
-values, which the ambiguity rule handles.
+Leave rows and year-to-date rows are not excluded. Leave values carry no
+place to exclude them by, and a count of hours matching a relation to the
+cent is unlikely; when one does, the ambiguity rule leaves the value unknown
+rather than wrong. Year-to-date rows repeat the month's values in January,
+which the same rule handles.
 
 ## Assignment
 
