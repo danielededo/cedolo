@@ -71,14 +71,16 @@ var blindFloor = map[string][2]int{
 	"gross":      {90, 104},
 	"deductions": {90, 104},
 	"net":        {90, 104},
-	"INPS base":  {75, 104},
-	"IRPEF base": {75, 104},
-	"TFR":        {75, 104},
-	"all totals": {45, 104},
+	// The taxable bases and the TFR read by their arithmetic (second step).
+	"INPS base":  {90, 104},
+	"IRPEF base": {90, 104},
+	"TFR":        {90, 104},
+	"all totals": {90, 104},
 	"all items":  {90, 0},
 	// With every label hidden, the gross pay, the deductions and the net pay
-	// are read by their arithmetic; the taxable bases, the TFR and the items
-	// are the next steps of ADR 0011.
+	// are read by their arithmetic; the taxable bases and the TFR need the
+	// INPS contribution, which is an item, and the items are the third step
+	// of ADR 0011.
 	"totals and items": {45, 0},
 }
 

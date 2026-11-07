@@ -151,6 +151,7 @@ func extractPayslip(pages []layout.Page, year, month int) payslip.Payslip {
 	p.RoundingPrevious = find(roundingPreviousLabels)
 	p.RoundingCurrent = find(roundingCurrentLabels)
 	totalsByArithmetic(&p)
+	basesByArithmetic(&p, all)
 
 	for _, pg := range all {
 		for _, lv := range findLeave(pg) {

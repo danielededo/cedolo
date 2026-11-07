@@ -790,3 +790,28 @@ func TestYearEndAdjustmentParts(t *testing.T) {
 		t.Errorf("parts = %v", parts)
 	}
 }
+
+// TestIRPEFBaseLorda covers an IRPEF base labelled "imponibile IRPEF lorda",
+// beside the gross IRPEF withheld on the same line.
+func TestIRPEFBaseLorda(t *testing.T) {
+	pg := page(
+		[]string{"40:ACME SINTETICA SPA", "380:Mese retribuito:"},
+		[]string{"380:03/2026"},
+		[]string{"40:Descrizione", "390:Competenze", "480:Trattenute"},
+		[]string{"40:Minimo contrattuale", "450>2.194,50"},
+		[]string{"40:Contributo IVS a carico dipendente", "540>201,67"},
+		[]string{"40:Irpef", "540>295,43"},
+		[]string{},
+		[]string{"40:Totale competenze", "450>2.194,50"},
+		[]string{"40:Totale trattenute", "540>497,10"},
+		[]string{"40:Netto a pagare", "540>1.697,40"},
+		[]string{"40:IMPONIBILE IRPEF LORDA", "160:1.992,83", "220:TRATTENUTA IRPEF LORDA", "340:400,00"},
+	)
+	got := Document(layout.Document{Pages: []layout.Page{pg}})
+	if len(got) != 1 {
+		t.Fatalf("got %d payslips", len(got))
+	}
+	if b := got[0].IRPEFBase; !b.Found() || b.Cents != 199283 {
+		t.Errorf("IRPEF base = %d (%s), want 1.992,83", b.Cents, b.Status)
+	}
+}

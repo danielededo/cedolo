@@ -179,25 +179,11 @@ func validate(p *payslip.Payslip) {
 	// INPS contribution against its taxable base and the known rates. The
 	// contribution is an item, a summary box, or failing both the total of
 	// social contributions.
-	inps, n := p.SumKey("deductions.inps")
-	switch {
-	case n > 0:
-	case p.INPS.Found():
-		inps, n = p.INPS.Cents, 1
-	case p.SocialContributions.Found():
-		inps, n = p.SocialContributions.Cents, 1
-	}
-	if n > 0 && p.INPSBase.Found() {
-		ok := false
-		for _, rate := range inpsRates {
-			if abs(inps-roundDiv(p.INPSBase.Cents*rate, 10000)) <= 1 {
-				ok = true
-				p.Checks = append(p.Checks, payslip.Check{Name: "inps_rate", OK: true, Advisory: true,
-					Detail: fmt.Sprintf("INPS %s is %s%% of the taxable base %s", money.Format(inps), money.Format(rate), money.Format(p.INPSBase.Cents))})
-				break
-			}
-		}
-		if ok {
+	inps, hasINPS := inpsContribution(p)
+	if hasINPS && p.INPSBase.Found() {
+		if rate, ok := rateHolds(inps, p.INPSBase.Cents); ok {
+			p.Checks = append(p.Checks, payslip.Check{Name: "inps_rate", OK: true, Advisory: true,
+				Detail: fmt.Sprintf("INPS %s is %s%% of the taxable base %s", money.Format(inps), money.Format(rate), money.Format(p.INPSBase.Cents))})
 			mark(&p.INPSBase, true)
 		} else {
 			p.Checks = append(p.Checks, payslip.Check{Name: "inps_rate", OK: false, Advisory: true,
@@ -206,7 +192,7 @@ func validate(p *payslip.Payslip) {
 	}
 
 	// IRPEF taxable base is usually the INPS base minus the INPS contribution.
-	if n > 0 && p.INPSBase.Found() && p.IRPEFBase.Found() {
+	if hasINPS && p.INPSBase.Found() && p.IRPEFBase.Found() {
 		expected := p.INPSBase.Cents - inps
 		ok := p.IRPEFBase.Cents == expected
 		detail := fmt.Sprintf("INPS base minus INPS contribution is %s, printed IRPEF base is %s", money.Format(expected), money.Format(p.IRPEFBase.Cents))
@@ -233,14 +219,13 @@ func validate(p *payslip.Payslip) {
 			b := base.Cents
 			gross, net := roundDiv(b*2, 27), roundDiv(b*373, 5400)
 			var detail string
-			ok := true
+			isNet, ok := tfrHolds(p.TFR.Cents, b)
 			switch {
-			case abs(p.TFR.Cents-gross) <= 2:
+			case ok && !isNet:
 				detail = fmt.Sprintf("TFR %s is the base %s divided by 13.5", money.Format(p.TFR.Cents), money.Format(b))
-			case abs(p.TFR.Cents-net) <= 2:
+			case ok:
 				detail = fmt.Sprintf("TFR %s is the base %s divided by 13.5, net of the 0.5%% contribution", money.Format(p.TFR.Cents), money.Format(b))
 			default:
-				ok = false
 				detail = fmt.Sprintf("TFR %s, the base %s divided by 13.5 is %s (%s net of the 0.5%% contribution); a difference is normal when the pay used for TFR differs from this base",
 					money.Format(p.TFR.Cents), money.Format(b), money.Format(gross), money.Format(net))
 			}
@@ -260,6 +245,45 @@ func validate(p *payslip.Payslip) {
 			a.Status = payslip.Missing
 		}
 	}
+}
+
+// inpsContribution returns the employee's INPS contribution: the INPS items,
+// or failing them the INPS box, or failing both the total of social
+// contributions.
+func inpsContribution(p *payslip.Payslip) (int64, bool) {
+	if inps, n := p.SumKey("deductions.inps"); n > 0 {
+		return inps, true
+	}
+	for _, a := range []payslip.Amount{p.INPS, p.SocialContributions} {
+		if a.Found() {
+			return a.Cents, true
+		}
+	}
+	return 0, false
+}
+
+// rateHolds reports whether the INPS contribution c is one of the known
+// rates of the taxable base b, to the cent, and which rate.
+func rateHolds(c, b int64) (rate int64, ok bool) {
+	for _, rate := range inpsRates {
+		if abs(c-roundDiv(b*rate, 10000)) <= 1 {
+			return rate, true
+		}
+	}
+	return 0, false
+}
+
+// tfrHolds reports whether t is the month's TFR on the base b: b divided by
+// 13.5, as is or net of the 0.5 percent contribution (net), within two
+// cents.
+func tfrHolds(t, b int64) (net, ok bool) {
+	switch {
+	case abs(t-roundDiv(b*2, 27)) <= 2:
+		return false, true
+	case abs(t-roundDiv(b*373, 5400)) <= 2:
+		return true, true
+	}
+	return false, false
 }
 
 // mark records the outcome of a check on a value read from the document. A
