@@ -1,6 +1,6 @@
 # ADR 0011: Recognize totals and items by the payslip's arithmetic, with labels as evidence
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-05
 - **Deciders:** maintainer (danielededo)
 
