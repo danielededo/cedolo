@@ -15,7 +15,7 @@ var (
 	inpsBaseLabels = []string{"imponibile inps", "imponibile previdenziale", "imponibile contributivo",
 		"imponibile contributi sociali", "imponibile contributi", "imponibile f p l d", "imp le f p l d",
 		"impon contr soc", "imp contr soc", "imp le inps", "imp inps", "imp previdenziale"}
-	irpefBaseLabels = []string{"imponibile irpef", "imponibile fiscale", "imp irpef", "imp fiscale"}
+	irpefBaseLabels = []string{"imponibile irpef lorda", "imponibile irpef", "imponibile fiscale", "imp irpef", "imp fiscale"}
 	socialLabels    = []string{"totale contributi sociali", "totale tratt sociali", "totale trattenute sociali",
 		"totale contributi previdenziali", "totale contributi", "tot contr soc", "tot contributi sociali",
 		"tot contributi"}
