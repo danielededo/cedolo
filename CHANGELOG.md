@@ -25,6 +25,15 @@ How to use this file:
   payslip's arithmetic confirms them: the gross pay is the sum of the items
   above it and the net pay is the earnings less what is withheld
   (ADR 0011, first step).
+- cedolo also reads the INPS and IRPEF taxable bases and the month's TFR
+  without a known label, when the arithmetic confirms them: the INPS
+  contribution is a known rate of the INPS base, and the TFR is that base
+  divided by 13.5 or the IRPEF base is that base less the contribution
+  (ADR 0011, second step).
+
+### Fixed
+
+- The IRPEF taxable base labelled "imponibile IRPEF lorda" is read.
 
 ## [0.12.1] - 2026-11-07
 
