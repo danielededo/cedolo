@@ -18,6 +18,8 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-07
+
 ### Fixed
 
 - The web app's build no longer depends on the state of the git checkout
@@ -553,7 +555,8 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/danielededo/cedolo/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/danielededo/cedolo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/danielededo/cedolo/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/danielededo/cedolo/compare/v0.10.0...v0.10.1
