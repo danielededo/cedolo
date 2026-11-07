@@ -31,14 +31,18 @@ by [docs/AI-AGENTS.md](docs/AI-AGENTS.md); `CLAUDE.md` is a pointer to it.
 - `cmd/cedolo-wasm`: the core as WebAssembly for the web app.
   `cmd/webbuild`: assembles the web app into static files: `index.html` and
   everything else under `a/<content hash>/`, so builds never mix in a cache.
+  The build is reproducible: each release lists its files' hashes, and
+  `cmd/webverify` compares a site or a folder with them; keep anything that
+  varies between builds (times, paths, randomness) out of it.
 - `web/`: the web app. pdf.js reads the PDFs (`layout.js`), the core analyzes
   them; its texts come from `internal/i18n` (`web.*` keys). The page's
   Content-Security-Policy allows no request outside the site.
   `web/test/agreement.test.mjs` checks that it reads every synthetic style as
   the CLI does; run it with `npm test` in `web/` after `go run ./cmd/webbuild`.
   Its security limits are in `docs/design/web-security.md` and guarded by
-  `web/test/security.test.mjs`: never add a worker, a remote source, storage
-  or a relaxation of the policy without updating both.
+  `web/test/security.test.mjs`: never add a worker (pdf.js's, made from a
+  `blob:` URL so it keeps the policy, is the only one), a remote source,
+  storage or a relaxation of the policy without updating both.
   `web/test/e2e.test.mjs` drives the built app in Chromium (`npm run
   test:e2e`; `CHROMIUM_PATH` points it to an installed browser): every
   style and rotation, damaged, oversized, repeated and protected files, the

@@ -57,10 +57,16 @@ for (const { style, rotate } of cases) {
     const task = pdfjs.getDocument({ data: new Uint8Array(readFileSync(pdf)), isEvalSupported: false, standardFontDataUrl: fonts });
     const layout = await layoutOf(await task.promise);
     await task.destroy();
-    const got = core.analyze(JSON.stringify([layout]), 'en');
+    const doc = core.read(JSON.stringify(layout));
+    assert.equal(doc.error, undefined);
+    const got = core.analyze(JSON.stringify([doc.doc]), 'en');
     assert.equal(got.error, undefined);
     assert.deepEqual(got.perDocument, [{ read: want.length, repeated: 0, periods: ['October 2026'], latest: 202610, people: ['Without fiscal code'] }]);
-    assert.deepEqual(JSON.parse(got.payslips).map(summary), want.map(summary));
+    // The page gets no payslips from analyze, only the report.
+    assert.equal(got.payslips, undefined);
+    const read = core.payslips(JSON.stringify([layout]));
+    assert.equal(read.error, undefined);
+    assert.deepEqual(JSON.parse(read.payslips).map(summary), want.map(summary));
     assert.match(got.report, /<section class="month"/);
   });
 }
@@ -70,4 +76,25 @@ test('texts exist in both languages', () => {
   const en = JSON.parse(core.texts('en'));
   assert.deepEqual(Object.keys(it).sort(), Object.keys(en).sort());
   assert.ok(it['web.heading'] && it['report.disclaimer']);
+});
+
+test('each document is read once and kept for every report after', () => {
+  const layouts = JSON.parse(core.example(2025).layouts).slice(0, 3);
+  const docs = layouts.map((l) => core.read(JSON.stringify(l)).doc);
+  assert.ok(docs.every((d) => Number.isInteger(d) && d > 0) && new Set(docs).size === 3);
+  // The same documents give the same report, in either language, without
+  // being read again; the same payslip read twice counts once.
+  const first = core.analyze(JSON.stringify(docs), 'en');
+  assert.equal(first.error, undefined);
+  assert.deepEqual(core.analyze(JSON.stringify(docs), 'en'), first);
+  assert.match(core.analyze(JSON.stringify(docs), 'it').report, /<html lang="it"/);
+  const again = core.read(JSON.stringify(layouts[0])).doc;
+  const twice = core.analyze(JSON.stringify([...docs, again]), 'en');
+  assert.deepEqual(twice.perDocument.at(-1).repeated, 1);
+  assert.equal(twice.report, first.report);
+  // Forgotten documents are no longer there to report.
+  assert.deepEqual(core.forget(JSON.stringify([...docs, again])), {});
+  const gone = core.analyze(JSON.stringify(docs), 'en');
+  assert.ok(gone.perDocument.every((r) => /not read/.test(r.error)));
+  assert.equal(gone.report, '');
 });

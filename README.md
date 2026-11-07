@@ -76,6 +76,18 @@ The web app is a set of static files, also attached to each release as
 `python3 -m http.server --bind 127.0.0.1` in the folder and open
 http://127.0.0.1:8000. Browsers do not run it from a file opened directly.
 
+To check that the site serves what the release was built from, compare it
+with the hashes attached to the release (from v0.12.0), with Go installed:
+
+```
+go run ./cmd/webverify -tag v0.12.0
+```
+
+The build is reproducible: building the same tag with
+`go run ./cmd/webbuild -o dist/web -version v0.12.0 -url https://danielededo.github.io/cedolo/`
+gives the same files, which `go run ./cmd/webverify -tag v0.12.0 -site dist/web`
+compares.
+
 ### In a terminal
 
 Download the archive for your system from the
@@ -169,7 +181,8 @@ decisions behind it.
 │   ├── ccnlgen/              # regenerates the CCNL list from the CNEL open data
 │   ├── upkeep/               # says when built-in data is due a check (monthly job)
 │   ├── cedolo-wasm/          # the core compiled to WebAssembly for the web app
-│   └── webbuild/             # assembles the web app as static files
+│   ├── webbuild/             # assembles the web app as static files
+│   └── webverify/            # compares the site with the hashes of a release
 ├── web/                      # the web app: page, pdf.js text layer, tests
 ├── internal/
 │   ├── layout/               # positioned text: the boundary between PDF readers and the core

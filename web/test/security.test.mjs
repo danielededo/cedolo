@@ -26,7 +26,8 @@ test('nothing can be fetched, framed or run from elsewhere', () => {
   const p = policy();
   assert.deepEqual(p['default-src'], ["'none'"]);
   assert.deepEqual(p['connect-src'], ["'self'"]);
-  for (const d of ['worker-src', 'frame-src', 'object-src', 'font-src', 'base-uri', 'form-action']) {
+  assert.deepEqual(p['worker-src'], ['blob:'], 'workers only from memory, under this policy');
+  for (const d of ['frame-src', 'object-src', 'font-src', 'base-uri', 'form-action']) {
     assert.deepEqual(p[d], ["'none'"], d);
   }
   assert.deepEqual(p['script-src'].filter((s) => !s.startsWith("'sha256-")), ["'self'", "'wasm-unsafe-eval'"]);
@@ -43,7 +44,7 @@ test('every file but the page has an address of its own build', () => {
     if (/^(https:|data:)/.test(m[1])) continue;
     assert.ok(m[1].startsWith(assets + '/'), m[1]);
   }
-  assert.match(app, /fetch\(new URL\('cedolo\.wasm', import\.meta\.url\)\)/);
+  assert.match(app, /instantiate\(new URL\('cedolo\.wasm', import\.meta\.url\)/);
 });
 
 test('the page loads nothing from other sites', () => {
@@ -53,9 +54,11 @@ test('the page loads nothing from other sites', () => {
   }
 });
 
-test('pdf.js runs in the page, under its policy, not in a worker', () => {
-  assert.match(app, /globalThis\.pdfjsWorker = await import\('\.\/pdfjs\/pdf\.worker\.min\.mjs'\)/);
-  assert.doesNotMatch(app, /workerSrc|new Worker/);
+test('pdf.js runs in a blob: worker that keeps the policy, or in the page', () => {
+  // A worker from a file would not keep the policy, so none is made.
+  assert.doesNotMatch(app, /workerSrc|new Worker\((?!URL\.createObjectURL)/);
+  assert.match(app, /fetch\('data:,1'\)/, 'the probe checks the policy holds in the worker');
+  assert.match(app, /globalThis\.pdfjsWorker = await import\('\.\/pdfjs\/pdf\.worker\.min\.mjs'\)/, 'in the page where it does not');
 });
 
 test('the report frame is sandboxed without its own origin', () => {

@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Nothing leaves the page: scripts and requests are limited to this site,
-     no worker, font, frame source or plugin is allowed, and the report frame
+     workers only from blob: (pdf.js's, which keeps this policy), no font,
+     frame source or plugin is allowed, and the report frame
      (srcdoc, sandboxed) only runs its own script, allowed by its hash. See
      docs/design/web-security.md. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' {{REPORT_SCRIPT_HASH}}; worker-src 'none'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'none'; frame-src 'none'; object-src 'none'; manifest-src 'none'; media-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval' {{REPORT_SCRIPT_HASH}}; worker-src blob:; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'none'; frame-src 'none'; object-src 'none'; manifest-src 'none'; media-src 'none'; base-uri 'none'; form-action 'none'">
 <meta http-equiv="x-dns-prefetch-control" content="off">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Comprendi il tuo cedolino: cedolo legge i PDF sul tuo dispositivo, controlla i totali e spiega ogni voce.">
@@ -63,7 +64,7 @@
         <button type="button" id="pw-skip" data-t="web.password.skip"></button>
       </div>
     </form>
-    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <p class="status" id="status" role="status" aria-live="polite">…</p>
     <p class="try"><button type="button" class="link" id="example" disabled data-t="web.example"></button></p>
   </section>
 

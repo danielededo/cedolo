@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/danielededo/cedolo/internal/ccnl"
 	"github.com/danielededo/cedolo/internal/i18n"
@@ -128,6 +129,9 @@ type Page struct {
 	OpenMonth string
 	People    []Data
 	Version   string
+	// ScriptSrc lets the report's own script run and nothing else: its
+	// hash, in the report's Content-Security-Policy.
+	ScriptSrc string
 }
 
 // Data is everything the page shows of one person; BuildPage builds it
@@ -174,21 +178,26 @@ type Data struct {
 // ScriptHash returns the Content-Security-Policy source that allows the
 // report's inline script, such as "'sha256-…'", for pages that embed the
 // report and so pass their own policy on to it.
-func ScriptHash() string {
-	// Hash the script as rendered: html/template drops its comments.
-	var page bytes.Buffer
-	if err := Render(&page, i18n.IT, nil, ""); err != nil {
+func ScriptHash() string { return scriptHash() }
+
+// scriptHash hashes the script as rendered, once: html/template drops its
+// comments. The script holds no data, so every report has the same.
+var scriptHash = sync.OnceValue(func() string {
+	var out bytes.Buffer
+	if err := page.Execute(&out, BuildPage(i18n.IT, nil, "")); err != nil {
 		panic(err)
 	}
-	_, rest, _ := strings.Cut(page.String(), "<script>")
+	_, rest, _ := strings.Cut(out.String(), "<script>")
 	script, _, _ := strings.Cut(rest, "</script>")
 	sum := sha256.Sum256([]byte(script))
 	return "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
-}
+})
 
 // Render writes the report for the payslips. The slice is sorted in place.
 func Render(w io.Writer, l i18n.Lang, slips []payslip.Payslip, version string) error {
-	return page.Execute(w, BuildPage(l, slips, version))
+	pg := BuildPage(l, slips, version)
+	pg.ScriptSrc = ScriptHash()
+	return page.Execute(w, pg)
 }
 
 // BuildPage builds the report of each person, in the order they first

@@ -5,12 +5,43 @@ import './compat.js';
 import * as pdfjs from './pdfjs/pdf.min.mjs';
 import { layoutOf, hasText } from './layout.js';
 
-// pdf.js parses PDFs in the page itself, not in a Web Worker: a worker
-// loaded from a file does not inherit the page's Content-Security-Policy
-// (it is set by a <meta> tag, as static hosting allows), so a flaw in the
-// parser exploited by a crafted PDF could reach the network from there.
-// worker-src 'none' in the policy keeps it that way.
-globalThis.pdfjsWorker = await import('./pdfjs/pdf.worker.min.mjs');
+// pdf.js parses PDFs in a Web Worker, so that a long or hostile file does
+// not freeze the page. The worker is made from a blob: URL, which keeps the
+// page's Content-Security-Policy (a worker loaded from a file would not, as
+// the policy is set by a <meta> tag), and worker-src allows blob: only. A
+// probe checks the browser applies the policy inside such a worker: where it
+// does not, or where workers fail, pdf.js parses in the page as before.
+const pdfReady = (async () => {
+  const worker = await pdfWorker();
+  if (worker) pdfjs.GlobalWorkerOptions.workerPort = worker;
+  else globalThis.pdfjsWorker = await import('./pdfjs/pdf.worker.min.mjs');
+})();
+
+// blobWorker starts a worker from code held in memory.
+function blobWorker(code, options) {
+  return new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })), options);
+}
+
+// pdfWorker returns pdf.js's worker, or null where it would not run under
+// the page's policy. The probe fetches a data: URL, which the policy
+// refuses (connect-src) and which never reaches the network either way.
+async function pdfWorker() {
+  try {
+    const probe = blobWorker("fetch('data:,1').then(() => postMessage('open'), () => postMessage('closed'));");
+    const answer = await new Promise((ok) => {
+      probe.onmessage = (e) => ok(e.data);
+      probe.onerror = () => ok('error');
+      setTimeout(() => ok('silent'), 3000);
+    });
+    probe.terminate();
+    if (answer !== 'closed') return null;
+    const res = await fetch(new URL('pdfjs/pdf.worker.min.mjs', import.meta.url));
+    if (!res.ok) return null;
+    return blobWorker(await res.text(), { type: 'module' });
+  } catch {
+    return null;
+  }
+}
 
 // Motion is skipped for people who asked their system to reduce it.
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -69,10 +100,23 @@ function status(text, error = false) {
   $('status').classList.toggle('error', error);
 }
 
+// instantiate compiles the core as it downloads, or, where the server does
+// not send it as application/wasm (a copy hosted by someone, perhaps),
+// once it is all there.
+async function instantiate(url, imports) {
+  try {
+    return await WebAssembly.instantiateStreaming(fetch(url), imports);
+  } catch (err) {
+    const res = await fetch(url);
+    if (!res.ok) throw err;
+    return WebAssembly.instantiate(await res.arrayBuffer(), imports);
+  }
+}
+
 async function start() {
   try {
     const go = new globalThis.Go();
-    const { instance } = await WebAssembly.instantiateStreaming(fetch(new URL('cedolo.wasm', import.meta.url)), go.importObject);
+    const { instance } = await instantiate(new URL('cedolo.wasm', import.meta.url), go.importObject);
     go.run(instance);
   } catch (err) {
     status(`${window.cedoloUnsupported} (${err.message})`, true);
@@ -120,6 +164,7 @@ async function readFile(file) {
     entry.refused = ['web.file.too_big', MAX_BYTES / 1024 / 1024];
     return entry;
   }
+  await pdfReady;
   const task = pdfjs.getDocument({
     data: new Uint8Array(await file.arrayBuffer()),
     // Only text is read: no fonts handed to the browser, no system fonts,
@@ -173,9 +218,18 @@ async function readFile(file) {
   return entry;
 }
 
+// analyze builds the report of the files read. The core reads each file's
+// payslips once and keeps them (doc), so adding a file or changing the
+// language reads only what is new.
 function analyze() {
   const readable = state.files.filter((f) => f.layout && hasText(f.layout));
-  const result = globalThis.cedolo.analyze(JSON.stringify(readable.map((f) => f.layout)), state.lang);
+  for (const f of readable) {
+    if (f.doc) continue;
+    const r = globalThis.cedolo.read(JSON.stringify(f.layout));
+    if (r.error) throw new Error(r.error);
+    f.doc = r.doc;
+  }
+  const result = globalThis.cedolo.analyze(JSON.stringify(readable.map((f) => f.doc)), state.lang);
   if (result.error) throw new Error(result.error);
   readable.forEach((f, i) => {
     const r = result.perDocument[i];
@@ -187,6 +241,14 @@ function analyze() {
     f.latest = Number.isFinite(r.latest) ? r.latest : 0;
   });
   state.report = result.report;
+}
+
+// replaceFiles puts files in the place of those read, and has the core drop
+// what it kept of the old ones.
+function replaceFiles(files) {
+  const docs = state.files.map((f) => f.doc).filter(Boolean);
+  if (docs.length) globalThis.cedolo.forget(JSON.stringify(docs));
+  state.files = files;
 }
 
 function describe(f) {
@@ -381,7 +443,7 @@ async function handle(fileList) {
   if (files.length === 0) return;
   // One's own payslips take the place of the example's.
   if (state.example) {
-    state.files = [];
+    replaceFiles([]);
     state.example = false;
     state.allRead = false;
   }
@@ -441,7 +503,7 @@ async function showExample() {
     status(t('web.failed', result.error), true);
     return;
   }
-  state.files = JSON.parse(result.layouts).map((layout, i) => ({ name: t('web.example.file', i + 1), layout }));
+  replaceFiles(JSON.parse(result.layouts).map((layout, i) => ({ name: t('web.example.file', i + 1), layout })));
   state.example = true;
   state.allRead = false;
   try {
@@ -509,12 +571,22 @@ function downloadAnon() {
   save(new Blob([state.anonPDF], { type: 'application/pdf' }), t('web.anon.file'));
 }
 
+// The address of the file saved last. It is let go at the next save, or a
+// minute on: a slow download, as on Safari for iOS, can still be reading it
+// a second after the click.
+let saved = '';
+
 function save(blob, name) {
+  if (saved) URL.revokeObjectURL(saved);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = saved = URL.createObjectURL(blob);
   a.download = name;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const url = saved;
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    if (saved === url) saved = '';
+  }, 60000);
 }
 
 function download() {
@@ -665,5 +737,6 @@ for (const b of document.querySelectorAll('[data-lang]')) {
   });
 }
 
-status('…');
+// The page starts with "…" in the status line: the app writes it no more,
+// since it may run late and would cover boot.js's notice of a slow start.
 start();

@@ -18,6 +18,55 @@ How to use this file:
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-07
+
+### Fixed
+
+- The web app's build no longer depends on the state of the git checkout
+  it is made in: the release's list of hashes of v0.12.0 was made in a
+  checkout with untracked files, so the site could not match it and was
+  not published.
+
+## [0.12.0] - 2026-11-06
+
+### Added
+
+- Each release lists the SHA-256 of every file of the web app as published
+  online, and `go run ./cmd/webverify -tag <version>` compares them with
+  what the site serves. The site is published only if its build matches.
+
+### Changed
+
+- The web app reads each file's payslips once: adding files or changing the
+  language rebuilds the report from what was already read, several times
+  faster with many files.
+- The web app reads PDFs in the background, so the page stays responsive
+  while it reads a long or complex file. Where the browser could not keep the app's
+  security policy in the background, it reads them in the page as before.
+
+### Fixed
+
+- The web app starts where the server does not send its core as WebAssembly
+  (application/wasm), as some hosts of a copy do.
+- On a slow connection the web app says it is still loading, and gives up
+  only after two minutes instead of twenty seconds, when it used to call the
+  browser unsupported.
+- Saved files (report, anonymized copy) no longer stay in the page's memory
+  for as long as it is open: they are released a minute after the download.
+
+### Security
+
+- cedolo is built with the latest Go 1.26 release (1.26.10) instead of
+  1.26.0, with its fixes to the standard library, for the CLI and the web
+  app's core alike. Every change is now checked for known vulnerabilities.
+- The web app online allows its own files only, not those of the other
+  projects that share its address on GitHub Pages: its Content-Security-
+  Policy names its build's folder instead of the whole site.
+- A downloaded report lets only its own script run, by its hash, instead of
+  any script written in the page.
+- The web app's core no longer hands the page a second copy of every
+  payslip read, which the page never used.
+
 ## [0.11.0] - 2026-11-05
 
 ### Added
@@ -506,7 +555,9 @@ How to use this file:
 - The PDFium text layer joins glyphs of vertical text into words, as poppler
   does, instead of reporting them as scattered letters.
 
-[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/danielededo/cedolo/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/danielededo/cedolo/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/danielededo/cedolo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/danielededo/cedolo/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/danielededo/cedolo/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/danielededo/cedolo/compare/v0.9.0...v0.10.0

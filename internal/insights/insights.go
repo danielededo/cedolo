@@ -84,24 +84,40 @@ func Sort(slips []payslip.Payslip) {
 // payslip printed again, would otherwise count twice in comparisons and
 // charts. It keeps the order of the rest and returns how many were dropped.
 func Dedupe(slips []payslip.Payslip) ([]payslip.Payslip, int) {
-	type key struct {
-		person, employer string
-		year, month      int
-		kind             payslip.Kind
-		gross, ded, net  int64
+	return new(Deduper).Keep(slips)
+}
+
+// A Deduper drops repeats as Dedupe does, across several calls: a payslip
+// repeating one kept by an earlier call is dropped too. Its zero value is
+// ready to use.
+type Deduper struct {
+	seen map[dedupeKey]bool
+}
+
+type dedupeKey struct {
+	person, employer string
+	year, month      int
+	kind             payslip.Kind
+	gross, ded, net  int64
+}
+
+// Keep returns the payslips of slips that repeat none kept so far, in
+// order, and how many it dropped.
+func (d *Deduper) Keep(slips []payslip.Payslip) ([]payslip.Payslip, int) {
+	if d.seen == nil {
+		d.seen = map[dedupeKey]bool{}
 	}
-	seen := map[key]bool{}
 	out := slips[:0:0]
 	for _, p := range slips {
 		if (p.Month == 0 && (p.Kind == payslip.Monthly || p.Year == 0)) || !p.Net.Found() {
 			out = append(out, p)
 			continue
 		}
-		k := key{p.Person.ID, p.Employer.ID, p.Year, p.Month, p.Kind, p.Gross.Cents, p.Deductions.Cents, p.Net.Cents}
-		if seen[k] {
+		k := dedupeKey{p.Person.ID, p.Employer.ID, p.Year, p.Month, p.Kind, p.Gross.Cents, p.Deductions.Cents, p.Net.Cents}
+		if d.seen[k] {
 			continue
 		}
-		seen[k] = true
+		d.seen[k] = true
 		out = append(out, p)
 	}
 	return out, len(slips) - len(out)

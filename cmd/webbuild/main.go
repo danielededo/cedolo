@@ -31,14 +31,15 @@ import (
 func main() {
 	out := flag.String("o", "dist/web", "output directory")
 	version := flag.String("version", "dev", "version shown by the app")
+	url := flag.String("url", "", "address the app is served from, such as https://danielededo.github.io/cedolo/: its Content-Security-Policy then allows the build's own folder there, not the whole site")
 	flag.Parse()
-	if err := build(*out, *version); err != nil {
+	if err := build(*out, *version, *url); err != nil {
 		fmt.Fprintln(os.Stderr, "webbuild:", err)
 		os.Exit(1)
 	}
 }
 
-func build(out, version string) error {
+func build(out, version, url string) error {
 	pdfjs := filepath.Join("web", "node_modules", "pdfjs-dist")
 	if _, err := os.Stat(pdfjs); err != nil {
 		return errors.New("pdf.js is missing: run \"npm ci --omit=optional --ignore-scripts\" in web/ first")
@@ -52,7 +53,11 @@ func build(out, version string) error {
 		return err
 	}
 
-	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w -X main.version="+version,
+	// The build must be the same wherever it runs, so it carries no paths
+	// (-trimpath) and no state of the git checkout (-buildvcs=false): files
+	// left untracked in it, as the release job leaves, would mark it
+	// modified and change the core's bytes.
+	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags", "-s -w -X main.version="+version,
 		"-o", filepath.Join(stage, "cedolo.wasm"), "./cmd/cedolo-wasm")
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
@@ -108,11 +113,37 @@ func build(out, version string) error {
 		}
 		page = bytes.ReplaceAll(page, []byte(placeholder), []byte(value))
 	}
+	if url != "" {
+		if page, err = pin(page, url, assets); err != nil {
+			return err
+		}
+	}
 	if err := os.WriteFile(filepath.Join(out, "index.html"), page, 0o644); err != nil {
 		return err
 	}
 	fmt.Println("web app written to", out)
 	return nil
+}
+
+// pin narrows the page's Content-Security-Policy from 'self', the whole
+// site, to the build's own folder at url. On a site shared by several
+// projects, such as a GitHub Pages user site, 'self' would let the page
+// run scripts and fetch files of every other project there.
+func pin(page []byte, url, assets string) ([]byte, error) {
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") || !strings.HasSuffix(url, "/") || strings.ContainsAny(url, " ;'\"") {
+		return nil, fmt.Errorf("-url %q: want an address such as https://example.org/cedolo/", url)
+	}
+	start := bytes.Index(page, []byte(`http-equiv="Content-Security-Policy" content="`))
+	if start < 0 {
+		return nil, errors.New("web/index.html lacks its Content-Security-Policy")
+	}
+	end := start + bytes.IndexByte(page[start+len(`http-equiv="Content-Security-Policy" content="`):], '"') + len(`http-equiv="Content-Security-Policy" content="`)
+	policy := page[start:end]
+	if !bytes.Contains(policy, []byte("'self'")) {
+		return nil, errors.New("the Content-Security-Policy names no 'self' to narrow")
+	}
+	narrowed := bytes.ReplaceAll(policy, []byte("'self'"), []byte(url+assets+"/"))
+	return append(append(append([]byte(nil), page[:start]...), narrowed...), page[end:]...), nil
 }
 
 // hashDir returns the first 12 hex digits of a SHA-256 over every file's
