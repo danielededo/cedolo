@@ -18,6 +18,14 @@ How to use this file:
 
 ## [Unreleased]
 
+### Added
+
+- cedolo reads the gross pay, the total deductions and the net pay even when
+  a payslip words their labels in a way it does not know, when the
+  payslip's arithmetic confirms them: the gross pay is the sum of the items
+  above it and the net pay is the earnings less what is withheld
+  (ADR 0011, first step).
+
 ## [0.12.1] - 2026-11-07
 
 ### Fixed
