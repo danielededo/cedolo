@@ -66,18 +66,20 @@ func items(_ synth.Style, p synth.Payslip) []string {
 // cedolo reads today, so that a change can only raise it: raise it with the
 // change that reads more.
 var blindFloor = map[string][2]int{
-	"none":       {90, 104},
-	"gross":      {76, 104},
+	"none": {90, 104},
+	// The totals' rows read by their arithmetic (ADR 0011, first step).
+	"gross":      {90, 104},
 	"deductions": {90, 104},
 	"net":        {90, 104},
 	"INPS base":  {75, 104},
 	"IRPEF base": {75, 104},
 	"TFR":        {75, 104},
-	"all totals": {2, 104},
+	"all totals": {45, 104},
 	"all items":  {90, 0},
-	// With every label hidden, cedolo reads almost nothing: what #86 is to
-	// change.
-	"totals and items": {2, 0},
+	// With every label hidden, the gross pay, the deductions and the net pay
+	// are read by their arithmetic; the taxable bases, the TFR and the items
+	// are the next steps of ADR 0011.
+	"totals and items": {45, 0},
 }
 
 func TestBlindLabels(t *testing.T) {
