@@ -205,3 +205,29 @@ func TestBasesAcrossPages(t *testing.T) {
 		t.Error("an item's amount on page 2 read as the IRPEF base")
 	}
 }
+
+// A TFR base read by its label is the base of the TFR, as validate takes
+// it: a candidate that is the INPS base divided by 13.5 is not the TFR,
+// nor does it confirm an INPS base.
+func TestBasesTFRBaseLabelled(t *testing.T) {
+	p := basesSlip()
+	p.INPSBase, p.TFRBase = labelled(exBase), labelled(230000)
+	basesByArithmetic(&p, linesOf(basesPage([]string{"40:ZEFI RUMA", "250>162,56"})))
+	if p.TFR.Found() {
+		t.Errorf("TFR %d read against the INPS base, not the labelled TFR base", p.TFR.Cents)
+	}
+
+	p = basesSlip()
+	p.TFRBase = labelled(230000)
+	basesByArithmetic(&p, linesOf(basesPage([]string{"40:BIKO MAKA", "250>2.194,50", "450>162,56"})))
+	if p.INPSBase.Found() {
+		t.Errorf("INPS base %d confirmed by a TFR that is not on the TFR base", p.INPSBase.Cents)
+	}
+
+	p = basesSlip()
+	p.INPSBase, p.TFRBase = labelled(exBase), labelled(230000)
+	basesByArithmetic(&p, linesOf(basesPage([]string{"40:ZEFI RUMA", "250>170,37"})))
+	if p.TFR.Cents != 17037 {
+		t.Errorf("TFR %d, want 170,37, the TFR base divided by 13.5", p.TFR.Cents)
+	}
+}

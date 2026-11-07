@@ -74,7 +74,9 @@ never replaced.
    or R3, with the TFR or IRPEF base read by its label or found among the
    candidates. R1 alone is never enough.
 2. **TFR.** A candidate `t` that satisfies R2 with an INPS base confirmed by
-   R1, read by its label or in point 1.
+   R1, read by its label or in point 1. When a TFR base is read by its
+   label, R2 is taken on it instead, as the `tfr_ratio` check does, and the
+   TFR is then no second link for the INPS base in point 1.
 3. **IRPEF base.** A candidate `i` that satisfies R3 with an INPS base
    confirmed by R1.
 

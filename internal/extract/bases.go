@@ -15,7 +15,8 @@ import (
 // INPS contribution and b the INPS base:
 //
 //   - R1: c is one of the known INPS rates of b;
-//   - R2: the TFR is b divided by 13.5, as is or net of the 0.5% contribution;
+//   - R2: the TFR is b divided by 13.5, as is or net of the 0.5% contribution,
+//     or the TFR base instead of b when its label gives it;
 //   - R3: the IRPEF base is exactly b less c.
 //
 // An amount is read as the INPS base when R1 and at least one of R2 or R3
@@ -39,7 +40,12 @@ func basesByArithmetic(p *payslip.Payslip, all [][]line) {
 	}
 	var read []string
 
+	// A TFR base read by its label is the base of the TFR, as validate
+	// takes it; the TFR then says nothing about the INPS base.
 	tfrFits := func(b int64) bool {
+		if p.TFRBase.Found() {
+			return false
+		}
 		if p.TFR.Found() {
 			if _, ok := tfrHolds(p.TFR.Cents, b); ok {
 				return true
@@ -80,13 +86,17 @@ func basesByArithmetic(p *payslip.Payslip, all [][]line) {
 		return
 	}
 	if !p.TFR.Found() {
-		if t, ok := single(matching(func(t int64) bool { _, ok := tfrHolds(t, b); return ok })); ok {
+		on, name := b, "INPS base"
+		if p.TFRBase.Found() {
+			on, name = p.TFRBase.Cents, "TFR base"
+		}
+		if t, ok := single(matching(func(t int64) bool { _, ok := tfrHolds(t, on); return ok })); ok {
 			setRead(&p.TFR, t)
 			how := "divided by 13.5"
-			if net, _ := tfrHolds(t.cents, b); net {
+			if net, _ := tfrHolds(t.cents, on); net {
 				how += ", net of the 0.5% contribution"
 			}
-			read = append(read, fmt.Sprintf("TFR %s: the INPS base %s %s", money.Format(t.cents), money.Format(b), how))
+			read = append(read, fmt.Sprintf("TFR %s: the %s %s %s", money.Format(t.cents), name, money.Format(on), how))
 		}
 	}
 	if !p.IRPEFBase.Found() {
